@@ -135,7 +135,7 @@ def run(
     #load triplets into memory
     train_triplets, test_triplets = ut.load_data(device=device, triplets_dir=triplets_dir)
     n_items = ut.get_nitems(train_triplets)
-
+    print("n_items = " + str(n_items))
 
     #load train and test mini-batches
     train_batches, val_batches = ut.load_batches(
@@ -367,7 +367,7 @@ def run(
     # divide into list elements and drop subject ID
     for i in range(0, len(split_train)):
         l_train_triplets_ID.append(split_train[i][:, 0:3])
-        l_test_triplets_ID.append(split_train[i][:, 0:3])
+        l_test_triplets_ID.append(split_test[i][:, 0:3])
 
     l_train_ID = list()
     l_val_ID = list()

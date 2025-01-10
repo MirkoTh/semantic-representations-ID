@@ -982,7 +982,9 @@ def train_ID_model(
        "train_losses": train_losses_ID,
        "train_ll": loglikelihoods_ID,
        "ics": ICs,
-       "Slopes": Slopes 
+       "Slopes": Slopes,
+       "n_choices_train":l_train_triplets_ID.shape[0],
+       "n_choices_test":l_test_triplets_ID.shape[0]
     }
 
 def process_ID_results(
