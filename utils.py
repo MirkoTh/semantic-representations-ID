@@ -145,13 +145,18 @@ class BatchGenerator(object):
     def get_batches(self, I: torch.Tensor, triplets: torch.Tensor, method: str) -> Iterator[torch.Tensor]:
         if not isinstance(self.sampling_method, type(None)):
             triplets, ids = self.sampling(triplets[:, 0:3], triplets[:, 3])
+        else:
+            ids = triplets[:, 3]
+            triplets = triplets[:, 0:3]
         for i in range(self.n_batches):
             batch = encode_as_onehot(
                 I, triplets[i*self.batch_size: (i+1)*self.batch_size])
+            ids_batch = ids[i*self.batch_size: (i+1)*self.batch_size]
+            ids_batch_triplet = np.repeat(ids_batch, 3)
             if method == "average":
                 yield batch
             elif method == "ids":
-                yield batch, ids
+                yield batch, ids_batch_triplet
 
 
 class BatchGenerator_ID(object):
@@ -688,7 +693,8 @@ def validation(
     device: torch.device,
     sampling: bool = False,
     batch_size=None,
-    distance_metric: str = 'dot'
+    distance_metric: str = 'dot',
+    level_explanation="avg",
 ):
     if sampling:
         assert isinstance(batch_size, int), 'batch size must be defined'
@@ -701,8 +707,13 @@ def validation(
         batch_losses_val = torch.zeros(len(val_batches))
         batch_accs_val = torch.zeros(len(val_batches))
         for j, batch in enumerate(val_batches):
-            batch = batch.to(device)
-            logits = model(batch)
+            if level_explanation == 'avg':
+                batch = batch.to(device)
+                logits = model(batch)
+            elif level_explanation == "ID":
+                b = batch[0].to(device)
+                id = batch[1].to(device)
+                logits = model(b, id)
             anchor, positive, negative = torch.unbind(
                 torch.reshape(logits, (-1, 3, logits.shape[-1])), dim=1)
 
