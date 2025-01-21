@@ -38,10 +38,11 @@ class SPoSE(nn.Module):
                 m.weight.data.normal_(mean, std)
 
 
-def l1_regularization(model) -> torch.Tensor:
+def l1_regularization(model, kwd) -> torch.Tensor:
+    kwd_pattern = fr'{kwd}'
     l1_reg = torch.tensor(0., requires_grad=True)
     for n, p in model.named_parameters():
-        if re.search(r'weight', n):
+        if re.search(kwd_pattern, n):
             l1_reg = l1_reg + torch.norm(p, 1)
     return l1_reg
 
@@ -83,16 +84,16 @@ class SPoSE_ID(nn.Module):
         init_weights: bool = True,
     ):
 
-        super(SPoSE, self).__init__()
+        super(SPoSE_ID, self).__init__()
         self.in_size = in_size
         self.out_size = out_size
         self.fc = nn.Linear(self.in_size, self.out_size, bias=False)
-        self.individual_weights = nn.Embedding(num_participants, self.out_size)
+        self.individual_slopes = nn.Embedding(num_participants, self.out_size)
         if init_weights:
             self._initialize_weights()
 
     def forward(self, x: torch.Tensor, id: torch.Tensor) -> torch.Tensor:
-        w_i = self.individual_weights(id)
+        w_i = self.individual_slopes(id)
         return w_i * self.fc(x)
 
     def _initialize_weights(self) -> None:
