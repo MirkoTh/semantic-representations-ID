@@ -38,11 +38,15 @@ class SPoSE(nn.Module):
                 m.weight.data.normal_(mean, std)
 
 
-def l1_regularization(model, kwd) -> torch.Tensor:
+def l1_regularization(model, kwd, agreement: str = "few") -> torch.Tensor:
     kwd_pattern = fr'{kwd}'
     l1_reg = torch.tensor(0., requires_grad=True)
     for n, p in model.named_parameters():
         if re.search(kwd_pattern, n):
+            if agreement == "few":
+                l1_reg = l1_reg + torch.norm(p, 1)
+            elif agreement == "most":
+                l1_reg = l1_reg + torch.norm(1-p, 1)
             l1_reg = l1_reg + torch.norm(p, 1)
     return l1_reg
 

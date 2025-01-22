@@ -52,6 +52,10 @@ def parseargs():
        help='name of the logger to be used')
     aa('--triplets_dir', type=str,
         help='directory from where to load triplets')
+    aa('--agreement', type=str, default='few',
+        choices=['few', 'many'], help='agreement level for l1-regularization')
+    aa('--sparsity', type=str, default='ID',
+        choices=['ID', 'both'], help='sparsity level for l1-regularization')
     aa('--results_dir', type=str, default='./results/',
         help='optional specification of results directory (if not provided will resort to ./results/lambda/rnd_seed/)')
     aa('--plots_dir', type=str, default='./plots/',
@@ -100,11 +104,11 @@ def setup_logging(file: str, dir: str = './log_files/', loggername: str = "sem-r
     # create logger at root level (no need to provide specific name, as our logger won't have children)
     logger = logging.getLogger(loggername)
     logging.basicConfig(filename=os.path.join(dir, file),
-                        filemode='w', level=logging.DEBUG)
+                        filemode='w', level=logging.INFO)
     # add console handler to logger
     if len(logger.handlers) < 1:
-        handler = logging.StreamHandler()
-        # this specifies the lowest-severity log message the logger will handle
+        # only file handler, no console handler
+        handler = logging.FileHandler(os.path.join(dir, file))
         handler.setLevel(logging.INFO)
 
         # create formatter to configure order, structure, and content of log messages
@@ -124,6 +128,8 @@ def run(
         results_dir: str,
         plots_dir: str,
         triplets_dir: str,
+        agreement: str,
+        sparsity: str,
         device: torch.device,
         batch_size: int,
         embed_dim: int,
@@ -142,7 +148,7 @@ def run(
 ):
     # initialise logger and start logging events
     logger = setup_logging(file='avg-ID-jointly.log',
-                           dir=f'./log_files/lmbda_{lmbda}/', loggername=loggername)
+                           dir=f'./log_files/ndim_{embed_dim}/lmbda_{lmbda}/agreement_{agreement}/sparsity_{sparsity}/', loggername=loggername)
     logger.setLevel(logging.INFO)
     # load triplets into memory
     train_triplets_ID, test_triplets_ID = ut.load_data_ID(
@@ -183,13 +189,13 @@ def run(
     logger.info(f'...Creating PATHs')
     if results_dir == './results/':
         results_dir = os.path.join(
-            results_dir, "avg-ID-jointly", f'{embed_dim}d', str(lmbda), f'seed{rnd_seed:02d}')
+            results_dir, "avg-ID-jointly", f'{embed_dim}d', str(lmbda), agreement, sparsity, f'seed{rnd_seed}')
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
     if plots_dir == './plots/':
         plots_dir = os.path.join(
-            plots_dir, "avg-ID-jointly", f'{embed_dim}d', str(lmbda), f'seed{rnd_seed}')
+            plots_dir, "avg-ID-jointly", f'{embed_dim}d', str(lmbda), agreement, sparsity, f'seed{rnd_seed}')
     if not os.path.exists(plots_dir):
         os.makedirs(plots_dir)
 
@@ -274,9 +280,9 @@ def run(
                 torch.reshape(logits, (-1, 3, embed_dim)), dim=1)
             c_entropy = ut.trinomial_loss(
                 anchor, positive, negative, task, temperature, distance_metric)
-            l1_pen_avg = md.l1_regularization(model, "weight").to(
+            l1_pen_avg = md.l1_regularization(model, "weight", agreement=agreement).to(
                 device)  # L1-norm to enforce sparsity (many 0s)
-            l1_pen_ID = md.l1_regularization(model, "individual_slopes").to(
+            l1_pen_ID = md.l1_regularization(model, "individual_slopes", agreement=agreement).to(
                 device)  # L1-norm to enforce sparsity (many 0s)
             W = model.fc.weight
             # positivity constraint to enforce non-negative values in embedding matrix
@@ -288,7 +294,10 @@ def run(
             # enforce sparsity on both
             # ignore complexity loss on ndims avg, enforce reverse sparsity (i.e., mostly 1s) on IDs
             # enforce sparsity on ndims avg, and enforce reverse sparsity (i.e., mostly 1s) on IDs
-            loss = c_entropy + 0.01 * pos_pen + complexity_loss_ID
+            if sparsity == 'ID':
+                loss = c_entropy + 0.01 * pos_pen + complexity_loss_ID
+            elif sparsity == 'both':
+                loss = c_entropy + 0.01 * pos_pen + complexity_loss_ID + complexity_loss_avg
             loss.backward()
             optim.step()
             batch_losses_train[i] += loss.item()
@@ -348,9 +357,11 @@ def run(
             # save model and optim parameters for inference or to resume training
             # PyTorch convention is to save checkpoints as .tar files
             torch.save({
-                'epoch': epoch,
+                'epoch': epoch + 1,
                 'model_state_dict': model.state_dict(),
                 'optim_state_dict': optim.state_dict(),
+                'n_embed': embed_dim,
+                'lambda': lmbda,
                 'loss': loss,
                 'train_losses': train_losses,
                 'train_accs': train_accs,
@@ -423,6 +434,8 @@ if __name__ == "__main__":
         loggername=args.loggername,
         rnd_seed=args.rnd_seed,
         results_dir=args.results_dir,
+        agreement=args.agreement,
+        sparsity=args.sparsity,
         plots_dir=args.plots_dir,
         triplets_dir=args.triplets_dir,
         device=device,
