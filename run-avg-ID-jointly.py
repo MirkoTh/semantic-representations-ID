@@ -142,7 +142,7 @@ def run(
 ):
     # initialise logger and start logging events
     logger = setup_logging(file='avg-ID-jointly.log',
-                           dir=f'./log_files/lmbda_{lmbda}/')
+                           dir=f'./log_files/lmbda_{lmbda}/', loggername=loggername)
     logger.setLevel(logging.INFO)
     # load triplets into memory
     train_triplets_ID, test_triplets_ID = ut.load_data_ID(
