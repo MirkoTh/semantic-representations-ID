@@ -3,18 +3,18 @@ from concurrent.futures import ThreadPoolExecutor
 
 # Define the different combinations of named arguments
 arg_combinations = [
-    {'rnd_seed': 8787, 'triplets_dir': './data/', "task": "odd_one_out",
-        "learning_rate": .001, "lmbda": 0.01, "epochs": 2, "embed_dim": 20},
-    {'rnd_seed': 8787, 'triplets_dir': './data/', "task": "odd_one_out",
-        "learning_rate": .001, "lmbda": 0.001, "epochs": 2, "embed_dim": 20},
-    {'rnd_seed': 8787, 'triplets_dir': './data/', "task": "odd_one_out",
-        "learning_rate": .001, "lmbda": 0.1, "epochs": 2, "embed_dim": 20},
-    {'rnd_seed': 8787, 'triplets_dir': './data/', "task": "odd_one_out",
-        "learning_rate": .001, "lmbda": 0.01, "epochs": 2, "embed_dim": 40},
-    {'rnd_seed': 8787, 'triplets_dir': './data/', "task": "odd_one_out",
-        "learning_rate": .001, "lmbda": 0.001, "epochs": 2, "embed_dim": 40},
-    {'rnd_seed': 8787, 'triplets_dir': './data/', "task": "odd_one_out",
-        "learning_rate": .001, "lmbda": 0.1, "epochs": 2, "embed_dim": 40},
+    {'rnd_seed': 1234, 'triplets_dir': './data/', "task": "odd_one_out",
+        "learning_rate": .001, "lmbda": 0.01, "epochs": 5, "embed_dim": 200, "loggername":"lmbd=.01;ndim=200"},
+    {'rnd_seed': 4312, 'triplets_dir': './data/', "task": "odd_one_out",
+        "learning_rate": .001, "lmbda": 0.001, "epochs": 5, "embed_dim": 200, "loggername":"lmbd=.01;ndim=200"},
+    {'rnd_seed': 4356, 'triplets_dir': './data/', "task": "odd_one_out",
+        "learning_rate": .001, "lmbda": 0.1, "epochs": 5, "embed_dim": 200, "loggername":"lmbd=.01;ndim=200"},
+    {'rnd_seed': 87456, 'triplets_dir': './data/', "task": "odd_one_out",
+        "learning_rate": .001, "lmbda": 0.01, "epochs": 5, "embed_dim": 400, "loggername":"lmbd=.01;ndim=200"},
+    {'rnd_seed': 2345, 'triplets_dir': './data/', "task": "odd_one_out",
+        "learning_rate": .001, "lmbda": 0.001, "epochs": 5, "embed_dim": 400, "loggername":"lmbd=.01;ndim=200"},
+    {'rnd_seed': 45, 'triplets_dir': './data/', "task": "odd_one_out",
+        "learning_rate": .001, "lmbda": 0.1, "epochs": 5, "embed_dim": 400, "loggername":"lmbd=.01;ndim=200"},
 ]
 
 # Path to the Python file you want to run
@@ -26,6 +26,7 @@ python_file = 'run-avg-ID-jointly.py'
 def run_command(args):
     command = (
         f" python {python_file} --rnd_seed {args['rnd_seed']} \
+        --loggername {args['loggername']} \
         --triplets_dir {args['triplets_dir']} \
         --task {args['task']} \
         --learning_rate {args['learning_rate']} \

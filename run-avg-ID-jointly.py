@@ -48,6 +48,8 @@ def parseargs():
         parser.add_argument(*args, **kwargs)
     aa('--task', type=str, default='odd_one_out',
         choices=['odd_one_out', 'similarity_task'])
+    aa('--loggername', type=str, default='avg-ID-joint-logger',
+       help='name of the logger to be used')
     aa('--triplets_dir', type=str,
         help='directory from where to load triplets')
     aa('--results_dir', type=str, default='./results/',
@@ -92,11 +94,11 @@ def parseargs():
     return args
 
 
-def setup_logging(file: str, dir: str = './log_files/'):
+def setup_logging(file: str, dir: str = './log_files/', loggername: str = "sem-reps"):
     if not os.path.exists(dir):
         os.makedirs(dir)
     # create logger at root level (no need to provide specific name, as our logger won't have children)
-    logger = logging.getLogger("avg-ID-joint-logger")
+    logger = logging.getLogger(loggername)
     logging.basicConfig(filename=os.path.join(dir, file),
                         filemode='w', level=logging.DEBUG)
     # add console handler to logger
@@ -117,6 +119,7 @@ def setup_logging(file: str, dir: str = './log_files/'):
 
 def run(
         task: str,
+        loggername: str,
         rnd_seed: int,
         results_dir: str,
         plots_dir: str,
@@ -417,6 +420,7 @@ if __name__ == "__main__":
 
     run(
         task=args.task,
+        loggername=args.loggername,
         rnd_seed=args.rnd_seed,
         results_dir=args.results_dir,
         plots_dir=args.plots_dir,
