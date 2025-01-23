@@ -286,7 +286,9 @@ def run(
                 device)  # L1-norm to enforce sparsity (many 0s)
             W = model.fc.weight
             # positivity constraint to enforce non-negative values in embedding matrix
-            pos_pen = torch.sum(F.relu(-W))
+            # pos_pen = torch.sum(F.relu(-W))
+            pos_pen = torch.sum(
+                F.relu(-W)) + torch.sum(F.relu(-model.individual_slopes.weight))
             complexity_loss_avg = (lmbda/n_items_ID) * l1_pen_avg
             complexity_loss_ID = (lmbda/n_items_ID) * l1_pen_ID
             # possible options
