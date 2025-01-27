@@ -1,24 +1,29 @@
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
+#from concurrent.futures import ThreadPoolExecutor
 
 import itertools
 
 # Define the fixed parts of the dictionary
 base_dict = {
-    'rnd_seed': 1,
+    'rnd_seed': 549,
     'triplets_dir': './data/',
     "task": "odd_one_out",
-    "learning_rate": .001,
-    "epochs": 5,
-    "steps": 2,
-    "device": "cuda"
+    "learning_rate": .0005,
+    "epochs": 200,
+    "steps": 10,
+    "device": "cuda:0"
 }
 
 # Define the variables and their possible values
-lmbda_list = [0.001]
-embed_dim_list = [5]
-agreement_list = ["few", "many"]
-sparsity_list = ["ID"]
+lmbda_list = [0.0005, 0.001]
+embed_dim_list = [10]
+agreement_list = ["many", "few"]
+sparsity_list = ["ID", "both"]
+
+# lmbda_list = [0.001]
+# embed_dim_list = [5]
+# agreement_list = ["few"]
+# sparsity_list = ["ID"]
 
 # Generate all combinations
 combinations = list(itertools.product(
@@ -33,7 +38,6 @@ for lmbda, embed_dim, agreement, sparsity in combinations:
         'embed_dim': embed_dim,
         'agreement': agreement,
         'sparsity': sparsity,
-        'loggername': f"lmbda={lmbda};embed_dim={embed_dim};agreement={agreement};sparsity={sparsity}"
     })
     arg_combinations.append(temp_dict)
 
@@ -46,7 +50,6 @@ python_file = 'run-avg-ID-jointly.py'
 def run_command(args):
     command = (
         f" python {python_file} --rnd_seed {args['rnd_seed']} \
-        --loggername {args['loggername']} \
         --triplets_dir {args['triplets_dir']} \
         --task {args['task']} \
         --agreement {args['agreement']} \
@@ -63,6 +66,6 @@ def run_command(args):
 
 for args in arg_combinations:
     run_command(args)
-# Use ThreadPoolExecutor to run the commands in parallel
-# with ThreadPoolExecutor(max_workers=6) as executor:
+#Use ThreadPoolExecutor to run the commands in parallel
+# with ThreadPoolExecutor(max_workers=24) as executor:
 #    executor.map(run_command, arg_combinations)
