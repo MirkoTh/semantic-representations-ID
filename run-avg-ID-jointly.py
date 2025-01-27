@@ -103,8 +103,7 @@ def setup_logging(file: str, dir: str = './log_files/', loggername: str = "sem-r
         os.makedirs(dir)
     # create logger at root level (no need to provide specific name, as our logger won't have children)
     logger = logging.getLogger(loggername)
-    logging.basicConfig(filename=os.path.join(dir, file),
-                        filemode='w', level=logging.INFO)
+    logger.setLevel(logging.INFO)
     # add console handler to logger
     if len(logger.handlers) < 1:
         # only file handler, no console handler
@@ -149,7 +148,6 @@ def run(
     # initialise logger and start logging events
     logger = setup_logging(file='avg-ID-jointly.log',
                            dir=f'./log_files/ndim_{embed_dim}/lmbda_{lmbda}/agreement_{agreement}/sparsity_{sparsity}/', loggername=loggername)
-    logger.setLevel(logging.INFO)
     # load triplets into memory
     train_triplets_ID, test_triplets_ID = ut.load_data_ID(
         device=device, triplets_dir=triplets_dir)
@@ -167,8 +165,7 @@ def run(
         rnd_seed=rnd_seed,
         p=p, method="ids"
     )
-    logger.info(f'\nNumber of train batches in current process: {
-        len(train_batches)}\n')
+    logger.info(f'\nNumber of train batches in current process: {len(train_batches)}\n')
 
     ###############################
     ########## settings ###########
@@ -225,8 +222,7 @@ def run(
                     nneg_d_over_time = checkpoint['nneg_d_over_time']
                     loglikelihoods = checkpoint['loglikelihoods']
                     complexity_losses = checkpoint['complexity_costs']
-                    print(f'...Loaded model and optimizer state dicts from previous run. Starting at epoch {
-                          start}.\n')
+                    print(f'...Loaded model and optimizer state dicts from previous run. Starting at epoch {start}.\n')
                 except RuntimeError:
                     print(f'...Loading model and optimizer state dicts failed. Check whether you are currently using a different set of model parameters.\n')
                     start = 0
@@ -280,17 +276,18 @@ def run(
                 torch.reshape(logits, (-1, 3, embed_dim)), dim=1)
             c_entropy = ut.trinomial_loss(
                 anchor, positive, negative, task, temperature, distance_metric)
-            l1_pen_avg = md.l1_regularization(model, "weight", agreement=agreement).to(
+            l1_pen_avg = md.l1_regularization(model, "fc.weight", agreement=agreement).to(
                 device)  # L1-norm to enforce sparsity (many 0s)
             l1_pen_ID = md.l1_regularization(model, "individual_slopes", agreement=agreement).to(
                 device)  # L1-norm to enforce sparsity (many 0s)
             W = model.fc.weight
+            Bs = model.individual_slopes.weight
             # positivity constraint to enforce non-negative values in embedding matrix
             # pos_pen = torch.sum(F.relu(-W))
             pos_pen = torch.sum(
-                F.relu(-W)) + torch.sum(F.relu(-model.individual_slopes.weight))
+                F.relu(-W)) + torch.sum(F.relu(-Bs))
             complexity_loss_avg = (lmbda/n_items_ID) * l1_pen_avg
-            complexity_loss_ID = (lmbda/n_items_ID) * l1_pen_ID
+            complexity_loss_ID = (lmbda/n_participants) * l1_pen_ID
             # possible options
             # ignore complexity loss on ndimns avg, but enforce sparsity on the number of used dims per individual
             # enforce sparsity on both
@@ -339,21 +336,18 @@ def run(
 
         if show_progress:
             print("\n========================================================================================================")
-            print(f'====== Epoch: {epoch+1}, Train acc: {avg_train_acc:.5f}, Train loss: {
-                  avg_train_loss:.5f}, Val acc: {avg_val_acc:.5f}, Val loss: {avg_val_loss:.5f} ======')
+            print(f'====== Epoch: {epoch+1}, Train acc: {avg_train_acc:.5f}, Train loss: {avg_train_loss:.5f}, Val acc: {avg_val_acc:.5f}, Val loss: {avg_val_loss:.5f} ======')
             print("========================================================================================================\n")
             current_d = ut.get_nneg_dims(W)
             nneg_d_over_time.append((epoch+1, current_d))
             print("\n========================================================================================================")
-            print(f"========================= Current number of non-negative dimensions: {
-                  current_d} =========================")
+            print(f"========================= Current number of non-negative dimensions: {current_d} =========================")
             print("========================================================================================================\n")
 
         if (epoch + 1) % steps == 0:
             W = model.fc.weight
             id_slopes = model.individual_slopes
-            np.savetxt(os.path.join(results_dir, f'sparse_embed_epoch{
-                       epoch+1:04d}.txt'), W.detach().cpu().numpy())
+            np.savetxt(os.path.join(results_dir, f'sparse_embed_epoch{epoch+1:04d}.txt'), W.detach().cpu().numpy())
             logger.info(f'Saving model weights at epoch {epoch+1}')
 
             # save model and optim parameters for inference or to resume training
@@ -364,6 +358,8 @@ def run(
                 'optim_state_dict': optim.state_dict(),
                 'n_embed': embed_dim,
                 'lambda': lmbda,
+                'agreement': agreement,
+                'sparsity': sparsity,
                 'loss': loss,
                 'train_losses': train_losses,
                 'train_accs': train_accs,
@@ -388,8 +384,7 @@ def run(
     ut.save_weights_(results_dir, model.fc.weight)
     results = {'epoch': len(
         train_accs), 'train_acc': train_accs[-1], 'val_acc': val_accs[-1], 'val_loss': val_losses[-1]}
-    logger.info(f'\nOptimization finished after {
-                epoch+1} epochs for lambda: {lmbda}\n')
+    logger.info(f'\nOptimization finished after {epoch+1} epochs for lambda: {lmbda}\n')
 
     logger.info(
         f'\nPlotting number of non-negative dimensions as a function of time for lambda: {lmbda}\n')
@@ -423,10 +418,11 @@ if __name__ == "__main__":
         device = torch.device(args.device)
         torch.cuda.manual_seed_all(args.rnd_seed)
         torch.backends.cudnn.benchmark = False
-        try:
-            torch.cuda.set_device(int(args.device[-1]))
-        except:
-            torch.cuda.set_device(1)
+        # try:
+        #     torch.cuda.set_device(int(args.device[-1]))
+        # except:
+        #     torch.cuda.set_device(1)
+        torch.cuda.set_device(0)
         print(f'\nPyTorch CUDA version: {torch.version.cuda}\n')
     else:
         device = torch.device(args.device)
