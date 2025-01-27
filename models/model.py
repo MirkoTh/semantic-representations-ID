@@ -101,7 +101,10 @@ class SPoSE_ID(nn.Module):
         return w_i * self.fc(x)
 
     def _initialize_weights(self) -> None:
-        mean, std = .1, .01
+        mean_avg, std_avg = .1, .01
+        mean_id, std_id = .5, .15
         for m in self.modules():
             if isinstance(m, nn.Linear):
-                m.weight.data.normal_(mean, std)
+                m.weight.data.normal_(mean_avg, std_avg)
+            elif isinstance(m, nn.Embedding):
+                m.weight.data.normal_(mean_id, std_id)
