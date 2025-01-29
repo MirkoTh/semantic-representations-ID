@@ -1,27 +1,27 @@
 import subprocess
-# from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 
 import itertools
 
 # Define the fixed parts of the dictionary
 base_dict = {
-    'rnd_seed': 549,
+    'rnd_seed': 852,
     'triplets_dir': './data/',
     "task": "odd_one_out",
     "learning_rate": .0005,
-    "epochs": 2,
-    "steps": 10,
-    "device": "cpu"  # "cuda:0"
+    "epochs": 50,
+    "steps": 250,
+    "device": "cpu"  # "cpu"
 }
 
 # Define the variables and their possible values
-# lmbda_list = [0.0005, 0.001]
-# embed_dim_list = [10]
-# agreement_list = ["many", "few"]
-# sparsity_list = ["ID", "both"]
+lmbda_list = [0.0005]
+embed_dim_list = [15, 50]
+agreement_list = ["many", "few"] #
+sparsity_list = ["ID", "both"] #, 
 
-lmbda_list = [0.001]
-embed_dim_list = [5]
+# lmbda_list = [0.001]
+# embed_dim_list = [5]
 # agreement_list = ["few"]
 # sparsity_list = ["ID"]
 
@@ -64,8 +64,8 @@ def run_command(args):
     # --sparsity {args['sparsity']} \
 
 
-for args in arg_combinations:
-    run_command(args)
+# for args in arg_combinations:
+#     run_command(args)
 # Use ThreadPoolExecutor to run the commands in parallel
-# with ThreadPoolExecutor(max_workers=24) as executor:
-#    executor.map(run_command, arg_combinations)
+with ThreadPoolExecutor(max_workers=2) as executor:
+   executor.map(run_command, arg_combinations)
