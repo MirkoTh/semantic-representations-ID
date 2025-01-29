@@ -168,12 +168,16 @@ class BatchGenerator_ID(object):
         batch_size: int,
         sampling_method: str = 'normal',
         p=None,
+        method: str = "two_step",
+        within_subjects: bool = False
     ):
         self.average_reps = average_reps
         self.dataset = dataset
         self.batch_size = batch_size
         self.sampling_method = sampling_method
         self.p = p
+        self.method = method
+        self.within_subjects = within_subjects
 
         if sampling_method == 'soft':
             assert isinstance(self.p, float)
@@ -185,23 +189,43 @@ class BatchGenerator_ID(object):
         return self.n_batches
 
     def __iter__(self) -> Iterator[torch.Tensor]:
-        return self.get_batches(self.average_reps, self.dataset)
+        return self.get_batches(self.average_reps, self.dataset, self.method)
 
-    def sampling(self, triplets: torch.Tensor) -> torch.Tensor:
+    def sampling(self, triplets: torch.Tensor, ids: torch.Tensor, within_subjects: bool = False) -> torch.Tensor:
         """randomly sample training data during each epoch"""
-        rnd_perm = torch.randperm(len(triplets))
-        if self.sampling_method == 'soft':
-            rnd_perm = rnd_perm[:int(len(rnd_perm) * self.p)]
-        return triplets[rnd_perm]
+        if within_subjects:
+            df_triplets = pd.DataFrame(
+                np.concatenate(
+                    (triplets[:, 0:3], ids[:, np.newaxis]), axis=1)
+            )
+            df_triplets.columns = [0, 1, 2, "ID"]
+            df_triplets_random = df_triplets.groupby("ID")[[0, 1, 2]].apply(
+                lambda x: x.sample(frac=1)).reset_index(drop=False)
+            return triplets[df_triplets_random["level_1"]], ids[df_triplets_random["level_1"]]
 
-    def get_batches(self, average_reps: torch.Tensor, triplets: torch.Tensor) -> Iterator[torch.Tensor]:
+        elif within_subjects == False:
+            rnd_perm = torch.randperm(len(triplets))
+            if self.sampling_method == 'soft':
+                rnd_perm = rnd_perm[:int(len(rnd_perm) * self.p)]
+            return triplets[rnd_perm], ids[rnd_perm]
+
+    def get_batches(self, average_reps: torch.Tensor, triplets: torch.Tensor, method: str = "two_step") -> Iterator[torch.Tensor]:
         if not isinstance(self.sampling_method, type(None)):
-            triplets = self.sampling(triplets)
+            triplets, ids = self.sampling(
+                triplets[:, 0:3], triplets[:, 3], self.within_subjects)
+        else:
+            ids = triplets[:, 3]
+            triplets = triplets[:, 0:3]
         for i in range(self.n_batches):
             # batch = encode_as_onehot(I, triplets[i*self.batch_size: (i+1)*self.batch_size])
             batch = average_reps[triplets.flatten(
             )[i*3*self.batch_size: (i+1)*3*self.batch_size], :]
-            yield batch
+            ids_batch = ids[i*self.batch_size: (i+1)*self.batch_size]
+            ids_batch_triplet = np.repeat(ids_batch, 3)
+            if method == "two_step":
+                yield batch
+            elif method == "embedding":
+                yield batch, ids_batch_triplet
 
 
 def pickle_file(file: dict, out_path: str, file_name: str) -> None:
@@ -266,7 +290,7 @@ def load_data(device: torch.device, triplets_dir: str, inference: bool = False) 
     return train_triplets, test_triplets
 
 
-def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = False) -> Tuple[torch.Tensor]:
+def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = False, testcase: bool = False) -> Tuple[torch.Tensor]:
     """load train and test triplet datasets with associated participant ID into memory"""
     if inference:
         with open(pjoin(triplets_dir, 'test_triplets_ID.npy'), 'rb') as test_triplets:
@@ -284,10 +308,16 @@ def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = Fals
     except FileNotFoundError:
         print('\n...Could not find any .npy files for current modality.')
         print('...Now searching for .txt files.\n')
-        train_triplets = torch.from_numpy(np.loadtxt(
-            pjoin(triplets_dir, 'train_90_ID.txt'))).to(device).type(torch.LongTensor)
-        test_triplets = torch.from_numpy(np.loadtxt(
-            pjoin(triplets_dir, 'test_10_ID.txt'))).to(device).type(torch.LongTensor)
+        if testcase:
+            train_triplets = torch.from_numpy(np.loadtxt(
+                pjoin(triplets_dir, 'train_90_ID_smallsample.txt'))).to(device).type(torch.LongTensor)
+            test_triplets = torch.from_numpy(np.loadtxt(
+                pjoin(triplets_dir, 'test_10_ID_smallsample.txt'))).to(device).type(torch.LongTensor)
+        elif testcase == False:
+            train_triplets = torch.from_numpy(np.loadtxt(
+                pjoin(triplets_dir, 'train_90_ID.txt'))).to(device).type(torch.LongTensor)
+            test_triplets = torch.from_numpy(np.loadtxt(
+                pjoin(triplets_dir, 'test_10_ID.txt'))).to(device).type(torch.LongTensor)
     return train_triplets, test_triplets
 
 
@@ -356,12 +386,16 @@ def load_batches_ID(
     multi_proc: bool = False,
     n_gpus: int = None,
     p=None,
+    method: str = "two_step",
+    within_subjects: bool = False
 ):
 
     if inference:
         assert train_triplets is None
         test_batches = BatchGenerator_ID(
-            average_reps=average_reps, dataset=test_triplets, batch_size=batch_size, sampling_method=None, p=None)
+            average_reps=average_reps, dataset=test_triplets, batch_size=batch_size,
+            sampling_method=None, p=None, method=method, within_subjects=within_subjects
+        )
         return test_batches
     if (multi_proc and n_gpus > 1):
         if sampling_method == 'soft':
@@ -382,12 +416,12 @@ def load_batches_ID(
     else:
         # create two iterators of train and validation mini-batches respectively
         train_batches = BatchGenerator_ID(
-            average_reps=average_reps, dataset=train_triplets,
-            batch_size=batch_size, sampling_method=sampling_method, p=p
+            average_reps=average_reps, dataset=train_triplets, batch_size=batch_size,
+            sampling_method=sampling_method, p=p, method=method, within_subjects=within_subjects
         )
         val_batches = BatchGenerator_ID(
-            average_reps=average_reps, dataset=test_triplets,
-            batch_size=batch_size, sampling_method=None, p=None
+            average_reps=average_reps, dataset=test_triplets, batch_size=batch_size,
+            sampling_method=None, p=None, method=method, within_subjects=within_subjects
         )
     return train_batches, val_batches
 
@@ -412,7 +446,9 @@ def softmax(sims: tuple, t: torch.Tensor) -> torch.Tensor:
 
 
 def cross_entropy_loss(sims: tuple, t: torch.Tensor) -> torch.Tensor:
-    return torch.mean(-torch.log(softmax(sims, t)))
+    return torch.mean(F.softmax(torch.stack(sims, dim=-1), dim=1)[:, 0])
+    # replaced by torch softmax function with temperature == 1 to avoid Nan values
+    # return torch.mean(-torch.log(softmax(sims, t)))
 
 
 def compute_similarities(anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, method: str, distance_metric: str = 'dot') -> Tuple:
@@ -803,7 +839,8 @@ def load_model(
     device: torch.device,
     subfolder: str = 'model',
 ):
-    model_path = pjoin(results_dir, modality, version, data, f'{dim}d', f'{lmbda}', f'seed{rnd_seed:02d}', subfolder)
+    model_path = pjoin(results_dir, modality, version, data, f'{dim}d', f'{
+                       lmbda}', f'seed{rnd_seed:02d}', subfolder)
     models = os.listdir(model_path)
     checkpoints = list(map(get_digits, models))
     last_checkpoint = np.argmax(checkpoints)
