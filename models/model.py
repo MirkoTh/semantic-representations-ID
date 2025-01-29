@@ -47,7 +47,6 @@ def l1_regularization(model, kwd, agreement: str = "few") -> torch.Tensor:
                 l1_reg = l1_reg + torch.norm(p, 1)
             elif agreement == "most":
                 l1_reg = l1_reg + torch.norm(1-p, 1)
-            l1_reg = l1_reg + torch.norm(p, 1)
     return l1_reg
 
 
@@ -108,3 +107,29 @@ class SPoSE_ID(nn.Module):
                 m.weight.data.normal_(mean_avg, std_avg)
             elif isinstance(m, nn.Embedding):
                 m.weight.data.normal_(mean_id, std_id)
+
+
+class Weighted_Embedding(nn.Module):
+    def __init__(
+        self,
+        embed_size: int,
+        num_participants: int,
+        init_weights: bool = True,
+    ):
+        super(Weighted_Embedding, self).__init__()
+        self.embed_size = embed_size
+        self.num_participants = num_participants
+        self.individual_slopes = nn.Embedding(
+            num_participants, self.embed_size)
+        if init_weights:
+            self._initialize_weights()
+
+    def forward(self, x: torch.Tensor, id: torch.Tensor) -> torch.Tensor:
+        w_i = self.individual_slopes(id)
+        return w_i * x
+
+    def _initialize_weights(self) -> None:
+        mean, std = .5, .01
+        for m in self.modules():
+            if isinstance(m, nn.Embedding):
+                m.weight.data.normal_(mean, std)
