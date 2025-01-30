@@ -76,6 +76,8 @@ from torch.utils.data import Dataset, DataLoader, SequentialSampler
 from typing import Tuple, Iterator, List, Dict
 from models import model as md
 
+from transformers import AutoTokenizer, AutoModel, AutoModelForMaskedLM, BertTokenizer, BertModel
+
 
 class TripletDataset(Dataset):
 
@@ -446,7 +448,7 @@ def softmax(sims: tuple, t: torch.Tensor) -> torch.Tensor:
 
 
 def cross_entropy_loss(sims: tuple, t: torch.Tensor) -> torch.Tensor:
-    return torch.mean(F.softmax(torch.stack(sims, dim=-1), dim=1)[:, 0])
+    return torch.mean(-torch.log(F.softmax(torch.stack(sims, dim=-1), dim=1)[:, 0]))
     # replaced by torch softmax function with temperature == 1 to avoid Nan values
     # return torch.mean(-torch.log(softmax(sims, t)))
 
@@ -1242,3 +1244,26 @@ def process_ID_results(
         "df_train_acc_agg": df_train_acc_agg,
         "df_params": df_params
     }
+
+
+def load_avg_embeddings(model_id: str, device: str) -> list:
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    model = AutoModel.from_pretrained(model_id).to(device)
+
+    tbl_labels = pd.read_csv("data/unique_id.txt", delimiter="\\", header=None)
+    tbl_labels["label_id"] = np.arange(1, tbl_labels.shape[0]+1)
+    tbl_labels.columns = ["label", "label_id"]
+    new_order = ["label_id", "label"]
+    tbl_labels = tbl_labels[new_order]
+
+    l_embeddings = []
+
+    for prompt in tbl_labels["label"]:
+        tokenized_input = tokenizer.encode(
+            prompt, return_tensors="pt").to(device)
+        with torch.no_grad():
+            output = model(tokenized_input)
+        embedding = output.last_hidden_state[0]
+        emb_flat = torch.mean(embedding, axis=0).detach().numpy()
+        l_embeddings.append(emb_flat)
+    return l_embeddings
