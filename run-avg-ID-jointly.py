@@ -53,7 +53,9 @@ def parseargs():
     aa('--triplets_dir', type=str,
         help='directory from where to load triplets')
     aa('--agreement', type=str, default='few',
-        choices=['few', 'many'], help='agreement level for l1-regularization')
+        choices=['few', 'most'], help='agreement level for l1-regularization')
+    aa('--id_weights_only', type=bool, default=True,
+        choices=[True, False], help='only by-participant slopes or by-participant intercepts as well')
     aa('--sparsity', type=str, default='ID',
         choices=['ID', 'both'], help='sparsity level for l1-regularization')
     aa('--results_dir', type=str, default='./results/',
@@ -129,6 +131,7 @@ def run(
         triplets_dir: str,
         agreement: str,
         sparsity: str,
+        id_weights_only: bool,
         device: torch.device,
         batch_size: int,
         embed_dim: int,
@@ -147,7 +150,7 @@ def run(
 ):
     # initialise logger and start logging events
     logger = setup_logging(file='avg-ID-jointly.log',
-                           dir=f'./log_files/ndim_{embed_dim}/lmbda_{lmbda}/agreement_{agreement}/sparsity_{sparsity}/', loggername=loggername)
+                           dir=f'./log_files/ic-slopes_{id_weights_only}/ndim_{embed_dim}/lmbda_{lmbda}/agreement_{agreement}/sparsity_{sparsity}/', loggername=loggername)
     # load triplets into memory
     train_triplets_ID, test_triplets_ID = ut.load_data_ID(
         device=device, triplets_dir=triplets_dir)
@@ -172,10 +175,16 @@ def run(
     ###############################
 
     temperature = torch.tensor(temperature).clone().detach()
-    model = md.SPoSE_ID(
-        in_size=n_items_ID, out_size=embed_dim,
-        num_participants=n_participants, init_weights=True
-    )
+    if id_weights_only:
+        model = md.SPoSE_ID(
+            in_size=n_items_ID, out_size=embed_dim,
+            num_participants=n_participants, init_weights=True
+        )
+    elif id_weights_only == False:
+        model = md.SPoSE_ID_IC(
+            in_size=n_items_ID, out_size=embed_dim,
+            num_participants=n_participants, init_weights=True
+        )
     model.to(device)
     optim = Adam(model.parameters(), lr=lr)
 
@@ -186,13 +195,13 @@ def run(
     logger.info(f'...Creating PATHs')
     if results_dir == './results/':
         results_dir = os.path.join(
-            results_dir, "avg-ID-jointly", f'{embed_dim}d', str(lmbda), agreement, sparsity, f'seed{rnd_seed}')
+            results_dir, "avg-ID-jointly", f'weightsonly_{id_weights_only}', f'{embed_dim}d', str(lmbda), agreement, sparsity, f'seed{rnd_seed}')
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
     if plots_dir == './plots/':
         plots_dir = os.path.join(
-            plots_dir, "avg-ID-jointly", f'{embed_dim}d', str(lmbda), agreement, sparsity, f'seed{rnd_seed}')
+            plots_dir, "avg-ID-jointly", f'weightsonly_{id_weights_only}', f'{embed_dim}d', str(lmbda), agreement, sparsity, f'seed{rnd_seed}')
     if not os.path.exists(plots_dir):
         os.makedirs(plots_dir)
 
@@ -278,7 +287,7 @@ def run(
                 anchor, positive, negative, task, temperature, distance_metric)
             l1_pen_avg = md.l1_regularization(model, "fc.weight", agreement=agreement).to(
                 device)  # L1-norm to enforce sparsity (many 0s)
-            l1_pen_ID = md.l1_regularization(model, "individual_slopes", agreement=agreement).to(
+            l1_pen_ID = md.l1_regularization(model, "individual_", agreement=agreement).to(
                 device)  # L1-norm to enforce sparsity (many 0s)
             W = model.fc.weight
             Bs = model.individual_slopes.weight
@@ -434,6 +443,7 @@ if __name__ == "__main__":
         results_dir=args.results_dir,
         agreement=args.agreement,
         sparsity=args.sparsity,
+        id_weights_only=args.id_weights_only,
         plots_dir=args.plots_dir,
         triplets_dir=args.triplets_dir,
         device=device,

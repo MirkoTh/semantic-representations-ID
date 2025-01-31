@@ -841,8 +841,7 @@ def load_model(
     device: torch.device,
     subfolder: str = 'model',
 ):
-    model_path = pjoin(results_dir, modality, version, data, f'{dim}d', f'{
-                       lmbda}', f'seed{rnd_seed:02d}', subfolder)
+    model_path = pjoin(results_dir, modality, version, data, f'{dim}d', f'{lmbda}', f'seed{rnd_seed:02d}', subfolder)
     models = os.listdir(model_path)
     checkpoints = list(map(get_digits, models))
     last_checkpoint = np.argmax(checkpoints)
@@ -1264,6 +1263,6 @@ def load_avg_embeddings(model_id: str, device: str) -> list:
         with torch.no_grad():
             output = model(tokenized_input)
         embedding = output.last_hidden_state[0]
-        emb_flat = torch.mean(embedding, axis=0).detach().numpy()
+        emb_flat = torch.mean(embedding, axis=0).cpu().detach().numpy()
         l_embeddings.append(emb_flat)
     return l_embeddings

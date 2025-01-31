@@ -158,8 +158,7 @@ def run(
         p=p,
         method="average"
     )
-    print(f'\nNumber of train batches in current process: {
-          len(train_batches)}\n')
+    print(f'\nNumber of train batches in current process: {len(train_batches)}\n')
 
     ###############################
     ########## settings ###########
@@ -213,8 +212,7 @@ def run(
                     nneg_d_over_time = checkpoint['nneg_d_over_time']
                     loglikelihoods = checkpoint['loglikelihoods']
                     complexity_losses = checkpoint['complexity_costs']
-                    print(f'...Loaded model and optimizer state dicts from previous run. Starting at epoch {
-                          start}.\n')
+                    print(f'...Loaded model and optimizer state dicts from previous run. Starting at epoch {start}.\n')
                 except RuntimeError:
                     print(f'...Loading model and optimizer state dicts failed. Check whether you are currently using a different set of model parameters.\n')
                     start = 0
@@ -304,20 +302,17 @@ def run(
 
         if show_progress:
             print("\n========================================================================================================")
-            print(f'====== Epoch: {epoch+1}, Train acc: {avg_train_acc:.5f}, Train loss: {
-                  avg_train_loss:.5f}, Val acc: {avg_val_acc:.5f}, Val loss: {avg_val_loss:.5f} ======')
+            print(f'====== Epoch: {epoch+1}, Train acc: {avg_train_acc:.5f}, Train loss: {avg_train_loss:.5f}, Val acc: {avg_val_acc:.5f}, Val loss: {avg_val_loss:.5f} ======')
             print("========================================================================================================\n")
             current_d = ut.get_nneg_dims(W)
             nneg_d_over_time.append((epoch+1, current_d))
             print("\n========================================================================================================")
-            print(f"========================= Current number of non-negative dimensions: {
-                  current_d} =========================")
+            print(f"========================= Current number of non-negative dimensions: {current_d} =========================")
             print("========================================================================================================\n")
 
         if (epoch + 1) % steps == 0:
             W = model.fc.weight
-            np.savetxt(os.path.join(results_dir, f'sparse_embed_epoch{
-                       epoch+1:04d}.txt'), W.detach().cpu().numpy())
+            np.savetxt(os.path.join(results_dir, f'sparse_embed_epoch{epoch+1:04d}.txt'), W.detach().cpu().numpy())
             logger.info(f'Saving model weights at epoch {epoch+1}')
 
             # save model and optim parameters for inference or to resume training
@@ -326,6 +321,8 @@ def run(
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optim_state_dict': optim.state_dict(),
+                'n_embed': embed_dim,
+                'lambda': lmbda,
                 'loss': loss,
                 'train_losses': train_losses,
                 'train_accs': train_accs,
@@ -349,8 +346,7 @@ def run(
     ut.save_weights_(results_dir, model.fc.weight)
     results = {'epoch': len(
         train_accs), 'train_acc': train_accs[-1], 'val_acc': val_accs[-1], 'val_loss': val_losses[-1]}
-    logger.info(f'\nOptimization finished after {
-                epoch+1} epochs for lambda: {lmbda}\n')
+    logger.info(f'\nOptimization finished after {epoch+1} epochs for lambda: {lmbda}\n')
 
     logger.info(
         f'\nPlotting number of non-negative dimensions as a function of time for lambda: {lmbda}\n')

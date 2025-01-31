@@ -52,8 +52,6 @@ def parseargs():
        help='name of the logger to be used')
     aa('--triplets_dir', type=str,
         help='directory from where to load triplets')
-    aa('--agreement', type=str, default='few',
-        choices=['few', 'most'], help='agreement level for l1-regularization')
     aa('--results_dir', type=str, default='./results/',
         help='optional specification of results directory (if not provided will resort to ./results/lambda/rnd_seed/)')
     aa('--plots_dir', type=str, default='./plots/',
@@ -125,7 +123,6 @@ def run(
         results_dir: str,
         plots_dir: str,
         triplets_dir: str,
-        agreement: str,
         device: torch.device,
         batch_size: int,
         epochs: int,
@@ -142,8 +139,7 @@ def run(
         early_stopping: bool = False
 ):
     # initialise logger and start logging events
-    logger = setup_logging(file='ID-on-embeddings.log', dir=f'./log_files/ID-on-embeddings/lmbda_{
-                           lmbda}/agreement_{agreement}/', loggername=loggername)
+    logger = setup_logging(file='ID-on-embeddings.log', dir=f'./log_files/ID-on-embeddings/lmbda_{lmbda}/lr_{lr}/', loggername=loggername)
 
     model_id = "answerdotai/ModernBERT-base"
     l_embeddings = ut.load_avg_embeddings(
@@ -173,8 +169,7 @@ def run(
         method="embedding",
         within_subjects=True
     )
-    logger.info(f'\nNumber of train batches in current process: {
-                len(train_batches)}\n')
+    logger.info(f'\nNumber of train batches in current process: {len(train_batches)}\n')
 
     ###############################
     ########## settings ###########
@@ -197,13 +192,13 @@ def run(
     logger.info(f'...Creating PATHs')
     if results_dir == './results/':
         results_dir = os.path.join(
-            results_dir, "ID-on-embeddings", f'{model_id}d', str(lmbda), agreement, f'seed{rnd_seed}')
+            results_dir, "ID-on-embeddings", f'{model_id}d', str(lmbda), f'seed{rnd_seed}')
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
     if plots_dir == './plots/':
         plots_dir = os.path.join(
-            plots_dir, "ID-on-embeddings", f'{model_id}d', str(lmbda), agreement, f'seed{rnd_seed}')
+            plots_dir, "ID-on-embeddings", f'{model_id}d', str(lmbda), f'seed{rnd_seed}')
     if not os.path.exists(plots_dir):
         os.makedirs(plots_dir)
 
@@ -234,8 +229,7 @@ def run(
                     nneg_d_over_time = checkpoint['nneg_d_over_time']
                     loglikelihoods = checkpoint['loglikelihoods']
                     complexity_losses = checkpoint['complexity_costs']
-                    print(f'...Loaded model and optimizer state dicts from previous run. Starting at epoch {
-                          start}.\n')
+                    print(f'...Loaded model and optimizer state dicts from previous run. Starting at epoch {start}.\n')
                 except RuntimeError:
                     print(f'...Loading model and optimizer state dicts failed. Check whether you are currently using a different set of model parameters.\n')
                     start = 0
@@ -326,8 +320,7 @@ def run(
 
         if show_progress:
             print("\n========================================================================================================")
-            print(f'====== Epoch: {epoch+1}, Train acc: {avg_train_acc:.5f}, Train loss: {
-                avg_train_loss:.5f}, Val acc: {avg_val_acc:.5f}, Val loss: {avg_val_loss:.5f} ======')
+            print(f'====== Epoch: {epoch+1}, Train acc: {avg_train_acc:.5f}, Train loss: {avg_train_loss:.5f}, Val acc: {avg_val_acc:.5f}, Val loss: {avg_val_loss:.5f} ======')
             print("========================================================================================================\n")
 
         if (epoch + 1) % steps == 0:
@@ -342,7 +335,6 @@ def run(
                 'ID_slopes': id_slopes,
                 'n_embed': embed_dim,
                 'lambda': lmbda,
-                'agreement': agreement,
                 'loss': loss,
                 'train_losses': train_losses,
                 'train_accs': train_accs,
@@ -366,8 +358,7 @@ def run(
     # save final model weights
     results = {'epoch': len(
         train_accs), 'train_acc': train_accs[-1], 'val_acc': val_accs[-1], 'val_loss': val_losses[-1]}
-    logger.info(f'\nOptimization finished after {
-                epoch+1} epochs for lambda: {lmbda}\n')
+    logger.info(f'\nOptimization finished after {epoch+1} epochs for lambda: {lmbda}\n')
 
     logger.info(f'\nPlotting model performances over time for lambda: {lmbda}')
     # plot train and validation performance alongside each other to examine a potential overfit to the training data
@@ -408,7 +399,6 @@ if __name__ == "__main__":
         loggername=args.loggername,
         rnd_seed=args.rnd_seed,
         results_dir=args.results_dir,
-        agreement=args.agreement,
         plots_dir=args.plots_dir,
         triplets_dir=args.triplets_dir,
         device=device,

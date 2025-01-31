@@ -108,6 +108,38 @@ class SPoSE_ID(nn.Module):
             elif isinstance(m, nn.Embedding):
                 m.weight.data.normal_(mean_id, std_id)
 
+class SPoSE_ID_IC(nn.Module):
+    def __init__(
+        self,
+        in_size: int,
+        out_size: int,
+        num_participants: int,
+        init_weights: bool = True,
+    ):
+
+        super(SPoSE_ID, self).__init__()
+        self.in_size = in_size
+        self.out_size = out_size
+        self.fc = nn.Linear(self.in_size, self.out_size, bias=False)
+        self.individual_slopes = nn.Embedding(num_participants, self.out_size)
+        self.individual_intercepts = nn.Embedding(num_participants, self.out_size)
+        if init_weights:
+            self._initialize_weights()
+
+    def forward(self, x: torch.Tensor, id: torch.Tensor) -> torch.Tensor:
+        w_i = self.individual_slopes(id)
+        ic_i = self.individual_intercepts(id)
+        return ic_i + w_i * self.fc(x)
+
+    def _initialize_weights(self) -> None:
+        mean_avg, std_avg = .1, .01
+        mean_id, std_id = .5, .15
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                m.weight.data.normal_(mean_avg, std_avg)
+            elif isinstance(m, nn.Embedding):
+                m.weight.data.normal_(mean_id, std_id)
+
 
 class Weighted_Embedding(nn.Module):
     def __init__(
