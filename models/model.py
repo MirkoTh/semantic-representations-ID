@@ -108,6 +108,7 @@ class SPoSE_ID(nn.Module):
             elif isinstance(m, nn.Embedding):
                 m.weight.data.normal_(mean_id, std_id)
 
+
 class SPoSE_ID_IC(nn.Module):
     def __init__(
         self,
@@ -117,12 +118,13 @@ class SPoSE_ID_IC(nn.Module):
         init_weights: bool = True,
     ):
 
-        super(SPoSE_ID, self).__init__()
+        super(SPoSE_ID_IC, self).__init__()
         self.in_size = in_size
         self.out_size = out_size
         self.fc = nn.Linear(self.in_size, self.out_size, bias=False)
         self.individual_slopes = nn.Embedding(num_participants, self.out_size)
-        self.individual_intercepts = nn.Embedding(num_participants, self.out_size)
+        self.individual_intercepts = nn.Embedding(
+            num_participants, self.out_size)
         if init_weights:
             self._initialize_weights()
 

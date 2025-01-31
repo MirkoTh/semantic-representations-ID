@@ -8,9 +8,9 @@ base_dict = {
     'rnd_seed': 852,
     'triplets_dir': './data/',
     "task": "odd_one_out",
-    "epochs": 250,
-    "steps": 125,
-    "device": "cuda:0"  # "cuda:0"
+    "epochs": 5,
+    "steps": 5,
+    "device": "cpu"  # "cuda:0"
 }
 
 # Define the variables and their possible values
@@ -24,7 +24,7 @@ embed_dim_list = [15]
 agreement_list = ["few"]
 sparsity_list = ["ID", "both"]
 learning_rate_list = [0.0005]
-id_weights_only_list = [False]
+id_weights_only_list = ["weights_and_intercepts"]
 
 # Generate all combinations
 combinations = list(itertools.product(
@@ -35,7 +35,7 @@ combinations = list(itertools.product(
 # Create the list of dictionaries
 arg_combinations = []
 #  in combinations:
-for lmbda, learning_rate, embed_dim, agreement, sparsity, id_weights_only in combinations: #, agreement
+for lmbda, learning_rate, embed_dim, agreement, sparsity, id_weights_only in combinations:  # , agreement
     temp_dict = base_dict.copy()
     temp_dict.update({
         'lmbda': lmbda,
@@ -71,11 +71,9 @@ def run_command(args):
     subprocess.run(command, shell=True)
     #
 
-for args in arg_combinations:
-    print("id_weights_only = " + args['id_weights_only'])
 
-# for args in arg_combinations:
-#     run_command(args)
+for args in arg_combinations:
+    run_command(args)
 # Use ThreadPoolExecutor to run the commands in parallel
 # with ThreadPoolExecutor(max_workers=2) as executor:
 #     executor.map(run_command, arg_combinations)
