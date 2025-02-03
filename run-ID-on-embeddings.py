@@ -139,9 +139,10 @@ def run(
         early_stopping: bool = False
 ):
     # initialise logger and start logging events
-    logger = setup_logging(file='ID-on-embeddings.log', dir=f'./log_files/ID-on-embeddings/lmbda_{lmbda}/lr_{lr}/', loggername=loggername)
+    logger = setup_logging(file='ID-on-embeddings.log',
+                           dir=f'./log_files/ID-on-embeddings/lmbda_{lmbda}/lr_{lr}/', loggername=loggername)
 
-    model_id = "answerdotai/ModernBERT-base"
+    model_id = "Word2Vec"
     l_embeddings = ut.load_avg_embeddings(
         model_id=model_id, device=device)
 
@@ -169,7 +170,8 @@ def run(
         method="embedding",
         within_subjects=True
     )
-    logger.info(f'\nNumber of train batches in current process: {len(train_batches)}\n')
+    logger.info(f'\nNumber of train batches in current process: {
+                len(train_batches)}\n')
 
     ###############################
     ########## settings ###########
@@ -229,7 +231,8 @@ def run(
                     nneg_d_over_time = checkpoint['nneg_d_over_time']
                     loglikelihoods = checkpoint['loglikelihoods']
                     complexity_losses = checkpoint['complexity_costs']
-                    print(f'...Loaded model and optimizer state dicts from previous run. Starting at epoch {start}.\n')
+                    print(f'...Loaded model and optimizer state dicts from previous run. Starting at epoch {
+                          start}.\n')
                 except RuntimeError:
                     print(f'...Loading model and optimizer state dicts failed. Check whether you are currently using a different set of model parameters.\n')
                     start = 0
@@ -320,7 +323,8 @@ def run(
 
         if show_progress:
             print("\n========================================================================================================")
-            print(f'====== Epoch: {epoch+1}, Train acc: {avg_train_acc:.5f}, Train loss: {avg_train_loss:.5f}, Val acc: {avg_val_acc:.5f}, Val loss: {avg_val_loss:.5f} ======')
+            print(f'====== Epoch: {epoch+1}, Train acc: {avg_train_acc:.5f}, Train loss: {
+                  avg_train_loss:.5f}, Val acc: {avg_val_acc:.5f}, Val loss: {avg_val_loss:.5f} ======')
             print("========================================================================================================\n")
 
         if (epoch + 1) % steps == 0:
@@ -358,7 +362,8 @@ def run(
     # save final model weights
     results = {'epoch': len(
         train_accs), 'train_acc': train_accs[-1], 'val_acc': val_accs[-1], 'val_loss': val_losses[-1]}
-    logger.info(f'\nOptimization finished after {epoch+1} epochs for lambda: {lmbda}\n')
+    logger.info(f'\nOptimization finished after {
+                epoch+1} epochs for lambda: {lmbda}\n')
 
     logger.info(f'\nPlotting model performances over time for lambda: {lmbda}')
     # plot train and validation performance alongside each other to examine a potential overfit to the training data
