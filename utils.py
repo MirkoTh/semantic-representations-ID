@@ -841,7 +841,8 @@ def load_model(
     device: torch.device,
     subfolder: str = 'model',
 ):
-    model_path = pjoin(results_dir, modality, version, data, f'{dim}d', f'{lmbda}', f'seed{rnd_seed:02d}', subfolder)
+    model_path = pjoin(results_dir, modality, version, data, f'{dim}d', f'{
+                       lmbda}', f'seed{rnd_seed:02d}', subfolder)
     models = os.listdir(model_path)
     checkpoints = list(map(get_digits, models))
     last_checkpoint = np.argmax(checkpoints)
@@ -1246,23 +1247,27 @@ def process_ID_results(
 
 
 def load_avg_embeddings(model_id: str, device: str) -> list:
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
-    model = AutoModel.from_pretrained(model_id).to(device)
+    if model_id == "Word2Vec":
+        l_embeddings = np.load("data/word2vec-embeddings.npy")
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
+        model = AutoModel.from_pretrained(model_id).to(device)
 
-    tbl_labels = pd.read_csv("data/unique_id.txt", delimiter="\\", header=None)
-    tbl_labels["label_id"] = np.arange(1, tbl_labels.shape[0]+1)
-    tbl_labels.columns = ["label", "label_id"]
-    new_order = ["label_id", "label"]
-    tbl_labels = tbl_labels[new_order]
+        tbl_labels = pd.read_csv("data/unique_id.txt",
+                                 delimiter="\\", header=None)
+        tbl_labels["label_id"] = np.arange(1, tbl_labels.shape[0]+1)
+        tbl_labels.columns = ["label", "label_id"]
+        new_order = ["label_id", "label"]
+        tbl_labels = tbl_labels[new_order]
 
-    l_embeddings = []
+        l_embeddings = []
 
-    for prompt in tbl_labels["label"]:
-        tokenized_input = tokenizer.encode(
-            prompt, return_tensors="pt").to(device)
-        with torch.no_grad():
-            output = model(tokenized_input)
-        embedding = output.last_hidden_state[0]
-        emb_flat = torch.mean(embedding, axis=0).cpu().detach().numpy()
-        l_embeddings.append(emb_flat)
+        for prompt in tbl_labels["label"]:
+            tokenized_input = tokenizer.encode(
+                prompt, return_tensors="pt").to(device)
+            with torch.no_grad():
+                output = model(tokenized_input)
+            embedding = output.last_hidden_state[0]
+            emb_flat = torch.mean(embedding, axis=0).cpu().detach().numpy()
+            l_embeddings.append(emb_flat)
     return l_embeddings
