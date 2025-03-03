@@ -11,7 +11,7 @@ base_dict = {
     "epochs": 10,
     "steps": 10,
     "device": "cpu",  # "cuda:0"
-    "use_shuffled_subjects": "shuffled",
+    #"use_shuffled_subjects": "shuffled",
     "early_stopping": "Yes"
 }
 
@@ -19,23 +19,25 @@ base_dict = {
 # lmbda_list = [0.0005, 0.001]
 # embed_dim_list = [10]
 
-lmbda_list = [0.01, 0.0005]
-embed_dim_list = [15]
+lmbda_list = [0.001, 0.0005]
+embed_dim_list = [15, 30]
 learning_rate_list = [0.0005]
+use_shuffled_subjects_list = ["shuffled", "actual"]
 
 # Generate all combinations
 combinations = list(itertools.product(
-    lmbda_list, embed_dim_list, learning_rate_list))
+    lmbda_list, embed_dim_list, learning_rate_list, use_shuffled_subjects_list))
 
 # Create the list of dictionaries
 arg_combinations = []
 # , sparsity in combinations:
-for lmbda, embed_dim, learning_rate in combinations:
+for lmbda, embed_dim, learning_rate, use_shuffled_subjects in combinations:
     temp_dict = base_dict.copy()
     temp_dict.update({
         'lmbda': lmbda,
         'embed_dim': embed_dim,
-        'learning_rate': learning_rate
+        'learning_rate': learning_rate,
+        'use_shuffled_subjects': use_shuffled_subjects
     })
     arg_combinations.append(temp_dict)
 
@@ -66,5 +68,5 @@ def run_command(args):
 # for args in arg_combinations:
 #     run_command(args)
 # Use ThreadPoolExecutor to run the commands in parallel
-with ThreadPoolExecutor(max_workers=2) as executor:
+with ThreadPoolExecutor(max_workers=8) as executor:
     executor.map(run_command, arg_combinations)
