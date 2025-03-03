@@ -383,6 +383,9 @@ def run(
         )
         val_ID = ut.validation(train_ID["model"], train_ID["val_batches_ID"], task, device)
         val_avg = ut.validation(model, train_ID["val_batches_avg"], task, device)
+        del train_ID["val_batches_ID"]
+        del train_ID["val_batches_avg"]
+        del train_ID["train_batches_ID"]
 
         l_train_ID.append(train_ID)
         l_val_ID.append(val_ID)
