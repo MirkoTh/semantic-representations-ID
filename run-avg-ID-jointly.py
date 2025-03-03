@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Author: Mirko Thalmann 2024 Helmholtz Munich, based on Code written by:
+# Author: Mirko Thalmann 2024/2025 Helmholtz Munich, based on Code written by:
 # Author: Lukas Muttenthaler
 # Copyright 2020 Max Planck Institute for Human Cognitive and Brain Sciences
 
@@ -52,12 +52,8 @@ def parseargs():
        help='name of the logger to be used')
     aa('--triplets_dir', type=str,
         help='directory from where to load triplets')
-    aa('--agreement', type=str, default='few',
-        choices=['few', 'most'], help='agreement level for l1-regularization')
     aa('--id_weights_only', type=str, default="only_weights",
         choices=["only_weights", "weights_and_intercepts"], help='only by-participant slopes or by-participant intercepts as well')
-    aa('--sparsity', type=str, default='ID',
-        choices=['ID', 'both'], help='sparsity level for l1-regularization')
     aa('--results_dir', type=str, default='./results/',
         help='optional specification of results directory (if not provided will resort to ./results/lambda/rnd_seed/)')
     aa('--plots_dir', type=str, default='./plots/',
@@ -93,9 +89,12 @@ def parseargs():
         help='random seed for reproducibility')
     aa('--distance_metric', type=str, default='dot',
        choices=['dot', 'euclidean'], help='distance metric')
-    aa('--early_stopping', action='store_true', help='train until convergence')
+    aa('--early_stopping', type=str, default='No',
+       choices=["No", "Yes"], help='early stopping')
     aa('--num_threads', type=int, default=20,
        help='number of threads used by PyTorch multiprocessing')
+    aa('--use_shuffled_subjects', type=str, default='actual',
+        choices=['actual', 'shuffled'], help='actual subjects or subjects with randomly shuffled trials from all subjects')
     args = parser.parse_args()
     return args
 
@@ -129,8 +128,6 @@ def run(
         results_dir: str,
         plots_dir: str,
         triplets_dir: str,
-        agreement: str,
-        sparsity: str,
         id_weights_only: str,
         device: torch.device,
         batch_size: int,
@@ -141,20 +138,21 @@ def run(
         lmbda: float,
         lr: float,
         steps: int,
+        early_stopping: str,
         p: float = None,
         resume: bool = False,
         show_progress: bool = True,
         distance_metric: str = 'dot',
         temperature: float = 1.,
-        early_stopping: bool = False
+        use_shuffled_subjects: str = 'actual'
 ):
     # initialise logger and start logging events
     logger = setup_logging(file='avg-ID-jointly.log',
-                           dir=f'./log_files/{id_weights_only}/ndim_{embed_dim}/lmbda_{lmbda}/agreement_{agreement}/sparsity_{sparsity}/', loggername=loggername)
+                           dir=f'./log_files/{id_weights_only}/ndim_{embed_dim}/lmbda_{lmbda}/', loggername=loggername)
     print("id_weights_only = ", f'{id_weights_only}')
     # load triplets into memory
     train_triplets_ID, test_triplets_ID = ut.load_data_ID(
-        device=device, triplets_dir=triplets_dir)
+        device=device, triplets_dir=triplets_dir, testcase=True, use_shuffled_subjects=use_shuffled_subjects)
     n_items_ID = ut.get_nitems(train_triplets_ID)
     logger.info("n_items = " + str(n_items_ID))
 
@@ -197,13 +195,13 @@ def run(
     logger.info(f'...Creating PATHs')
     if results_dir == './results/':
         results_dir = os.path.join(
-            results_dir, "avg-ID-jointly", f'weightsonly_{id_weights_only}', f'{embed_dim}d', str(lmbda), agreement, sparsity, f'seed{rnd_seed}')
+            results_dir, "avg-ID-jointly", f'weightsonly_{id_weights_only}', f'{embed_dim}d', str(lmbda), f'seed{rnd_seed}')
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
     if plots_dir == './plots/':
         plots_dir = os.path.join(
-            plots_dir, "avg-ID-jointly", f'weightsonly_{id_weights_only}', f'{embed_dim}d', str(lmbda), agreement, sparsity, f'seed{rnd_seed}')
+            plots_dir, "avg-ID-jointly", f'weightsonly_{id_weights_only}', f'{embed_dim}d', str(lmbda), f'seed{rnd_seed}')
     if not os.path.exists(plots_dir):
         os.makedirs(plots_dir)
 
@@ -271,6 +269,11 @@ def run(
     results = {}
     logger.info(f'Optimization started for lambda: {lmbda}\n')
 
+    # Early stopping parameters
+    patience = 10
+    best_val_accuracy = 0.0
+    counter = 0
+
     print(f'Optimization started for lambda: {lmbda}\n')
     for epoch in tqdm(range(start, epochs)):
         model.train()
@@ -288,10 +291,12 @@ def run(
                 torch.reshape(logits, (-1, 3, embed_dim)), dim=1)
             c_entropy = ut.trinomial_loss(
                 anchor, positive, negative, task, temperature, distance_metric)
-            l1_pen_avg = md.l1_regularization(model, "fc.weight", agreement=agreement).to(
+            # few-dimensional representations of the items
+            l1_pen_avg = md.l1_regularization(model, "fc.weight", agreement="few").to(
                 device)  # L1-norm to enforce sparsity (many 0s)
-            l1_pen_ID = md.l1_regularization(model, "individual_", agreement=agreement).to(
-                device)  # L1-norm to enforce sparsity (many 0s)
+
+            # l1_pen_ID = md.l1_regularization(model, "individual_", agreement=agreement).to(
+            #    device)  # L1-norm to enforce sparsity (many 0s)
             W = model.fc.weight
             Bs = model.individual_slopes.weight
             # positivity constraint to enforce non-negative values in embedding matrix
@@ -299,34 +304,33 @@ def run(
             pos_pen = torch.sum(
                 F.relu(-W)) + torch.sum(F.relu(-Bs))
             complexity_loss_avg = (lmbda/n_items_ID) * l1_pen_avg
-            complexity_loss_ID = (lmbda/n_participants) * l1_pen_ID
+            # complexity_loss_ID = (lmbda/n_participants) * l1_pen_ID
             # possible options
             # ignore complexity loss on ndimns avg, but enforce sparsity on the number of used dims per individual
             # enforce sparsity on both
             # ignore complexity loss on ndims avg, enforce reverse sparsity (i.e., mostly 1s) on IDs
             # enforce sparsity on ndims avg, and enforce reverse sparsity (i.e., mostly 1s) on IDs
-            if sparsity == 'ID':
-                loss = c_entropy + 0.01 * pos_pen + complexity_loss_ID
-            elif sparsity == 'both':
-                loss = c_entropy + 0.01 * pos_pen + complexity_loss_ID + complexity_loss_avg
+            # if sparsity == 'ID':
+            #     loss = c_entropy + 0.01 * pos_pen + complexity_loss_ID
+            # elif sparsity == 'both':
+            #     loss = c_entropy + 0.01 * pos_pen + complexity_loss_ID + complexity_loss_avg
+            loss = c_entropy + 0.01 * pos_pen + complexity_loss_avg
             loss.backward()
             optim.step()
             batch_losses_train[i] += loss.item()
             batch_llikelihoods[i] += c_entropy.item()
-            batch_closses_ID[i] += complexity_loss_ID.item()
+            # batch_closses_ID[i] += complexity_loss_ID.item()
             batch_closses_avg[i] += complexity_loss_avg.item()
             batch_accs_train[i] += ut.choice_accuracy(
                 anchor, positive, negative, task, distance_metric)
             iter += 1
 
         avg_llikelihood = torch.mean(batch_llikelihoods).item()
-        avg_closs_ID = torch.mean(batch_closses_ID).item()
         avg_closs_avg = torch.mean(batch_closses_avg).item()
         avg_train_loss = torch.mean(batch_losses_train).item()
         avg_train_acc = torch.mean(batch_accs_train).item()
 
         loglikelihoods.append(avg_llikelihood)
-        complexity_losses_ID.append(avg_closs_ID)
         complexity_losses_avg.append(avg_closs_avg)
         train_losses.append(avg_train_loss)
         train_accs.append(avg_train_acc)
@@ -373,8 +377,6 @@ def run(
                 'optim_state_dict': optim.state_dict(),
                 'n_embed': embed_dim,
                 'lambda': lmbda,
-                'agreement': agreement,
-                'sparsity': sparsity,
                 'loss': loss,
                 'train_losses': train_losses,
                 'train_accs': train_accs,
@@ -388,12 +390,23 @@ def run(
 
             logger.info(f'Saving model parameters at epoch {epoch+1}\n')
 
-        if early_stopping and (epoch + 1) > window_size:
+        if early_stopping == "Yes" and (epoch + 1) > window_size:
             # check termination condition (we want to train until convergence)
-            lmres = linregress(range(window_size), train_losses[(
-                epoch + 1 - window_size):(epoch + 2)])
-            if (lmres.slope > 0) or (lmres.pvalue > .1):
+            # Early stopping check
+            if avg_val_acc > best_val_accuracy:
+                best_val_accuracy = avg_val_acc
+                counter = 0
+            else:
+                counter += 1
+
+            if counter >= patience:
+                logger.info(f"Early stopping at epoch {epoch}")
                 break
+
+            # lmres = linregress(range(window_size), train_losses[(
+            #     epoch + 1 - window_size):(epoch + 2)])
+            # if (lmres.slope > 0) or (lmres.pvalue > .1):
+            #     break
 
     # save final model weights
     ut.save_weights_(results_dir, model.fc.weight)
@@ -448,8 +461,6 @@ if __name__ == "__main__":
         loggername=args.loggername,
         rnd_seed=args.rnd_seed,
         results_dir=args.results_dir,
-        agreement=args.agreement,
-        sparsity=args.sparsity,
         id_weights_only=args.id_weights_only,
         plots_dir=args.plots_dir,
         triplets_dir=args.triplets_dir,
@@ -466,5 +477,6 @@ if __name__ == "__main__":
         p=args.p,
         distance_metric=args.distance_metric,
         temperature=args.temperature,
-        early_stopping=args.early_stopping
+        early_stopping=args.early_stopping,
+        use_shuffled_subjects=args.use_shuffled_subjects
     )

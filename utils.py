@@ -292,7 +292,7 @@ def load_data(device: torch.device, triplets_dir: str, inference: bool = False) 
     return train_triplets, test_triplets
 
 
-def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = False, testcase: bool = False) -> Tuple[torch.Tensor]:
+def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = False, testcase: bool = False, use_shuffled_subjects: str = "actual") -> Tuple[torch.Tensor]:
     """load train and test triplet datasets with associated participant ID into memory"""
     if inference:
         with open(pjoin(triplets_dir, 'test_triplets_ID.npy'), 'rb') as test_triplets:
@@ -316,10 +316,17 @@ def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = Fals
             test_triplets = torch.from_numpy(np.loadtxt(
                 pjoin(triplets_dir, 'test_10_ID_smallsample.txt'))).to(device).type(torch.LongTensor)
         elif testcase == False:
-            train_triplets = torch.from_numpy(np.loadtxt(
-                pjoin(triplets_dir, 'train_90_ID.txt'))).to(device).type(torch.LongTensor)
-            test_triplets = torch.from_numpy(np.loadtxt(
-                pjoin(triplets_dir, 'test_10_ID.txt'))).to(device).type(torch.LongTensor)
+            if use_shuffled_subjects == "actual":
+                train_triplets = torch.from_numpy(np.loadtxt(
+                    pjoin(triplets_dir, 'train_90_ID.txt'))).to(device).type(torch.LongTensor)
+                test_triplets = torch.from_numpy(np.loadtxt(
+                    pjoin(triplets_dir, 'test_10_ID.txt'))).to(device).type(torch.LongTensor)
+            elif use_shuffled_subjects == "shuffled":
+                train_triplets = torch.from_numpy(np.loadtxt(
+                    pjoin(triplets_dir, 'train_shuffled_90_ID.txt'))).to(device).type(torch.LongTensor)
+                test_triplets = torch.from_numpy(np.loadtxt(
+                    pjoin(triplets_dir, 'test_shuffled_10_ID.txt'))).to(device).type(torch.LongTensor)
+
     return train_triplets, test_triplets
 
 
@@ -1271,3 +1278,34 @@ def load_avg_embeddings(model_id: str, device: str) -> list:
             emb_flat = torch.mean(embedding, axis=0).cpu().detach().numpy()
             l_embeddings.append(emb_flat)
     return l_embeddings
+
+
+def delta_avg_id(anchors, positives, negatives, anchors_weighted, positives_weighted, negatives_weighted, ids, idx):
+    # avg reps for current idx
+    anchors_0 = torch.Tensor(
+        np.array([anchor for anchor, i in zip(anchors, ids) if i == idx]))
+    positives_0 = torch.Tensor(
+        np.array([positive for positive, i in zip(positives, ids) if i == idx]))
+    negatives_0 = torch.Tensor(
+        np.array([negative for negative, i in zip(negatives, ids) if i == idx]))
+    # id reps for current idx
+    anchors_weighted_0 = torch.Tensor(np.array(
+        [anchor_weighted for anchor_weighted, i in zip(anchors_weighted, ids) if i == idx]))
+    positives_weighted_0 = torch.Tensor(np.array(
+        [positive_weighted for positive_weighted, i in zip(positives_weighted, ids) if i == idx]))
+    negatives_weighted_0 = torch.Tensor(np.array(
+        [negative_weighted for negative_weighted, i in zip(negatives_weighted, ids) if i == idx]))
+    # compute similarities for both models
+    sims_avg = compute_similarities(
+        anchors_0, positives_0, negatives_0, method="odd_one_out")
+    sims_id = compute_similarities(
+        anchors_weighted_0, positives_weighted_0, negatives_weighted_0, method="odd_one_out")
+    # calculate accuracies on test set
+    one_avg = (sims_avg[0] > sims_avg[1]).numpy() & (
+        sims_avg[0] > sims_avg[2]).numpy()
+    acc_eval_avg = one_avg.sum() / np.sum(ids == 0)
+    one_id = (sims_id[0] > sims_id[1]).numpy() & (
+        sims_id[0] > sims_id[2]).numpy()
+    acc_eval_id = one_id.sum() / np.sum(ids == 0)
+    delta = acc_eval_id - acc_eval_avg
+    return delta
