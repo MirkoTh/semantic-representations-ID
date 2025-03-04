@@ -234,7 +234,7 @@ tbl_unique_new_id <- tbl_ooo_shuffle_id %>%
   summarize(
     n_new_ids = length(unique(subject_id_random)),
     max_trials_same_subject_id = max(n_cross)
-    )
+  )
 tmp <- tbl_ooo_shuffle_id %>% count(subject_id)
 tmp2 <- tmp %>% left_join(tbl_unique_new_id, by = "subject_id") %>% arrange(desc(max_trials_same_subject_id))
 tmp2$n_per_subject <- tmp2$n / tmp2$n_new_ids
@@ -243,7 +243,7 @@ cat(str_c(
   "proportion overlap in subject ids old vs. new = ", round(prop_overlap, 3), "\n",
   "maximally ", round(max(tmp2$max_trials_same_subject_id), 1), " trials from the same subject per new ID,\n",
   "which refers to a proportion of: ", tmp2$max_trials_same_subject_id[1] / tmp2$n[1]
-  ))
+))
 tmp2 %>% arrange(desc(max_trials_same_subject_id))
 
 tbl_ooo_shuffle_id <- tbl_ooo_shuffle_id %>%
@@ -279,7 +279,29 @@ write_delim(
 )
 
 
+t_start <- Sys.time()
+tmp <- tbl_ooo_ID %>%
+  rowwise() %>%
+  mutate(
+    id_lo = min(c(col_0, col_1, col_2)),
+    id_hi = max(c(col_0, col_1, col_2)),
+    id_mid = c(col_0, col_1, col_2)[!c(col_0, col_1, col_2) %in% c(id_lo, id_hi)]
+  ) %>%
+  relocate(id_mid, .before = id_hi) %>%
+  group_by(id_lo, id_mid, id_hi) %>%
+  mutate(
+    rwn = row_number(id_lo)
+    ) %>%
+  arrange(desc(rwn)) %>%
+  ungroup()
 
+t_end <- Sys.time()
+t_duration <- t_end - t_start
+cat(t_duration)
+
+tmp <- tmp %>% mutate(triplet_id = factor(str_c(id_lo, id_mid, id_hi)))
+
+tmp %>% group_by(id_lo, id_mid, id_hi) %>% count() %>% arrange(desc(n))
 
 
 
