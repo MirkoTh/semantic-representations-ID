@@ -93,7 +93,7 @@ def parseargs():
     return args
 
 
-def setup_logging(file: str, dir: str = './log_files/', loggername: str = "sem-reps"):
+def setup_logging(file: str, dir: str = './log_files/', loggername: str = "avg-sem-reps"):
     if not os.path.exists(dir):
         os.makedirs(dir)
     # create logger at root level (no need to provide specific name, as our logger won't have children)
@@ -138,12 +138,11 @@ def run(
         early_stopping: bool = False
 ):
     # initialise logger and start logging events
-    logger = setup_logging(file='avg-only-on-ID-data.log',
-                           dir=f'./log_files/lmbda_{lmbda}/')
+    logger = setup_logging(file='avg-only-on-ID-data.log', dir=f'./log_files/ndim_{embed_dim}/lmbda_{lmbda}/')
     logger.setLevel(logging.INFO)
     # load triplets into memory
     train_triplets, test_triplets = ut.load_data_ID(
-        device=device, triplets_dir=triplets_dir)
+        device=device, triplets_dir=triplets_dir, testcase=True)
     n_items = ut.get_nitems(train_triplets)
     print("n_items = " + str(n_items))
 
@@ -243,6 +242,11 @@ def run(
     results = {}
     logger.info(f'Optimization started for lambda: {lmbda}\n')
 
+    # Early stopping parameters
+    patience = 10
+    best_val_accuracy = 0.0
+    counter = 0
+
     print(f'Optimization started for lambda: {lmbda}\n')
     for epoch in tqdm(range(start, epochs)):
         model.train()
@@ -335,12 +339,24 @@ def run(
 
             logger.info(f'Saving model parameters at epoch {epoch+1}\n')
 
-        if early_stopping and (epoch + 1) > window_size:
+        if early_stopping and (epoch + 1) > window_size and epoch >= 100:
+
             # check termination condition (we want to train until convergence)
-            lmres = linregress(range(window_size), train_losses[(
-                epoch + 1 - window_size):(epoch + 2)])
-            if (lmres.slope > 0) or (lmres.pvalue > .1):
+            # Early stopping check
+            if avg_val_acc > best_val_accuracy:
+                best_val_accuracy = avg_val_acc
+                counter = 0
+            else:
+                counter += 1
+
+            if counter >= patience:
+                logger.info(f"Early stopping at epoch {epoch}")
                 break
+            # check termination condition (we want to train until convergence)
+            # lmres = linregress(range(window_size), train_losses[(
+            #     epoch + 1 - window_size):(epoch + 2)])
+            # if (lmres.slope > 0) or (lmres.pvalue > .1):
+            #     break
 
     # save final model weights
     ut.save_weights_(results_dir, model.fc.weight)
