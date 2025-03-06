@@ -1303,9 +1303,9 @@ def delta_avg_id(anchors, positives, negatives, anchors_weighted, positives_weig
     # calculate accuracies on test set
     one_avg = (sims_avg[0] > sims_avg[1]).numpy() & (
         sims_avg[0] > sims_avg[2]).numpy()
-    acc_eval_avg = one_avg.sum() / np.sum(ids == 0)
+    acc_eval_avg = one_avg.sum() / np.sum(ids == idx)
     one_id = (sims_id[0] > sims_id[1]).numpy() & (
         sims_id[0] > sims_id[2]).numpy()
-    acc_eval_id = one_id.sum() / np.sum(ids == 0)
+    acc_eval_id = one_id.sum() / np.sum(ids == idx)
     delta = acc_eval_id - acc_eval_avg
     return delta
