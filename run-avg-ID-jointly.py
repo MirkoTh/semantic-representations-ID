@@ -95,11 +95,13 @@ def parseargs():
        help='number of threads used by PyTorch multiprocessing')
     aa('--use_shuffled_subjects', type=str, default='actual',
         choices=['actual', 'shuffled'], help='actual subjects or subjects with randomly shuffled trials from all subjects')
+    aa('--sparsity', type=str, default='both',
+        choices=['both', 'items'], help='sparsity only on item representations or also on dimensional weights. note that default is agreemnt to average, but few may disagree')
     args = parser.parse_args()
     return args
 
 
-def setup_logging(file: str, dir: str = './log_files/', loggername: str = "sem-reps"):
+def setup_logging(file: str, dir: str = './log_files/', loggername: str = "ID-sem-reps"):
     if not os.path.exists(dir):
         os.makedirs(dir)
     # create logger at root level (no need to provide specific name, as our logger won't have children)
@@ -144,15 +146,15 @@ def run(
         show_progress: bool = True,
         distance_metric: str = 'dot',
         temperature: float = 1.,
-        use_shuffled_subjects: str = 'actual'
+        use_shuffled_subjects: str = 'actual',
+        sparsity: str = "both"
 ):
     # initialise logger and start logging events
-    logger = setup_logging(file='avg-ID-jointly.log',
-                           dir=f'./log_files/{id_weights_only}/ndim_{embed_dim}/lmbda_{lmbda}/', loggername=loggername)
-    print("id_weights_only = ", f'{id_weights_only}')
+    logger = setup_logging(file='avg-ID-jointly.log', dir=f'./log_files/{id_weights_only}/ndim_{embed_dim}/lmbda_{lmbda}/sparsity_{sparsity}/{use_shuffled_subjects}_subjects', loggername=loggername)
+    logger.info("id_weights_only = ", f'{id_weights_only}')
     # load triplets into memory
     train_triplets_ID, test_triplets_ID = ut.load_data_ID(
-        device=device, triplets_dir=triplets_dir, testcase=True, use_shuffled_subjects=use_shuffled_subjects)
+        device=device, triplets_dir=triplets_dir, testcase=False, use_shuffled_subjects=use_shuffled_subjects)
     n_items_ID = ut.get_nitems(train_triplets_ID)
     logger.info("n_items = " + str(n_items_ID))
 
@@ -167,8 +169,7 @@ def run(
         rnd_seed=rnd_seed,
         p=p, method="ids"
     )
-    logger.info(f'\nNumber of train batches in current process: {
-                len(train_batches)}\n')
+    logger.info(f'\nNumber of train batches in current process: {len(train_batches)}\n')
 
     ###############################
     ########## settings ###########
@@ -195,13 +196,13 @@ def run(
     logger.info(f'...Creating PATHs')
     if results_dir == './results/':
         results_dir = os.path.join(
-            results_dir, "avg-ID-jointly", f'weightsonly_{id_weights_only}', f'{embed_dim}d', str(lmbda), f'seed{rnd_seed}')
+            results_dir, "avg-ID-jointly", f'weightsonly_{id_weights_only}', f'{embed_dim}d', str(lmbda), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
     if plots_dir == './plots/':
         plots_dir = os.path.join(
-            plots_dir, "avg-ID-jointly", f'weightsonly_{id_weights_only}', f'{embed_dim}d', str(lmbda), f'seed{rnd_seed}')
+            plots_dir, "avg-ID-jointly", f'weightsonly_{id_weights_only}', f'{embed_dim}d', str(lmbda), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
     if not os.path.exists(plots_dir):
         os.makedirs(plots_dir)
 
@@ -231,8 +232,7 @@ def run(
                     nneg_d_over_time = checkpoint['nneg_d_over_time']
                     loglikelihoods = checkpoint['loglikelihoods']
                     complexity_losses = checkpoint['complexity_costs']
-                    print(f'...Loaded model and optimizer state dicts from previous run. Starting at epoch {
-                          start}.\n')
+                    print(f'...Loaded model and optimizer state dicts from previous run. Starting at epoch {start}.\n')
                 except RuntimeError:
                     print(f'...Loading model and optimizer state dicts failed. Check whether you are currently using a different set of model parameters.\n')
                     start = 0
@@ -294,9 +294,8 @@ def run(
             # few-dimensional representations of the items
             l1_pen_avg = md.l1_regularization(model, "fc.weight", agreement="few").to(
                 device)  # L1-norm to enforce sparsity (many 0s)
-
-            # l1_pen_ID = md.l1_regularization(model, "individual_", agreement=agreement).to(
-            #    device)  # L1-norm to enforce sparsity (many 0s)
+            # mostly agreement with item reps, but few dimensions may be downweighted
+            l1_pen_ID = md.l1_regularization(model, "individual_", agreement="most").to(device)  # L1-norm to enforce sparsity (many 0s)
             W = model.fc.weight
             Bs = model.individual_slopes.weight
             # positivity constraint to enforce non-negative values in embedding matrix
@@ -304,17 +303,12 @@ def run(
             pos_pen = torch.sum(
                 F.relu(-W)) + torch.sum(F.relu(-Bs))
             complexity_loss_avg = (lmbda/n_items_ID) * l1_pen_avg
-            # complexity_loss_ID = (lmbda/n_participants) * l1_pen_ID
-            # possible options
-            # ignore complexity loss on ndimns avg, but enforce sparsity on the number of used dims per individual
-            # enforce sparsity on both
-            # ignore complexity loss on ndims avg, enforce reverse sparsity (i.e., mostly 1s) on IDs
-            # enforce sparsity on ndims avg, and enforce reverse sparsity (i.e., mostly 1s) on IDs
-            # if sparsity == 'ID':
-            #     loss = c_entropy + 0.01 * pos_pen + complexity_loss_ID
-            # elif sparsity == 'both':
-            #     loss = c_entropy + 0.01 * pos_pen + complexity_loss_ID + complexity_loss_avg
-            loss = c_entropy + 0.01 * pos_pen + complexity_loss_avg
+            complexity_loss_ID = (lmbda/n_participants) * l1_pen_ID
+
+            if sparsity == 'items':
+                loss = c_entropy + 0.01 * pos_pen + complexity_loss_avg
+            elif sparsity == 'both':
+                loss = c_entropy + 0.01 * pos_pen + complexity_loss_ID + complexity_loss_avg
             loss.backward()
             optim.step()
             batch_losses_train[i] += loss.item()
@@ -352,21 +346,18 @@ def run(
 
         if show_progress:
             print("\n========================================================================================================")
-            print(f'====== Epoch: {epoch+1}, Train acc: {avg_train_acc:.5f}, Train loss: {
-                  avg_train_loss:.5f}, Val acc: {avg_val_acc:.5f}, Val loss: {avg_val_loss:.5f} ======')
+            print(f'====== Epoch: {epoch+1}, Train acc: {avg_train_acc:.5f}, Train loss: {avg_train_loss:.5f}, Val acc: {avg_val_acc:.5f}, Val loss: {avg_val_loss:.5f} ======')
             print("========================================================================================================\n")
             current_d = ut.get_nneg_dims(W)
             nneg_d_over_time.append((epoch+1, current_d))
             print("\n========================================================================================================")
-            print(f"========================= Current number of non-negative dimensions: {
-                  current_d} =========================")
+            print(f"========================= Current number of non-negative dimensions: {current_d} =========================")
             print("========================================================================================================\n")
 
         if (epoch + 1) % steps == 0:
             W = model.fc.weight
             id_slopes = model.individual_slopes
-            np.savetxt(os.path.join(results_dir, f'sparse_embed_epoch{
-                       epoch+1:04d}.txt'), W.detach().cpu().numpy())
+            np.savetxt(os.path.join(results_dir, f'sparse_embed_epoch{epoch+1:04d}.txt'), W.detach().cpu().numpy())
             logger.info(f'Saving model weights at epoch {epoch+1}')
 
             # save model and optim parameters for inference or to resume training
@@ -377,6 +368,8 @@ def run(
                 'optim_state_dict': optim.state_dict(),
                 'n_embed': embed_dim,
                 'lambda': lmbda,
+                'sparsity': sparsity,
+                'subject_type': use_shuffled_subjects,
                 'loss': loss,
                 'train_losses': train_losses,
                 'train_accs': train_accs,
@@ -390,7 +383,7 @@ def run(
 
             logger.info(f'Saving model parameters at epoch {epoch+1}\n')
 
-        if early_stopping == "Yes" and (epoch + 1) > window_size:
+        if early_stopping == "Yes" and (epoch + 1) > window_size and epoch >= 100:
             # check termination condition (we want to train until convergence)
             # Early stopping check
             if avg_val_acc > best_val_accuracy:
@@ -412,8 +405,7 @@ def run(
     ut.save_weights_(results_dir, model.fc.weight)
     results = {'epoch': len(
         train_accs), 'train_acc': train_accs[-1], 'val_acc': val_accs[-1], 'val_loss': val_losses[-1]}
-    logger.info(f'\nOptimization finished after {
-                epoch+1} epochs for lambda: {lmbda}\n')
+    logger.info(f'\nOptimization finished after {epoch+1} epochs for lambda: {lmbda}\n')
 
     logger.info(
         f'\nPlotting number of non-negative dimensions as a function of time for lambda: {lmbda}\n')
@@ -478,5 +470,6 @@ if __name__ == "__main__":
         distance_metric=args.distance_metric,
         temperature=args.temperature,
         early_stopping=args.early_stopping,
-        use_shuffled_subjects=args.use_shuffled_subjects
+        use_shuffled_subjects=args.use_shuffled_subjects,
+        sparsity=args.sparsity
     )
