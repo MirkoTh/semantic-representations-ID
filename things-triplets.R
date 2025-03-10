@@ -195,6 +195,10 @@ tbl_ooo_subset_test <- tbl_ooo_subset %>%
   filter(cum_prop > prop_train) %>%
   select(-cum_prop)
 
+
+tbl_old <- read_delim("data/test_10_ID_old.txt", col_names = FALSE)
+tbl_old %>% count(X4) %>% mutate(n = 4*n) %>% arrange(n)
+
 write_delim(
   tbl_ooo_subset_train %>% 
     select(c("col_0", "col_1", "col_2", "subject_id")), 
@@ -279,8 +283,13 @@ write_delim(
 )
 
 
+# extract agreement among triplets ----------------------------------------
+
+
 t_start <- Sys.time()
-tmp <- tbl_ooo_ID %>%
+tbl_count_triplets <- tbl_ooo %>%
+  #slice_sample(n = 500000) %>%
+  mutate(incr = 1:nrow(.)) %>%
   rowwise() %>%
   mutate(
     id_lo = min(c(col_0, col_1, col_2)),
@@ -289,9 +298,10 @@ tmp <- tbl_ooo_ID %>%
   ) %>%
   relocate(id_mid, .before = id_hi) %>%
   group_by(id_lo, id_mid, id_hi) %>%
+  mutate(rwn = row_number(incr)) %>%
   mutate(
-    rwn = row_number(id_lo)
-    ) %>%
+    n_encounters = max(rwn)
+  ) %>%
   arrange(desc(rwn)) %>%
   ungroup()
 
@@ -299,9 +309,189 @@ t_end <- Sys.time()
 t_duration <- t_end - t_start
 cat(t_duration)
 
-tmp <- tmp %>% mutate(triplet_id = factor(str_c(id_lo, id_mid, id_hi)))
+tbl_subset_items <- tbl_count_triplets %>% filter(n_encounters >= 10) %>% mutate(triplet_id = factor(str_c(id_lo, id_mid, id_hi)))
+tbl_subset_items$triplet_id <- factor(tbl_subset_items$triplet_id, labels = 1:length(unique(tbl_subset_items$triplet_id)))
+tbl_subset_items %>% count(triplet_id) %>% ggplot(aes(n)) + geom_histogram(color = "white", fill = "#6699FF") + coord_cartesian(xlim = c(0, 150))
+tbl_agreement <- tbl_subset_items %>% 
+  group_by(triplet_id) %>%
+  summarize(
+    n_0 = sum(col_0 == id_lo),
+    n_1 = sum(col_0 == id_mid),
+    n_2 = sum(col_0 == id_hi)
+    ) %>% ungroup() %>%
+  rowwise() %>%
+  mutate(
+    n_min = min(c(n_0, n_1, n_2)),
+    n_max = max(c(n_0, n_1, n_2)),
+    n_med = (n_0 + n_1 + n_2) - (n_min + n_max),
+    prop_max = n_max/(n_min + n_med + n_max)
+  ) %>% ungroup()
 
-tmp %>% group_by(id_lo, id_mid, id_hi) %>% count() %>% arrange(desc(n))
+ggplot(tbl_agreement, aes(prop_max)) +
+  geom_histogram()
+
+tbl_agreement %>% mutate(prop_max_weighted = prop_max * (n_min + n_med + n_max)) %>% ungroup() %>% summarize(n_tot = sum(n_0 + n_1 + n_2), n_agree = sum(prop_max_weighted)) %>%
+  mutate(avg_agreement = n_agree/n_tot)
 
 
+tbl_diagnostic_items <- tbl_subset_items %>% group_by(id_lo, id_mid, id_hi) %>% count() %>% ungroup()
+write_csv(tbl_diagnostic_items, file = "diagnostic-triplets.csv")
+
+
+# Data Selection for Modeling Item Difficulties ---------------------------
+
+
+# then calculate number of trials for all these participants
+
+# select those participants with substantial number of trials (e.g., 250 trials)
+thx <- 250
+prop_train <- .8
+tbl_include_trials <- tbl_ooo %>% count(subject_id) %>% filter(n >= thx) %>% select(-n)
+# select all participants who have contributed to pairs with substantial number of trials (e.g., 10/20)
+# because only for those we can test whether modeling IDs improves particularly low-agreement pairs
+tbl_include_items <- tibble(subject_id = sort(unique(tbl_subset_items$subject_id)))
+# take the intersection
+tbl_include_both <- tbl_include_trials %>% inner_join(tbl_include_items, by = "subject_id")
+tbl_ooo_ID_item <- tbl_ooo %>% inner_join(tbl_include_both, by = "subject_id")
+
+
+# reset IDs to start from 0
+tbl_ooo_ID_item <- rebase_subject_ids(tbl_ooo_ID_item)
+tbl_ooo_ID_item <- tbl_ooo_ID_item %>%
+  group_by(subject_id) %>%
+  mutate(trial_id_random = sample(1:n())) %>%
+  arrange(subject_id, trial_id_random) %>%
+  mutate(
+    cum_prop = trial_id_random / n()
+  ) %>% select(-trial_id_random)
+tbl_ooo_ID_item_subset_train <- tbl_ooo_ID_item %>%
+  filter(cum_prop <= prop_train) %>%
+  select(-cum_prop)
+tbl_ooo_ID_item_subset_test <- tbl_ooo_ID_item %>%
+  filter(cum_prop > prop_train) %>%
+  select(-cum_prop)
+
+write_delim(
+  tbl_ooo_ID_item_subset_train %>% 
+    select(c("col_0", "col_1", "col_2", "subject_id")), 
+  "data/train_90_ID_item.txt", col_names = FALSE
+)
+write_delim(
+  tbl_ooo_ID_item_subset_test %>% 
+    select(c("col_0", "col_1", "col_2", "subject_id")), 
+  "data/test_10_ID_item.txt", col_names = FALSE
+)
+
+# and also shuffle across participants
+
+tbl_ooo_ID_item_shuffle_id <- ungroup(tbl_ooo_ID_item)
+set.seed(845872)
+tbl_ooo_ID_item_shuffle_id$subject_id_random <- sample(tbl_ooo_ID_item_shuffle_id$subject_id)
+
+tbl_ooo_ID_item_shuffle_id <- tbl_ooo_ID_item_shuffle_id %>%
+  select(c(col_0, col_1, col_2, subject_id_random)) %>%
+  rename(subject_id = subject_id_random) %>%
+  arrange(subject_id)
+
+
+tbl_ooo_ID_item_shuffle_id <- rebase_subject_ids(tbl_ooo_ID_item_shuffle_id)
+tbl_ooo_ID_item_shuffle_id <- tbl_ooo_ID_item_shuffle_id %>%
+  group_by(subject_id) %>%
+  mutate(trial_id_random = sample(1:n())) %>%
+  arrange(subject_id, trial_id_random) %>%
+  mutate(
+    cum_prop = trial_id_random / n()
+  ) %>% select(-trial_id_random)
+tbl_ooo_ID_item_shuffle_id_train <- tbl_ooo_ID_item_shuffle_id %>%
+  filter(cum_prop <= prop_train) %>%
+  select(-cum_prop)
+tbl_ooo_ID_item_shuffle_id_test <- tbl_ooo_ID_item_shuffle_id %>%
+  filter(cum_prop > prop_train) %>%
+  select(-cum_prop)
+
+write_delim(
+  tbl_ooo_ID_item_shuffle_id_train %>% 
+    select(c("col_0", "col_1", "col_2", "subject_id")), 
+  "data/train_shuffled_90_ID_item.txt", col_names = FALSE
+)
+write_delim(
+  tbl_ooo_ID_item_shuffle_id_test %>% 
+    select(c("col_0", "col_1", "col_2", "subject_id")), 
+  "data/test_shuffled_10_ID_item.txt", col_names = FALSE
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+colnames(tbl_old) <- c("col_0", "col_1", "col_2", "subject_id")
+tmp <- tbl_old %>% 
+  left_join(tbl_ooo, by = c("col_0", "col_1", "col_2"), suffix = c("_old", "_new"), relationship = "many-to-many") %>%
+  group_by(subject_id_old, subject_id_new) %>%
+  count() %>%
+  group_by(subject_id_old) %>%
+  filter(n == max(n))
+
+
+
+tbl_train_old <- read_delim("data/train_90_ID_old.txt", col_names = c("anchor", "positive", "negative", "ID"))
+tbl_test_old <- read_delim("data/test_10_ID_old.txt", col_names = c("anchor", "positive", "negative", "ID"))
+
+tbl_train_new <- read_delim("data/train_90_ID.txt", col_names = c("anchor", "positive", "negative", "ID"))
+tbl_test_new <- read_delim("data/test_10_ID.txt", col_names = c("anchor", "positive", "negative", "ID"))
+
+
+tbl_train_new_old <- tbl_train_new %>% left_join(tbl_train_old, by = c("anchor", "positive", "negative"), relationship = "many-to-many")
+tbl_train_new_old %>% filter(ID.x == ID.y) %>% count()
+tbl_test_new_old <- tbl_test_new %>% left_join(tbl_test_old, by = c("anchor", "positive", "negative"), relationship = "many-to-many")
+tbl_test_new_old %>% filter(ID.x == ID.y) %>% count()
+
+
+
+tbl_train_shuffled <- read_delim("data/train_shuffled_90_ID.txt", col_names = c("anchor", "positive", "negative", "ID"))
+tbl_train_new_shuffled <- tbl_train_new %>% left_join(tbl_train_shuffled, by = c("anchor", "positive", "negative"), relationship = "many-to-many")
+tbl_train_new_shuffled %>% filter(ID.x == ID.y) %>% count()
 
