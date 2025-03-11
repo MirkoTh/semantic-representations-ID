@@ -318,14 +318,14 @@ def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = Fals
         elif testcase == False:
             if use_shuffled_subjects == "actual":
                 train_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'train_90_ID.txt'))).to(device).type(torch.LongTensor)
+                    pjoin(triplets_dir, 'train_90_ID_item.txt'))).to(device).type(torch.LongTensor)
                 test_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'test_10_ID.txt'))).to(device).type(torch.LongTensor)
+                    pjoin(triplets_dir, 'test_10_ID_item.txt'))).to(device).type(torch.LongTensor)
             elif use_shuffled_subjects == "shuffled":
                 train_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'train_shuffled_90_ID.txt'))).to(device).type(torch.LongTensor)
+                    pjoin(triplets_dir, 'train_shuffled_90_ID_item.txt'))).to(device).type(torch.LongTensor)
                 test_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'test_shuffled_10_ID.txt'))).to(device).type(torch.LongTensor)
+                    pjoin(triplets_dir, 'test_shuffled_10_ID_item.txt'))).to(device).type(torch.LongTensor)
 
     return train_triplets, test_triplets
 
