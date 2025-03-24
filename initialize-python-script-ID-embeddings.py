@@ -39,7 +39,7 @@ for lmbda, learning_rate, use_shuffled_subjects in combinations:
     arg_combinations.append(temp_dict)
 
 # Path to the Python file you want to run
-python_file = 'run-avg-ID-jointly.py'
+python_file = 'run-ID-on-embeddings.py'
 
 # Function to run the command
 
@@ -63,5 +63,5 @@ def run_command(args):
 # for args in arg_combinations:
 #     run_command(args)
 # Use ThreadPoolExecutor to run the commands in parallel
-with ThreadPoolExecutor(max_workers=8) as executor:
+with ThreadPoolExecutor(max_workers=4) as executor:
     executor.map(run_command, arg_combinations)

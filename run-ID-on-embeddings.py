@@ -91,6 +91,9 @@ def parseargs():
        choices=["No", "Yes"], help='early stopping')
     aa('--num_threads', type=int, default=20,
        help='number of threads used by PyTorch multiprocessing')
+    aa('--use_shuffled_subjects', type=str, default='actual',
+       choices=['actual', 'shuffled'], help='actual subjects or subjects with randomly shuffled trials from all subjects')
+
     args = parser.parse_args()
     return args
 
@@ -137,11 +140,12 @@ def run(
         show_progress: bool = True,
         distance_metric: str = 'dot',
         temperature: float = 1.,
-        early_stopping: str = "No"
+        early_stopping: str = "No",
+        use_shuffled_subjects: str = "actual"
 ):
     # initialise logger and start logging events
     logger = setup_logging(file='ID-on-embeddings.log',
-                           dir=f'./log_files/ID-on-embeddings/lmbda_{lmbda}/lr_{lr}/', loggername=loggername)
+                           dir=f'./log_files/ID-on-embeddings/lmbda_{lmbda}/lr_{lr}/{use_shuffled_subjects}_subjects/', loggername=loggername)
 
     model_id = "clip-vit-base-p32"
     l_embeddings = ut.load_avg_embeddings(
@@ -149,7 +153,7 @@ def run(
 
     # load triplets into memory
     train_triplets, test_triplets = ut.load_data_ID(
-        device=device, triplets_dir=triplets_dir, testcase=False)
+        device=device, triplets_dir=triplets_dir, testcase=True, use_shuffled_subjects=use_shuffled_subjects)
     n_items = ut.get_nitems(train_triplets)
     logger.info("n_items = " + str(n_items))
 
@@ -195,13 +199,13 @@ def run(
     logger.info(f'...Creating PATHs')
     if results_dir == './results/':
         results_dir = os.path.join(
-            results_dir, "ID-on-embeddings", f'{model_id}d', f'lambda{str(lmbda)}', f'lr{str(lr)}', f'seed{rnd_seed}')
+            results_dir, "ID-on-embeddings", f'{model_id}d', f'lambda{str(lmbda)}', f'lr{str(lr)}', f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
     if plots_dir == './plots/':
         plots_dir = os.path.join(
-            plots_dir, "ID-on-embeddings", f'{model_id}d', f'lambda{str(lmbda)}', f'lr{str(lr)}', f'seed{rnd_seed}')
+            plots_dir, "ID-on-embeddings", f'{model_id}d', f'lambda{str(lmbda)}', f'lr{str(lr)}', f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
     if not os.path.exists(plots_dir):
         os.makedirs(plots_dir)
 
@@ -346,6 +350,7 @@ def run(
                 'n_embed': embed_dim,
                 'lambda': lmbda,
                 'lr': lr,
+                'subject_type': use_shuffled_subjects,
                 'loss': loss,
                 'train_losses': train_losses,
                 'train_accs': train_accs,
