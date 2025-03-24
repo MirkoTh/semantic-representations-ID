@@ -2,12 +2,18 @@ import subprocess
 
 # Define the different combinations of named arguments
 arg_combinations = [
-    {'rnd_seed': 4312, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.01, "epochs": 100, "embed_dim": 5},
-    {'rnd_seed': 4312, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.01, "epochs": 100, "embed_dim": 10},
-    {'rnd_seed': 4312, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.01, "epochs": 100, "embed_dim": 20},
-    {'rnd_seed': 4312, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.01, "epochs": 100, "embed_dim": 30},
-    {'rnd_seed': 4312, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.01, "epochs": 100, "embed_dim": 40},
-    {'rnd_seed': 4312, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.01, "epochs": 100, "embed_dim": 50},
+    {'rnd_seed': 6467, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.01, "epochs": 40, "batch_size": 25, "embed_dim": 5},
+    {'rnd_seed': 6467, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.01, "epochs": 40, "batch_size": 25, "embed_dim": 10},
+    {'rnd_seed': 6467, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.01, "epochs": 40, "batch_size": 25, "embed_dim": 20},
+    {'rnd_seed': 6467, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.01, "epochs": 40, "batch_size": 25, "embed_dim": 30},
+    {'rnd_seed': 6467, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.01, "epochs": 40, "batch_size": 25, "embed_dim": 40},
+    {'rnd_seed': 6467, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.01, "epochs": 40, "batch_size": 25, "embed_dim": 50},
+    {'rnd_seed': 84895, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.008, "epochs": 40, "batch_size": 25, "embed_dim": 5},
+    {'rnd_seed': 84895, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.008, "epochs": 40, "batch_size": 25, "embed_dim": 10},
+    {'rnd_seed': 84895, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.008, "epochs": 40, "batch_size": 25, "embed_dim": 20},
+    {'rnd_seed': 84895, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.008, "epochs": 40, "batch_size": 25, "embed_dim": 30},
+    {'rnd_seed': 84895, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.008, "epochs": 40, "batch_size": 25, "embed_dim": 40},
+    {'rnd_seed': 84895, 'triplets_dir': './data/', "task": "odd_one_out", "learning_rate": .001, "lmbda": 0.008, "epochs": 40, "batch_size": 25, "embed_dim": 50},
 ]
 
 # Path to the Python file you want to run
@@ -22,6 +28,7 @@ for args in arg_combinations:
         --learning_rate {args['learning_rate']} \
         --lmbda {args['lmbda']} \
         --epochs {args['epochs']} \
+        --batch_size {args['batch_size']} \
         --embed_dim {args['embed_dim']} "\
     )
     subprocess.run(command, shell=True)

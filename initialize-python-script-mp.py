@@ -11,7 +11,7 @@ base_dict = {
     "epochs": 10,
     "steps": 10,
     "device": "cpu",  # "cuda:0"
-    #"use_shuffled_subjects": "shuffled",
+    # "use_shuffled_subjects": "shuffled",
     "early_stopping": "Yes"
 }
 

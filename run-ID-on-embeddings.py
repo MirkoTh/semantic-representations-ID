@@ -87,7 +87,8 @@ def parseargs():
         help='random seed for reproducibility')
     aa('--distance_metric', type=str, default='dot',
        choices=['dot', 'euclidean'], help='distance metric')
-    aa('--early_stopping', action='store_true', help='train until convergence')
+    aa('--early_stopping', type=str, default='No',
+       choices=["No", "Yes"], help='early stopping')
     aa('--num_threads', type=int, default=20,
        help='number of threads used by PyTorch multiprocessing')
     args = parser.parse_args()
@@ -136,13 +137,13 @@ def run(
         show_progress: bool = True,
         distance_metric: str = 'dot',
         temperature: float = 1.,
-        early_stopping: bool = False
+        early_stopping: str = "No"
 ):
     # initialise logger and start logging events
     logger = setup_logging(file='ID-on-embeddings.log',
                            dir=f'./log_files/ID-on-embeddings/lmbda_{lmbda}/lr_{lr}/', loggername=loggername)
 
-    model_id = "Word2Vec"
+    model_id = "clip-vit-base-p32"
     l_embeddings = ut.load_avg_embeddings(
         model_id=model_id, device=device)
 
@@ -265,6 +266,11 @@ def run(
     loglikelihoods, complexity_losses_ID, complexity_losses_avg = [], [], []
     nneg_d_over_time = []
 
+    # Early stopping parameters
+    patience = 10
+    best_val_accuracy = 0.0
+    counter = 0
+
     iter = 0
     results = {}
     logger.info(f'Optimization started for lambda: {lmbda}\n')
@@ -353,12 +359,24 @@ def run(
 
             logger.info(f'Saving model parameters at epoch {epoch+1}\n')
 
-        if early_stopping and (epoch + 1) > window_size:
+        if early_stopping == "Yes" and (epoch + 1) > window_size and epoch >= 100:
             # check termination condition (we want to train until convergence)
-            lmres = linregress(range(window_size), train_losses[(
-                epoch + 1 - window_size):(epoch + 2)])
-            if (lmres.slope > 0) or (lmres.pvalue > .1):
+            # Early stopping check
+            if avg_val_acc > best_val_accuracy:
+                best_val_accuracy = avg_val_acc
+                counter = 0
+            else:
+                counter += 1
+
+            if counter >= patience:
+                logger.info(f"Early stopping at epoch {epoch}")
                 break
+
+            # check termination condition (we want to train until convergence)
+            # lmres = linregress(range(window_size), train_losses[(
+            #     epoch + 1 - window_size):(epoch + 2)])
+            # if (lmres.slope > 0) or (lmres.pvalue > .1):
+            #     break
 
     # save final model weights
     results = {'epoch': len(
