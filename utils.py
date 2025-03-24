@@ -848,7 +848,8 @@ def load_model(
     device: torch.device,
     subfolder: str = 'model',
 ):
-    model_path = pjoin(results_dir, modality, version, data, f'{dim}d', f'{lmbda}', f'seed{rnd_seed:02d}', subfolder)
+    model_path = pjoin(results_dir, modality, version, data,
+                       f'{dim}d', f'{lmbda}', f'seed{rnd_seed:02d}', subfolder)
     models = os.listdir(model_path)
     checkpoints = list(map(get_digits, models))
     last_checkpoint = np.argmax(checkpoints)
@@ -1255,6 +1256,8 @@ def process_ID_results(
 def load_avg_embeddings(model_id: str, device: str) -> list:
     if model_id == "Word2Vec":
         l_embeddings = np.load("data/word2vec-embeddings.npy")
+    elif model_id == "clip-vit-base-p32":
+        l_embeddings = np.load("data/clip-vit-base-p32-embeddings.npy")
     else:
         tokenizer = AutoTokenizer.from_pretrained(model_id)
         model = AutoModel.from_pretrained(model_id).to(device)
@@ -1307,4 +1310,4 @@ def delta_avg_id(anchors, positives, negatives, anchors_weighted, positives_weig
         sims_id[0] > sims_id[2]).numpy()
     acc_eval_id = one_id.sum() / np.sum(ids == idx)
     delta = acc_eval_id - acc_eval_avg
-    return delta
+    return delta, one_avg, one_id
