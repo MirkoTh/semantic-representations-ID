@@ -199,13 +199,13 @@ def run(
     logger.info(f'...Creating PATHs')
     if results_dir == './results/':
         results_dir = os.path.join(
-            results_dir, "ID-on-embeddings", f'{model_id}d', f'lambda{str(lmbda)}', f'lr{str(lr)}', f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
+            results_dir, "ID-on-embeddings", f'{model_id}', f'lambda{str(lmbda)}', f'lr{str(lr)}', f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
     if plots_dir == './plots/':
         plots_dir = os.path.join(
-            plots_dir, "ID-on-embeddings", f'{model_id}d', f'lambda{str(lmbda)}', f'lr{str(lr)}', f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
+            plots_dir, "ID-on-embeddings", f'{model_id}', f'lambda{str(lmbda)}', f'lr{str(lr)}', f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
     if not os.path.exists(plots_dir):
         os.makedirs(plots_dir)
 
