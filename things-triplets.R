@@ -70,7 +70,7 @@ extract_anchor <- function(image1, image2, image3, OOO, a) {
   lgl <- c(image1, image2, image3) != OOO
   c(image1, image2, image3)[lgl][a]
 }
-tbl_ooo <- tbl_triplets %>%
+tbl_ooo <- tbl_triplets %>% 
   select(image1, image2, image3, choice, subject_id)
 tbl_ooo$OOO <- pmap_dbl(tbl_ooo[, c("image1", "image2", "image3", "choice")], ~ c(..1, ..2, ..3)[..4])
 tbl_ooo$anchor1 <- pmap_dbl(tbl_ooo[, c("image1", "image2", "image3", "OOO")], extract_anchor, a = 1)
@@ -83,8 +83,6 @@ tbl_ooo <- tbl_ooo %>%
     col_1 = anchor2,
     col_2 = OOO
   ) %>%
-  relocate(col_1, .before = col_2) %>% 
-  relocate(col_0, .before = col_1) %>%
   mutate(
     col_0 = col_0 - 1,
     col_1 = col_1 - 1,
@@ -195,9 +193,9 @@ tbl_ooo_subset_test <- tbl_ooo_subset %>%
   filter(cum_prop > prop_train) %>%
   select(-cum_prop)
 
-
-tbl_old <- read_delim("data/test_10_ID_old.txt", col_names = FALSE)
-tbl_old %>% count(X4) %>% mutate(n = 4*n) %>% arrange(n)
+# 
+# tbl_old <- read_delim("data/test_10_ID_old.txt", col_names = FALSE)
+# tbl_old %>% count(X4) %>% mutate(n = 4*n) %>% arrange(n)
 
 write_delim(
   tbl_ooo_subset_train %>% 
@@ -240,13 +238,13 @@ tbl_unique_new_id <- tbl_ooo_shuffle_id %>%
     max_trials_same_subject_id = max(n_cross)
   )
 tmp <- tbl_ooo_shuffle_id %>% count(subject_id)
-tmp2 <- tmp %>% left_join(tbl_unique_new_id, by = "subject_id") %>% arrange(desc(max_trials_same_subject_id))
+tmp2 <- tmp %>% left_join(tbl_unique_new_id, by = "subject_id") %>% mutate(prop_from_same = max_trials_same_subject_id / n) %>% arrange(desc(prop_from_same))
 tmp2$n_per_subject <- tmp2$n / tmp2$n_new_ids
 
 cat(str_c(
   "proportion overlap in subject ids old vs. new = ", round(prop_overlap, 3), "\n",
   "maximally ", round(max(tmp2$max_trials_same_subject_id), 1), " trials from the same subject per new ID,\n",
-  "which refers to a proportion of: ", tmp2$max_trials_same_subject_id[1] / tmp2$n[1]
+  "which refers to a proportion of: ", round(tmp2$prop_from_same[1], 2)
 ))
 tmp2 %>% arrange(desc(max_trials_same_subject_id))
 
@@ -287,8 +285,9 @@ write_delim(
 
 
 t_start <- Sys.time()
+# count how often an item was encountered across all participants
 tbl_count_triplets <- tbl_ooo %>%
-  #slice_sample(n = 500000) %>%
+  # slice_sample(n = 500000) %>%
   mutate(incr = 1:nrow(.)) %>%
   rowwise() %>%
   mutate(
@@ -309,15 +308,32 @@ t_end <- Sys.time()
 t_duration <- t_end - t_start
 cat(t_duration)
 
-tbl_subset_items <- tbl_count_triplets %>% filter(n_encounters >= 10) %>% mutate(triplet_id = factor(str_c(id_lo, id_mid, id_hi)))
+# only take items, which were at least n_thx times observed across all participants
+n_thx <- 10
+tbl_subset_items <- tbl_count_triplets %>% filter(n_encounters >= n_thx) %>% mutate(triplet_id = factor(str_c(id_lo, id_mid, id_hi)))
 tbl_subset_items$triplet_id <- factor(tbl_subset_items$triplet_id, labels = 1:length(unique(tbl_subset_items$triplet_id)))
-tbl_subset_items %>% count(triplet_id) %>% ggplot(aes(n)) + geom_histogram(color = "white", fill = "#6699FF") + coord_cartesian(xlim = c(0, 150))
+tbl_subset_items %>% count(triplet_id) %>% ggplot(aes(n)) + 
+  geom_vline(xintercept = 25, color = "forestgreen", linetype = "dotdash", linewidth = 1, alpha = .2) +
+  geom_histogram(color = "white", fill = "#6699FF", binwidth = 1) + 
+  coord_cartesian(xlim = c(0, 130)) +
+  theme_bw() +
+  scale_x_continuous(expand = c(0.01, 0)) +
+  scale_y_continuous(expand = c(0.01, 0)) +
+  labs(x = "Nr. Encounters", y = "Nr. Items") +
+  theme(
+    strip.background = element_rect(fill = "white"),
+    text = element_text(size = 22),
+    legend.position = "bottom"
+  ) +
+  scale_color_brewer(palette = "Set2", name = "") +
+  scale_color_gradient2(name = "", high = "#66C2A5", low = "#FC8D62", mid = "white") +
+  scale_color_gradient(name = "", high = "#66C2A5", low = "#FC8D62")
 tbl_agreement <- tbl_subset_items %>% 
-  group_by(triplet_id) %>%
+  group_by(triplet_id, id_lo, id_mid, id_hi) %>%
   summarize(
-    n_0 = sum(col_0 == id_lo),
-    n_1 = sum(col_0 == id_mid),
-    n_2 = sum(col_0 == id_hi)
+    n_0 = sum(col_2 == id_lo),
+    n_1 = sum(col_2 == id_mid),
+    n_2 = sum(col_2 == id_hi)
     ) %>% ungroup() %>%
   rowwise() %>%
   mutate(
@@ -327,15 +343,28 @@ tbl_agreement <- tbl_subset_items %>%
     prop_max = n_max/(n_min + n_med + n_max)
   ) %>% ungroup()
 
-ggplot(tbl_agreement, aes(prop_max)) +
-  geom_histogram()
-
-tbl_agreement %>% mutate(prop_max_weighted = prop_max * (n_min + n_med + n_max)) %>% ungroup() %>% summarize(n_tot = sum(n_0 + n_1 + n_2), n_agree = sum(prop_max_weighted)) %>%
+tbl_label <- tbl_agreement %>% mutate(prop_max_weighted = prop_max * (n_min + n_med + n_max)) %>% 
+  ungroup() %>% summarize(n_tot = sum(n_0 + n_1 + n_2), n_agree = sum(prop_max_weighted)) %>%
   mutate(avg_agreement = n_agree/n_tot)
 
+ggplot(tbl_agreement, aes(prop_max)) +
+  geom_histogram(fill = "#6699FF", color = "black") +
+  geom_label(data = tbl_label, aes(x = .8, y = 105, label = str_c("Average Agreement = ", round(avg_agreement, 2)))) +
+  theme_bw() +
+  scale_x_continuous(expand = c(0.01, 0)) +
+  scale_y_continuous(expand = c(0.01, 0)) +
+  labs(x = "Prop. Agreement", y = "Nr. of Items") +
+  theme(
+    strip.background = element_rect(fill = "white"),
+    text = element_text(size = 22),
+    legend.position = "bottom"
+  ) + coord_cartesian(xlim = c(.25, 1.025))
 
-tbl_diagnostic_items <- tbl_subset_items %>% group_by(id_lo, id_mid, id_hi) %>% count() %>% ungroup()
-write_csv(tbl_diagnostic_items, file = "diagnostic-triplets.csv")
+
+
+
+tbl_diagnostic_items <- tbl_agreement %>% select(id_lo, id_mid, id_hi, n_min, n_max, n_med, prop_max)
+write_csv(tbl_diagnostic_items, file = "data/diagnostic-triplets.csv")
 
 
 # Data Selection for Modeling Item Difficulties ---------------------------
@@ -347,7 +376,7 @@ write_csv(tbl_diagnostic_items, file = "diagnostic-triplets.csv")
 thx <- 250
 prop_train <- .8
 tbl_include_trials <- tbl_ooo %>% count(subject_id) %>% filter(n >= thx) %>% select(-n)
-# select all participants who have contributed to pairs with substantial number of trials (e.g., 10/20)
+# select all participants who have contributed to pairs with substantial number of trials
 # because only for those we can test whether modeling IDs improves particularly low-agreement pairs
 tbl_include_items <- tibble(subject_id = sort(unique(tbl_subset_items$subject_id)))
 # take the intersection
