@@ -62,6 +62,8 @@ def parseargs():
         help='learning rate to be used in optimizer')
     aa('--lmbda', type=float,
         help='lambda value determines weight of l1-regularization')
+    aa('--lmbda_hierarchical', type=float,
+        help='value determining weight of gaussian regularization on individual weights')
     aa('--temperature', type=float, default=1.,
         help='softmax temperature (beta param) for choice randomness')
     aa('--embed_dim', metavar='D', type=int, default=90,
@@ -138,6 +140,7 @@ def run(
         window_size: int,
         sampling_method: str,
         lmbda: float,
+        lmbda_hierarchical: float,
         lr: float,
         steps: int,
         early_stopping: str = "No",
@@ -151,7 +154,7 @@ def run(
 ):
     # initialise logger and start logging events
     logger = setup_logging(file='avg-ID-jointly.log',
-                           dir=f'./log_files/{id_weights_only}/ndim_{embed_dim}/lmbda_{lmbda}/sparsity_{sparsity}/{use_shuffled_subjects}_subjects', loggername=loggername)
+                           dir=f'./log_files/{id_weights_only}/ndim_{embed_dim}/lmbda_{lmbda}/lmbda_hierarchical_{lmbda_hierarchical}/sparsity_{sparsity}/{use_shuffled_subjects}_subjects', loggername=loggername)
     logger.info("id_weights_only = ", f'{id_weights_only}')
     # load triplets into memory
     train_triplets_ID, test_triplets_ID = ut.load_data_ID(
@@ -178,16 +181,22 @@ def run(
     ###############################
 
     temperature = torch.tensor(temperature).clone().detach()
-    if id_weights_only == "only_weights":
+    if id_weights_only == "only_weights" and sparsity != "items_and_random_ids":
         model = md.SPoSE_ID(
             in_size=n_items_ID, out_size=embed_dim,
             num_participants=n_participants, init_weights=True
         )
+    elif id_weights_only == "only_weights" and sparsity == "items_and_random_ids":
+            model = md.SPoSE_ID_Random(
+                in_size=n_items_ID, out_size=embed_dim,
+                num_participants=n_participants, init_weights=True
+            )
     elif id_weights_only == "weights_and_intercepts":
         model = md.SPoSE_ID_IC(
             in_size=n_items_ID, out_size=embed_dim,
             num_participants=n_participants, init_weights=True
         )
+    
     model.to(device)
     optim = Adam(model.parameters(), lr=lr)
 
@@ -270,14 +279,14 @@ def run(
 
     iter = 0
     results = {}
-    logger.info(f'Optimization started for lambda: {lmbda}\n')
+    logger.info(f'Optimization started for lambda = {lmbda} and hierarchical lambda = {lmbda_hierarchical}\n')
 
     # Early stopping parameters
     patience = 10
     best_val_accuracy = 0.0
     counter = 0
 
-    print(f'Optimization started for lambda: {lmbda}\n')
+    print(f'Optimization started for lambda = {lmbda} and hierarchical lambda = {lmbda_hierarchical}\n')
     for epoch in tqdm(range(start, epochs)):
         model.train()
         batch_llikelihoods = torch.zeros(len(train_batches))
@@ -313,6 +322,13 @@ def run(
                 loss = c_entropy + 0.01 * pos_pen + complexity_loss_avg
             elif sparsity == 'both':
                 loss = c_entropy + 0.01 * pos_pen + complexity_loss_ID + complexity_loss_avg
+            elif sparsity == "items_and_random_ids":
+                # Gaussian loss on individual differences for each dimension
+                # is only computed by random model
+                gaussian_pen = model.hierarchical_loss(id)
+                gaussian_loss = gaussian_pen * lmbda_hierarchical
+                loss = c_entropy + 0.01 * pos_pen + complexity_loss_avg + gaussian_loss
+
             loss.backward()
             optim.step()
             batch_losses_train[i] += loss.item()
@@ -375,7 +391,9 @@ def run(
                 'optim_state_dict': optim.state_dict(),
                 'n_embed': embed_dim,
                 'lambda': lmbda,
+                'lmbda_hierarchical': lmbda_hierarchical,
                 'sparsity': sparsity,
+                'id_weights_only': id_weights_only,
                 'subject_type': use_shuffled_subjects,
                 'loss': loss,
                 'train_losses': train_losses,
@@ -471,6 +489,7 @@ if __name__ == "__main__":
         window_size=args.window_size,
         sampling_method=args.sampling_method,
         lmbda=args.lmbda,
+        lmbda_hierarchical=args.lmbda_hierarchical,
         lr=args.learning_rate,
         steps=args.steps,
         resume=args.resume,

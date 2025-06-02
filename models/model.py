@@ -109,6 +109,40 @@ class SPoSE_ID(nn.Module):
                 m.weight.data.normal_(mean_id, std_id)
 
 
+class SPoSE_ID_Random(nn.Module):
+    def __init__(self, in_size: int, out_size: int, num_participants: int,
+        init_weights: bool = True,):
+        super().__init__()
+        self.in_size = in_size
+        self.out_size = out_size
+        self.fc = nn.Linear(in_size, out_size, bias=False)
+        self.individual_slopes = nn.Embedding(num_participants, out_size)
+
+        # Define learnable global mean & std
+        self.global_mean = nn.Parameter(torch.ones(out_size))
+        self.global_std = nn.Parameter(torch.ones(out_size))
+
+        if init_weights:
+            self._initialize_weights()
+
+    def hierarchical_loss(self, id: torch.Tensor):
+        """Encourage slopes to stay within a normal distribution."""
+        return torch.mean((self.individual_slopes(id) - self.global_mean) ** 2 / (2 * self.global_std**2))
+
+    def forward(self, x: torch.Tensor, id: torch.Tensor):
+        w_i = self.individual_slopes(id)
+        return w_i * self.fc(x)
+
+    def _initialize_weights(self) -> None:
+        mean_avg, std_avg = .1, .01
+        mean_id, std_id = .5, .15
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                m.weight.data.normal_(mean_avg, std_avg)
+            elif isinstance(m, nn.Embedding):
+                m.weight.data.normal_(mean_id, std_id)
+
+
 class SPoSE_ID_IC(nn.Module):
     def __init__(
         self,
