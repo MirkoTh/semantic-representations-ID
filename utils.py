@@ -493,11 +493,13 @@ def accuracy_(probas: torch.Tensor) -> float:
     return acc
 
 
-def choice_accuracy(anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, method: str, distance_metric: str = 'dot') -> float:
-    similarities = compute_similarities(
+
+def choice_accuracy(anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, method: str, distance_metric: str = 'dot', scalingfactors: torch.Tensor = torch.Tensor(1)) -> float:
+    similarities_prep = compute_similarities(
         anchor, positive, negative, method, distance_metric)
-    probas = F.softmax(torch.stack(similarities, dim=-1),
-                       dim=1).detach().cpu().numpy()
+    similarities = torch.stack(similarities_prep, dim=-1)
+    similarities_scaled = similarities/scalingfactors
+    probas = F.softmax(similarities_scaled, dim=1).detach().cpu().numpy()
     return accuracy_(probas)
 
 

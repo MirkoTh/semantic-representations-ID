@@ -10,6 +10,7 @@ import re
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import utils as ut
 
 
 class SPoSE(nn.Module):
@@ -141,6 +142,60 @@ class SPoSE_ID_Random(nn.Module):
                 m.weight.data.normal_(mean_avg, std_avg)
             elif isinstance(m, nn.Embedding):
                 m.weight.data.normal_(mean_id, std_id)
+
+class Scaling_ID(nn.Module):
+    def __init__(
+        self,
+        in_size: int,
+        out_size: int,
+        num_participants: int,
+    ):
+        super(Scaling_ID, self).__init__()
+        self.in_size = in_size
+        self.out_size = out_size
+        self.individual_temps = nn.Embedding(num_participants, 1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.exp(self.individual_temps(x))
+    
+
+
+class CombinedModel(nn.Module):
+    def __init__(
+            self,
+            in_size: int,
+            out_size: int,
+            num_participants: int,
+            init_weights=True,
+    ):
+        super(CombinedModel, self).__init__()
+        self.in_size = in_size
+        self.out_size = out_size
+        self.num_participants = num_participants
+        self.init_weights = init_weights
+        # embedding model with random by-participant dimension weights
+        self.model1 = SPoSE_ID_Random(
+            in_size=self.in_size,
+            out_size=self.out_size, 
+            num_participants=self.num_participants,
+            init_weights=self.init_weights
+        )
+        # freely-varying by-participant softmax temperatures
+        self.model2 = Scaling_ID(
+            in_size=1, 
+            out_size=1, 
+            num_participants=num_participants
+            )
+
+    def forward(self, x, id, distance_metric):
+        x = self.model1(x, id)
+        anchor, positive, negative = torch.unbind(torch.reshape(x, (-1, 3, self.out_size)), dim=1)
+        sims_prep = ut.compute_similarities(anchor, positive, negative, "odd_one_out", distance_metric)
+        sims = torch.stack(sims_prep, dim=-1)
+        temp_scaling = self.model2(id[::3])
+        sims_scaled = sims/temp_scaling
+        loss = torch.mean(-torch.log(F.softmax(sims_scaled, dim=1)[:, 0]))
+        return loss, anchor, positive, negative
 
 
 class SPoSE_ID_IC(nn.Module):
