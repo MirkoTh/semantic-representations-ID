@@ -449,13 +449,16 @@ tbl_bins_samesize <- tbl_ooo_ID_item %>%
     cumprop = cumsum(prop), 
     cumprop_cut = cut(cumprop, seq(0, 1, by = .1)), 
     cumprop_cut_lag = lag(cumprop_cut),
-    cumprop_cut_lag = coalesce(cumprop_cut_lag, cumprop_cut)
+    cumprop_cut_lag = coalesce(cumprop_cut_lag, cumprop_cut),
     )
 tbl_bins_samesize$cumprop_cut_lag <- factor(tbl_bins_samesize$cumprop_cut_lag, labels = 1:10)
+tbl_bins_samesize$cumprop_cut_lag <- as.numeric(str_match(as.character(tbl_bins_samesize$cumprop_cut), ",([0-1]\\.?[0-9]?)")[, 2])
+tbl_bins_samesize <- tbl_bins_samesize %>% group_by(cumprop_cut_lag) %>% mutate(thx_lo = min(n), thx_hi = max(n))
+
 
 # cum_prop is a randomly arranged series of trials, so we can just split at 50%
 tbl_split_half <- tbl_ooo_ID_item %>% group_by(subject_id) %>% mutate(n = n()) %>%
-  left_join(tbl_bins_samesize %>% select(n, cumprop_cut_lag), by = "n") %>%
+  left_join(tbl_bins_samesize %>% select(n, cumprop_cut_lag, thx_lo, thx_hi), by = "n") %>%
   ungroup() %>%
   mutate(half = factor(cum_prop <= .5, labels = c(1, 2)))
 
@@ -464,22 +467,26 @@ write_delim(
   tbl_split_half %>% 
     filter(half == 1) %>%
     select(c("col_0", "col_1", "col_2", "subject_id")), 
-  "data/train_shuffled_90_ID_item.txt", col_names = FALSE
+  "data/splithalf_1_ID_item.txt", col_names = FALSE
 )
 write_delim(
   tbl_split_half %>% 
     filter(half == 2) %>%
     select(c("col_0", "col_1", "col_2", "subject_id")), 
-  "data/test_shuffled_10_ID_item.txt", col_names = FALSE
+  "data/splithalf_2_ID_item.txt", col_names = FALSE
 )
 
 # save a lookup table mapping subject_ids to 10% buckets
 tbl_bucket_lookup <- tbl_split_half %>% group_by(subject_id) %>% 
-  summarize(cumprop_cut_lag = unique(cumprop_cut_lag)) %>%
+  summarize(
+    cumprop_cut_lag = unique(cumprop_cut_lag),
+    thx_lo = unique(thx_lo),
+    thx_hi = unique(thx_hi)
+    ) %>%
   ungroup()
 
-write_delim(tbl_bucket_lookup, "data/splithalf_lookup_bucket.txt", colnames = FALSE)
-
+write_delim(tbl_bucket_lookup, "data/splithalf_lookup_bucket.txt", col_names = FALSE)
+write_csv(tbl_bucket_lookup, "data/splithalf_lookup_bucket.csv", col_names = TRUE, append = FALSE)
 
 
 
