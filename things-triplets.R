@@ -7,8 +7,8 @@ library(R.matlab)
 things_dimension_labels <- R.matlab::readMat("data/labels.mat")
 things_words <- R.matlab::readMat("data/words.mat")
 
-read_delim("data/data1854_batch5_test10.txt", col_names = FALSE)
-tmp <- read_delim("data/spose_embedding_49d_sorted.txt", col_names = FALSE)
+# read_delim("data/data1854_batch5_test10.txt", col_names = FALSE)
+# tmp <- read_delim("data/spose_embedding_49d_sorted.txt", col_names = FALSE)
 
 tbl_labels <- read_delim("data/unique_id.txt", delim = "\\", col_names = FALSE)
 tbl_triplets <- read_delim("data/triplets_large_final_correctednc_correctedorder.csv")
@@ -427,28 +427,58 @@ write_delim(
 
 
 
+# Data Preparation for Split-Half Reliability Analyses --------------------
+
+# 
+tbl_ooo_ID_item %>% count(subject_id) %>% ggplot(aes(n)) + geom_histogram(binwidth = 250) + coord_cartesian(xlim = c(0, 10000))
 
 
+# cumprop_cut_lag gives us 10% buckets of participants.
+# this will allow us to analyze split-half reliability with varying numbers of responses
 
+tbl_bins_samesize <- tbl_ooo_ID_item %>%
+  count(subject_id) %>% 
+  ungroup() %>% 
+  arrange(n)%>% 
+  group_by(n) %>% 
+  count(name = "n_per_ntrials") %>% 
+  ungroup() %>% 
+  mutate(n_tot = sum(n_per_ntrials), prop = n_per_ntrials / n_tot) %>%
+  ungroup() %>%
+  mutate(
+    cumprop = cumsum(prop), 
+    cumprop_cut = cut(cumprop, seq(0, 1, by = .1)), 
+    cumprop_cut_lag = lag(cumprop_cut),
+    cumprop_cut_lag = coalesce(cumprop_cut_lag, cumprop_cut)
+    )
+tbl_bins_samesize$cumprop_cut_lag <- factor(tbl_bins_samesize$cumprop_cut_lag, labels = 1:10)
 
+# cum_prop is a randomly arranged series of trials, so we can just split at 50%
+tbl_split_half <- tbl_ooo_ID_item %>% group_by(subject_id) %>% mutate(n = n()) %>%
+  left_join(tbl_bins_samesize %>% select(n, cumprop_cut_lag), by = "n") %>%
+  ungroup() %>%
+  mutate(half = factor(cum_prop <= .5, labels = c(1, 2)))
 
+# save the two halfs to run the model upon
+write_delim(
+  tbl_split_half %>% 
+    filter(half == 1) %>%
+    select(c("col_0", "col_1", "col_2", "subject_id")), 
+  "data/train_shuffled_90_ID_item.txt", col_names = FALSE
+)
+write_delim(
+  tbl_split_half %>% 
+    filter(half == 2) %>%
+    select(c("col_0", "col_1", "col_2", "subject_id")), 
+  "data/test_shuffled_10_ID_item.txt", col_names = FALSE
+)
 
+# save a lookup table mapping subject_ids to 10% buckets
+tbl_bucket_lookup <- tbl_split_half %>% group_by(subject_id) %>% 
+  summarize(cumprop_cut_lag = unique(cumprop_cut_lag)) %>%
+  ungroup()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+write_delim(tbl_bucket_lookup, "data/splithalf_lookup_bucket.txt", colnames = FALSE)
 
 
 
