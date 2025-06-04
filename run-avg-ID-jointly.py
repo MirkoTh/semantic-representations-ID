@@ -387,10 +387,17 @@ def run(
 
         if (epoch + 1) % steps == 0:
             W = model.model1.fc.weight
-            id_slopes = model.model1.individual_slopes
+            id_slopes = model.model1.individual_slopes.weight
+            id_decision_scaling = model.model2.individual_temps.weight
             np.savetxt(os.path.join(
                 results_dir, f'sparse_embed_epoch{epoch+1:04d}.txt'), W.detach().cpu().numpy())
             logger.info(f'Saving model weights at epoch {epoch+1}')
+            np.savetxt(os.path.join(
+                results_dir, f'individual_slopes{epoch+1:04d}.txt'), id_slopes.detach().cpu().numpy())
+            logger.info(f'Saving individual decision weights at epoch {epoch+1}')
+            np.savetxt(os.path.join(
+                results_dir, f'individual_scalings{epoch+1:04d}.txt'), id_decision_scaling.detach().cpu().numpy())
+            logger.info(f'Saving individual decision scaling factors at epoch {epoch+1}')
 
             # save model and optim parameters for inference or to resume training
             # PyTorch convention is to save checkpoints as .tar files
