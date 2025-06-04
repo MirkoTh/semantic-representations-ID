@@ -760,15 +760,17 @@ def validation(
             elif level_explanation == "ID":
                 b = batch[0].to(device)
                 id = batch[1].to(device)
-                logits = model(b, id)
-            anchor, positive, negative = torch.unbind(
-                torch.reshape(logits, (-1, 3, logits.shape[-1])), dim=1)
-
+                c_entropy, anchor, positive, negative = model(b, id, distance_metric)
+            # anchor, positive, negative = torch.unbind(
+            #     torch.reshape(logits, (-1, 3, logits.shape[-1])), dim=1)
+            temp_scaling = model.model2(id[::3])
             if sampling:
-                similarities = compute_similarities(
+                sims_prep = compute_similarities(
                     anchor, positive, negative, task, distance_metric)
-                probas = F.softmax(torch.stack(
-                    similarities, dim=-1), dim=1).numpy()
+                sims = torch.stack(sims_prep, dim=-1)
+                
+                sims_scaled = sims/temp_scaling
+                probas = F.softmax(sims_scaled, dim=1).numpy()
                 probas = probas[:, ::-1]
                 human_choices = batch.nonzero(
                     as_tuple=True)[-1].view(batch_size, -1).numpy()
@@ -776,9 +778,8 @@ def validation(
                                          ::-1] for h_choice, p in zip(human_choices, probas)])
                 sampled_choices[j*batch_size:(j+1)*batch_size] += model_choices
             else:
-                val_loss = trinomial_loss(
-                    anchor, positive, negative, task, temperature)
-                val_acc = choice_accuracy(anchor, positive, negative, task)
+                val_loss = c_entropy
+                val_acc = choice_accuracy(anchor, positive, negative, task, distance_metric, scalingfactors=temp_scaling)
 
             batch_losses_val[j] += val_loss.item()
             batch_accs_val[j] += val_acc

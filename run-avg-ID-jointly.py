@@ -319,6 +319,7 @@ def run(
                 device)  # L1-norm to enforce sparsity (many 0s)
             W = model.model1.fc.weight
             Bs = model.model1.individual_slopes.weight
+            temperature = model.model2(id[::3])
             # positivity constraint to enforce non-negative values in embedding matrix
             # pos_pen = torch.sum(F.relu(-W))
             pos_pen = torch.sum(
@@ -344,7 +345,7 @@ def run(
             # batch_closses_ID[i] += complexity_loss_ID.item()
             batch_closses_avg[i] += complexity_loss_avg.item()
             batch_accs_train[i] += ut.choice_accuracy(
-                anchor, positive, negative, task, distance_metric)
+                anchor, positive, negative, task, distance_metric, scalingfactors=temperature)
             iter += 1
 
         avg_llikelihood = torch.mean(batch_llikelihoods).item()

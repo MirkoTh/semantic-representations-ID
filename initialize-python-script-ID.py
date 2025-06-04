@@ -8,8 +8,8 @@ base_dict = {
     'rnd_seed': 852,
     'triplets_dir': './data/',
     "task": "odd_one_out",
-    "epochs": 2,
-    "steps": 2,
+    "epochs": 100,
+    "steps": 25,
     "device": "cpu"  # "cuda:0"
 }
 
@@ -20,9 +20,9 @@ base_dict = {
 # sparsity_list = ["ID", "both"]
 
 lmbda_list = [0.0005]
-lmbda_hierarchical_list = [.01]
-embed_dim_list = [5] #15
-sparsity_list = ["both"] #, "both"
+lmbda_hierarchical_list = [.01, .1, 1]
+embed_dim_list = [15] #15
+sparsity_list = ["items_and_random_ids"] #, "both"
 learning_rate_list = [0.0005]
 modeltype_list = ["random_weights_free_scaling"]
 
@@ -76,5 +76,5 @@ def run_command(args):
 for args in arg_combinations:
     run_command(args)
 # Use ThreadPoolExecutor to run the commands in parallel
-# with ThreadPoolExecutor(max_workers=2) as executor:
-#     executor.map(run_command, arg_combinations)
+#with ThreadPoolExecutor(max_workers=3) as executor:
+#    executor.map(run_command, arg_combinations)
