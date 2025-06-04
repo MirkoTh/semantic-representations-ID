@@ -292,7 +292,7 @@ def load_data(device: torch.device, triplets_dir: str, inference: bool = False) 
     return train_triplets, test_triplets
 
 
-def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = False, testcase: bool = False, use_shuffled_subjects: str = "actual") -> Tuple[torch.Tensor]:
+def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = False, testcase: bool = False, use_shuffled_subjects: str = "actual", splithalf: str = "no") -> Tuple[torch.Tensor]:
     """load train and test triplet datasets with associated participant ID into memory"""
     if inference:
         with open(pjoin(triplets_dir, 'test_triplets_ID.npy'), 'rb') as test_triplets:
@@ -310,22 +310,33 @@ def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = Fals
     except FileNotFoundError:
         print('\n...Could not find any .npy files for current modality.')
         print('...Now searching for .txt files.\n')
-        if testcase:
+        if splithalf == "no":
+            if testcase:
+                train_triplets = torch.from_numpy(np.loadtxt(
+                    pjoin(triplets_dir, 'train_90_ID_smallsample.txt'))).to(device).type(torch.LongTensor)
+                test_triplets = torch.from_numpy(np.loadtxt(
+                    pjoin(triplets_dir, 'test_10_ID_smallsample.txt'))).to(device).type(torch.LongTensor)
+            elif testcase == False:
+                if use_shuffled_subjects == "actual":
+                    train_triplets = torch.from_numpy(np.loadtxt(
+                        pjoin(triplets_dir, 'train_90_ID_item.txt'))).to(device).type(torch.LongTensor)
+                    test_triplets = torch.from_numpy(np.loadtxt(
+                        pjoin(triplets_dir, 'test_10_ID_item.txt'))).to(device).type(torch.LongTensor)
+                elif use_shuffled_subjects == "shuffled":
+                    train_triplets = torch.from_numpy(np.loadtxt(
+                        pjoin(triplets_dir, 'train_shuffled_90_ID_item.txt'))).to(device).type(torch.LongTensor)
+                    test_triplets = torch.from_numpy(np.loadtxt(
+                        pjoin(triplets_dir, 'test_shuffled_10_ID_item.txt'))).to(device).type(torch.LongTensor)
+        elif splithalf == "1":
             train_triplets = torch.from_numpy(np.loadtxt(
-                pjoin(triplets_dir, 'train_90_ID_smallsample.txt'))).to(device).type(torch.LongTensor)
+                pjoin(triplets_dir, 'splithalf_1_ID_item.txt'))).to(device).type(torch.LongTensor)
             test_triplets = torch.from_numpy(np.loadtxt(
-                pjoin(triplets_dir, 'test_10_ID_smallsample.txt'))).to(device).type(torch.LongTensor)
-        elif testcase == False:
-            if use_shuffled_subjects == "actual":
-                train_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'train_90_ID_item.txt'))).to(device).type(torch.LongTensor)
-                test_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'test_10_ID_item.txt'))).to(device).type(torch.LongTensor)
-            elif use_shuffled_subjects == "shuffled":
-                train_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'train_shuffled_90_ID_item.txt'))).to(device).type(torch.LongTensor)
-                test_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'test_shuffled_10_ID_item.txt'))).to(device).type(torch.LongTensor)
+                pjoin(triplets_dir, 'splithalf_2_ID_item.txt'))).to(device).type(torch.LongTensor)
+        elif splithalf == "2":
+            train_triplets = torch.from_numpy(np.loadtxt(
+                pjoin(triplets_dir, 'splithalf_2_ID_item.txt'))).to(device).type(torch.LongTensor)
+            test_triplets = torch.from_numpy(np.loadtxt(
+                pjoin(triplets_dir, 'splithalf_1_ID_item.txt'))).to(device).type(torch.LongTensor)
 
     return train_triplets, test_triplets
 

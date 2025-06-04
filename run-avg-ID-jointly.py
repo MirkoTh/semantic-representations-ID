@@ -97,8 +97,10 @@ def parseargs():
        help='number of threads used by PyTorch multiprocessing')
     aa('--use_shuffled_subjects', type=str, default='actual',
         choices=['actual', 'shuffled'], help='actual subjects or subjects with randomly shuffled trials from all subjects')
-    aa('--sparsity', type=str, default='both',
-        choices=['both', 'items'], help='sparsity only on item representations or also on dimensional weights. note that default is agreemnt to average, but few may disagree')
+    aa('--sparsity', type=str, 
+        choices=['both', 'items', 'items_and_random_ids'], help='sparsity constraint setting')
+    aa('--splithalf', type=str, 
+        choices=['firsthalf', 'secondhalf', 'no'], help='use first or second half of trials or use default train test split')
     args = parser.parse_args()
     return args
 
@@ -150,15 +152,16 @@ def run(
         distance_metric: str = 'dot',
         temperature: float = 1.,
         use_shuffled_subjects: str = 'actual',
-        sparsity: str = "both"
+        sparsity: str = "both",
+        splithalf: str = "no"
 ):
     # initialise logger and start logging events
     logger = setup_logging(file='avg-ID-jointly.log',
-                           dir=f'./log_files/{modeltype}/ndim_{embed_dim}/lmbda_{lmbda}/lmbda_hierarchical_{lmbda_hierarchical}/sparsity_{sparsity}/{use_shuffled_subjects}_subjects', loggername=loggername)
+                           dir=f'./log_files/{modeltype}/splithalf_{splithalf}/ndim_{embed_dim}/lmbda_{lmbda}/lmbda_hierarchical_{lmbda_hierarchical}/sparsity_{sparsity}/{use_shuffled_subjects}_subjects', loggername=loggername)
     logger.info("modeltype = ", f'{modeltype}')
     # load triplets into memory
     train_triplets_ID, test_triplets_ID = ut.load_data_ID(
-        device=device, triplets_dir=triplets_dir, testcase=False, use_shuffled_subjects=use_shuffled_subjects)
+        device=device, triplets_dir=triplets_dir, testcase=False, use_shuffled_subjects=use_shuffled_subjects, splithalf=splithalf)
     n_items_ID = ut.get_nitems(train_triplets_ID)
     logger.info("n_items = " + str(n_items_ID))
 
@@ -212,13 +215,13 @@ def run(
     logger.info(f'...Creating PATHs')
     if results_dir == './results/':
         results_dir = os.path.join(
-            results_dir, "avg-ID-jointly", f'modeltype_{modeltype}', f'{embed_dim}d', str(lmbda), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
+            results_dir, "avg-ID-jointly", f'modeltype_{modeltype}', f'splithalf_{splithalf}', f'{embed_dim}d', str(lmbda), str(lmbda_hierarchical), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
     if plots_dir == './plots/':
         plots_dir = os.path.join(
-            plots_dir, "avg-ID-jointly", f'modeltype_{modeltype}', f'{embed_dim}d', str(lmbda), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
+            plots_dir, "avg-ID-jointly", f'modeltype_{modeltype}', f'splithalf_{splithalf}', f'{embed_dim}d', str(lmbda), str(lmbda_hierarchical), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
     if not os.path.exists(plots_dir):
         os.makedirs(plots_dir)
 
@@ -514,5 +517,6 @@ if __name__ == "__main__":
         temperature=args.temperature,
         early_stopping=args.early_stopping,
         use_shuffled_subjects=args.use_shuffled_subjects,
-        sparsity=args.sparsity
+        sparsity=args.sparsity,
+        splithalf=args.splithalf
     )
