@@ -14,12 +14,12 @@ base_dict = {
 }
 
 lmbda_list = [0.0005]
-lmbda_hierarchical_list = [.0005, .01, 1]
+lmbda_hierarchical_list = [.0005, .1]
 embed_dim_list = [15] #15
 sparsity_list = ["items_and_random_ids"] #, "both"
 learning_rate_list = [0.0005]
 modeltype_list = ["random_weights_free_scaling"]
-splithalf_list = ["1", "2", "no"]
+splithalf_list = ["no"] #"1", "2", 
 python_file_embeddings_decision_list = ["run-avg-ID-jointly-embeddings-decision.py"]
 
 # Generate all combinations
@@ -71,8 +71,8 @@ def run_command(args):
     #
 
 
-for args in arg_combinations:
-    run_command(args)
+# for args in arg_combinations:
+#     run_command(args)
 # Use ThreadPoolExecutor to run the commands in parallel
-#with ThreadPoolExecutor(max_workers=3) as executor:
-#    executor.map(run_command, arg_combinations)
+with ThreadPoolExecutor(max_workers=2) as executor:
+    executor.map(run_command, arg_combinations)

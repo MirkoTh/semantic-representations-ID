@@ -52,7 +52,7 @@ def parseargs():
        help='name of the logger to be used')
     aa('--triplets_dir', type=str,
         help='directory from where to load triplets')
-    aa('--modeltype', type=str, default="only_weights",
+    aa('--modeltype', type=str, default="free_weights",
         choices=["free_weights", "free_weights_free_intercepts", "random_weights"], help='only by-participant slopes or by-participant intercepts as well')
     aa('--results_dir', type=str, default='./results/',
         help='optional specification of results directory (if not provided will resort to ./results/lambda/rnd_seed/)')
@@ -158,10 +158,11 @@ def run(
     # initialise logger and start logging events
     logger = setup_logging(file='avg-ID-jointly-embeddings.log',
                            dir=f'./log_files/{modeltype}/splithalf_{splithalf}/ndim_{embed_dim}/lmbda_{lmbda}/lmbda_hierarchical_{lmbda_hierarchical}/sparsity_{sparsity}/{use_shuffled_subjects}_subjects', loggername=loggername)
-    logger.info("modeltype = ", f'{modeltype}')
+    logger.info(f"modeltype = {modeltype}")
+
     # load triplets into memory
     train_triplets_ID, test_triplets_ID = ut.load_data_ID(
-        device=device, triplets_dir=triplets_dir, testcase=False, use_shuffled_subjects=use_shuffled_subjects, splithalf=splithalf)
+        device=device, triplets_dir=triplets_dir, testcase=True, use_shuffled_subjects=use_shuffled_subjects, splithalf=splithalf)
     n_items_ID = ut.get_nitems(train_triplets_ID)
     logger.info("n_items = " + str(n_items_ID))
 
@@ -359,7 +360,7 @@ def run(
         ################################################
 
         avg_val_loss, avg_val_acc = ut.validation(
-            model, val_batches, task, device, level_explanation="ID")
+            model, val_batches, task, device, level_explanation="ID", modeltype=modeltype)
         val_losses.append(avg_val_loss)
         val_accs.append(avg_val_acc)
 

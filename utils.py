@@ -758,6 +758,7 @@ def validation(
     batch_size=None,
     distance_metric: str = 'dot',
     level_explanation="avg",
+    modeltype="free_weights"
 ):
     if sampling:
         assert isinstance(batch_size, int), 'batch size must be defined'
@@ -765,6 +766,7 @@ def validation(
             (int(len(val_batches) * batch_size), 3), dtype=int)
 
     temperature = torch.tensor(1.).to(device)
+    temp_scaling = torch.tensor(1.).to(device)
     model.eval()
     with torch.no_grad():
         batch_losses_val = torch.zeros(len(val_batches))
@@ -773,13 +775,25 @@ def validation(
             if level_explanation == 'avg':
                 batch = batch.to(device)
                 logits = model(batch)
+                anchor, positive, negative = torch.unbind(
+                    torch.reshape(logits, (-1, 3, logits.shape[-1])), dim=1)
+                c_entropy = trinomial_loss(anchor, positive, negative, task, temperature, distance_metric)
+            
             elif level_explanation == "ID":
-                b = batch[0].to(device)
-                id = batch[1].to(device)
-                c_entropy, anchor, positive, negative = model(b, id, distance_metric)
-            # anchor, positive, negative = torch.unbind(
-            #     torch.reshape(logits, (-1, 3, logits.shape[-1])), dim=1)
-            temp_scaling = model.model2(id[::3])
+                if modeltype == "random_weights_free_scaling":
+                    b = batch[0].to(device)
+                    id = batch[1].to(device)
+                    c_entropy, anchor, positive, negative = model(b, id, distance_metric)
+                    temp_scaling = model.model2(id[::3])
+                else:
+                    b = batch[0].to(device)
+                    id = batch[1].to(device)
+                    logits = model(b, id)
+                    anchor, positive, negative = torch.unbind(
+                            torch.reshape(logits, (-1, 3, logits.shape[-1])), dim=1)
+                    c_entropy = trinomial_loss(anchor, positive, negative, task, temperature, distance_metric)
+            
+            
             if sampling:
                 sims_prep = compute_similarities(
                     anchor, positive, negative, task, distance_metric)
