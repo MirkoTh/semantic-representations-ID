@@ -53,7 +53,7 @@ def parseargs():
     aa('--triplets_dir', type=str,
         help='directory from where to load triplets')
     aa('--modeltype', type=str, default="only_weights",
-        choices=["free_weights", "free_weights_free_intercepts", "random_weights", "random_weights_free_scaling"], help='only by-participant slopes or by-participant intercepts as well')
+        choices=["free_weights", "free_weights_free_intercepts", "random_weights"], help='only by-participant slopes or by-participant intercepts as well')
     aa('--results_dir', type=str, default='./results/',
         help='optional specification of results directory (if not provided will resort to ./results/lambda/rnd_seed/)')
     aa('--plots_dir', type=str, default='./plots/',
@@ -156,7 +156,7 @@ def run(
         splithalf: str = "no"
 ):
     # initialise logger and start logging events
-    logger = setup_logging(file='avg-ID-jointly.log',
+    logger = setup_logging(file='avg-ID-jointly-embeddings.log',
                            dir=f'./log_files/{modeltype}/splithalf_{splithalf}/ndim_{embed_dim}/lmbda_{lmbda}/lmbda_hierarchical_{lmbda_hierarchical}/sparsity_{sparsity}/{use_shuffled_subjects}_subjects', loggername=loggername)
     logger.info("modeltype = ", f'{modeltype}')
     # load triplets into memory
@@ -199,11 +199,8 @@ def run(
             in_size=n_items_ID, out_size=embed_dim,
             num_participants=n_participants, init_weights=True
         )
-    elif modeltype == "random_weights_free_scaling":
-        model = md.CombinedModel(
-            in_size=n_items_ID, out_size=embed_dim,
-            num_participants=n_participants, init_weights=True
-        )
+    else:
+        exit()
     
     model.to(device)
     optim = Adam(model.parameters(), lr=lr)
@@ -215,13 +212,13 @@ def run(
     logger.info(f'...Creating PATHs')
     if results_dir == './results/':
         results_dir = os.path.join(
-            results_dir, "avg-ID-jointly", f'modeltype_{modeltype}', f'splithalf_{splithalf}', f'{embed_dim}d', str(lmbda), str(lmbda_hierarchical), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
+            results_dir, "avg-ID-jointly-embeddings", f'modeltype_{modeltype}', f'splithalf_{splithalf}', f'{embed_dim}d', str(lmbda), str(lmbda_hierarchical), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
     if plots_dir == './plots/':
         plots_dir = os.path.join(
-            plots_dir, "avg-ID-jointly", f'modeltype_{modeltype}', f'splithalf_{splithalf}', f'{embed_dim}d', str(lmbda), str(lmbda_hierarchical), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
+            plots_dir, "avg-ID-jointly-embeddings", f'modeltype_{modeltype}', f'splithalf_{splithalf}', f'{embed_dim}d', str(lmbda), str(lmbda_hierarchical), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
     if not os.path.exists(plots_dir):
         os.makedirs(plots_dir)
 
@@ -306,13 +303,11 @@ def run(
             optim.zero_grad()  # zero out gradients
             b = batch[0].to(device)
             id = batch[1].to(device)
-            # logits = model(b, id)
-            # anchor, positive, negative = torch.unbind(
-            #     torch.reshape(logits, (-1, 3, embed_dim)), dim=1)
-            # c_entropy = ut.trinomial_loss(
-            #     anchor, positive, negative, task, temperature, distance_metric)
-
-            c_entropy, anchor, positive, negative = model(b, id, distance_metric)
+            logits = model(b, id)
+            anchor, positive, negative = torch.unbind(
+                torch.reshape(logits, (-1, 3, embed_dim)), dim=1)
+            c_entropy = ut.trinomial_loss(
+                anchor, positive, negative, task, temperature, distance_metric) 
 
             # few-dimensional representations of the items
             l1_pen_avg = md.l1_regularization(model, "fc.weight", agreement="few").to(
@@ -320,11 +315,9 @@ def run(
             # mostly agreement with item reps, but few dimensions may be downweighted
             l1_pen_ID = md.l1_regularization(model, "individual_", agreement="most").to(
                 device)  # L1-norm to enforce sparsity (many 0s)
-            W = model.model1.fc.weight
-            Bs = model.model1.individual_slopes.weight
-            temperature = model.model2(id[::3])
-            # positivity constraint to enforce non-negative values in embedding matrix
-            # pos_pen = torch.sum(F.relu(-W))
+            W = model.fc.weight
+            Bs = model.individual_slopes.weight
+            # positivity constraint to enforce non-negative values in embedding and decision weight matrices
             pos_pen = torch.sum(
                 F.relu(-W)) + torch.sum(F.relu(-Bs))
             complexity_loss_avg = (lmbda/n_items_ID) * l1_pen_avg
@@ -337,7 +330,7 @@ def run(
             elif sparsity == "items_and_random_ids":
                 # Gaussian loss on individual differences for each dimension
                 # is only computed by random model
-                gaussian_pen = model.model1.hierarchical_loss(id)
+                gaussian_pen = model.hierarchical_loss(id)
                 gaussian_loss = gaussian_pen * lmbda_hierarchical
                 loss = c_entropy + 0.01 * pos_pen + complexity_loss_avg + gaussian_loss
 
@@ -389,18 +382,14 @@ def run(
             print("========================================================================================================\n")
 
         if (epoch + 1) % steps == 0:
-            W = model.model1.fc.weight
-            id_slopes = model.model1.individual_slopes.weight
-            id_decision_scaling = model.model2.individual_temps.weight
+            W = model.fc.weight
+            id_slopes = model.individual_slopes.weight
             np.savetxt(os.path.join(
                 results_dir, f'sparse_embed_epoch{epoch+1:04d}.txt'), W.detach().cpu().numpy())
             logger.info(f'Saving model weights at epoch {epoch+1}')
             np.savetxt(os.path.join(
                 results_dir, f'individual_slopes{epoch+1:04d}.txt'), id_slopes.detach().cpu().numpy())
             logger.info(f'Saving individual decision weights at epoch {epoch+1}')
-            np.savetxt(os.path.join(
-                results_dir, f'individual_scalings{epoch+1:04d}.txt'), id_decision_scaling.detach().cpu().numpy())
-            logger.info(f'Saving individual decision scaling factors at epoch {epoch+1}')
 
             # save model and optim parameters for inference or to resume training
             # PyTorch convention is to save checkpoints as .tar files
@@ -440,13 +429,9 @@ def run(
                 logger.info(f"Early stopping at epoch {epoch}")
                 break
 
-            # lmres = linregress(range(window_size), train_losses[(
-            #     epoch + 1 - window_size):(epoch + 2)])
-            # if (lmres.slope > 0) or (lmres.pvalue > .1):
-            #     break
 
     # save final model weights
-    ut.save_weights_(results_dir, model.model1.fc.weight)
+    ut.save_weights_(results_dir, model.fc.weight)
     results = {'epoch': len(
         train_accs), 'train_acc': train_accs[-1], 'val_acc': val_accs[-1], 'val_loss': val_losses[-1]}
     logger.info(
