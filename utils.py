@@ -456,8 +456,13 @@ def softmax(sims: tuple, t: torch.Tensor) -> torch.Tensor:
 
 def cross_entropy_loss(sims: tuple, t: torch.Tensor) -> torch.Tensor:
     return torch.mean(-torch.log(F.softmax(torch.stack(sims, dim=-1), dim=1)[:, 0]))
+    #return torch.mean(-F.log_sotmax(torch.stack(sims, dim=-1)/t, dim=1)[:, 0])
     # replaced by torch softmax function with temperature == 1 to avoid Nan values
     # return torch.mean(-torch.log(softmax(sims, t)))
+
+def temperature_softmax(logits, temperature=1.0, dim=-1):
+    return F.softmax(logits / temperature, dim=dim)
+
 
 
 def compute_similarities(anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, method: str, distance_metric: str = 'dot') -> Tuple:
