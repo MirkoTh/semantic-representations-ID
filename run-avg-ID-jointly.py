@@ -52,8 +52,8 @@ def parseargs():
        help='name of the logger to be used')
     aa('--triplets_dir', type=str,
         help='directory from where to load triplets')
-    aa('--id_weights_only', type=str, default="only_weights",
-        choices=["only_weights", "weights_and_intercepts"], help='only by-participant slopes or by-participant intercepts as well')
+    aa('--modeltype', type=str, default="only_weights",
+        choices=["free_weights", "free_weights_free_intercepts", "random_weights", "random_weights_free_scaling"], help='only by-participant slopes or by-participant intercepts as well')
     aa('--results_dir', type=str, default='./results/',
         help='optional specification of results directory (if not provided will resort to ./results/lambda/rnd_seed/)')
     aa('--plots_dir', type=str, default='./plots/',
@@ -62,6 +62,8 @@ def parseargs():
         help='learning rate to be used in optimizer')
     aa('--lmbda', type=float,
         help='lambda value determines weight of l1-regularization')
+    aa('--lmbda_hierarchical', type=float,
+        help='value determining weight of gaussian regularization on individual weights')
     aa('--temperature', type=float, default=1.,
         help='softmax temperature (beta param) for choice randomness')
     aa('--embed_dim', metavar='D', type=int, default=90,
@@ -95,8 +97,10 @@ def parseargs():
        help='number of threads used by PyTorch multiprocessing')
     aa('--use_shuffled_subjects', type=str, default='actual',
         choices=['actual', 'shuffled'], help='actual subjects or subjects with randomly shuffled trials from all subjects')
-    aa('--sparsity', type=str, default='both',
-        choices=['both', 'items'], help='sparsity only on item representations or also on dimensional weights. note that default is agreemnt to average, but few may disagree')
+    aa('--sparsity', type=str, 
+        choices=['both', 'items', 'items_and_random_ids'], help='sparsity constraint setting')
+    aa('--splithalf', type=str, 
+        choices=['firsthalf', 'secondhalf', 'no'], help='use first or second half of trials or use default train test split')
     args = parser.parse_args()
     return args
 
@@ -130,7 +134,7 @@ def run(
         results_dir: str,
         plots_dir: str,
         triplets_dir: str,
-        id_weights_only: str,
+        modeltype: str,
         device: torch.device,
         batch_size: int,
         embed_dim: int,
@@ -138,6 +142,7 @@ def run(
         window_size: int,
         sampling_method: str,
         lmbda: float,
+        lmbda_hierarchical: float,
         lr: float,
         steps: int,
         early_stopping: str = "No",
@@ -147,15 +152,16 @@ def run(
         distance_metric: str = 'dot',
         temperature: float = 1.,
         use_shuffled_subjects: str = 'actual',
-        sparsity: str = "both"
+        sparsity: str = "both",
+        splithalf: str = "no"
 ):
     # initialise logger and start logging events
     logger = setup_logging(file='avg-ID-jointly.log',
-                           dir=f'./log_files/{id_weights_only}/ndim_{embed_dim}/lmbda_{lmbda}/sparsity_{sparsity}/{use_shuffled_subjects}_subjects', loggername=loggername)
-    logger.info("id_weights_only = ", f'{id_weights_only}')
+                           dir=f'./log_files/{modeltype}/splithalf_{splithalf}/ndim_{embed_dim}/lmbda_{lmbda}/lmbda_hierarchical_{lmbda_hierarchical}/sparsity_{sparsity}/{use_shuffled_subjects}_subjects', loggername=loggername)
+    logger.info("modeltype = ", f'{modeltype}')
     # load triplets into memory
     train_triplets_ID, test_triplets_ID = ut.load_data_ID(
-        device=device, triplets_dir=triplets_dir, testcase=False, use_shuffled_subjects=use_shuffled_subjects)
+        device=device, triplets_dir=triplets_dir, testcase=False, use_shuffled_subjects=use_shuffled_subjects, splithalf=splithalf)
     n_items_ID = ut.get_nitems(train_triplets_ID)
     logger.info("n_items = " + str(n_items_ID))
 
@@ -178,16 +184,27 @@ def run(
     ###############################
 
     temperature = torch.tensor(temperature).clone().detach()
-    if id_weights_only == "only_weights":
+    if modeltype == "free_weights":
         model = md.SPoSE_ID(
             in_size=n_items_ID, out_size=embed_dim,
             num_participants=n_participants, init_weights=True
         )
-    elif id_weights_only == "weights_and_intercepts":
+    elif modeltype == "random_weights":
+            model = md.SPoSE_ID_Random(
+                in_size=n_items_ID, out_size=embed_dim,
+                num_participants=n_participants, init_weights=True
+            )
+    elif modeltype == "free_weights_free_intercepts":
         model = md.SPoSE_ID_IC(
             in_size=n_items_ID, out_size=embed_dim,
             num_participants=n_participants, init_weights=True
         )
+    elif modeltype == "random_weights_free_scaling":
+        model = md.CombinedModel(
+            in_size=n_items_ID, out_size=embed_dim,
+            num_participants=n_participants, init_weights=True
+        )
+    
     model.to(device)
     optim = Adam(model.parameters(), lr=lr)
 
@@ -198,13 +215,13 @@ def run(
     logger.info(f'...Creating PATHs')
     if results_dir == './results/':
         results_dir = os.path.join(
-            results_dir, "avg-ID-jointly", f'weightsonly_{id_weights_only}', f'{embed_dim}d', str(lmbda), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
+            results_dir, "avg-ID-jointly", f'modeltype_{modeltype}', f'splithalf_{splithalf}', f'{embed_dim}d', str(lmbda), str(lmbda_hierarchical), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
     if plots_dir == './plots/':
         plots_dir = os.path.join(
-            plots_dir, "avg-ID-jointly", f'weightsonly_{id_weights_only}', f'{embed_dim}d', str(lmbda), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
+            plots_dir, "avg-ID-jointly", f'modeltype_{modeltype}', f'splithalf_{splithalf}', f'{embed_dim}d', str(lmbda), str(lmbda_hierarchical), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
     if not os.path.exists(plots_dir):
         os.makedirs(plots_dir)
 
@@ -270,14 +287,14 @@ def run(
 
     iter = 0
     results = {}
-    logger.info(f'Optimization started for lambda: {lmbda}\n')
+    logger.info(f'Optimization started for lambda = {lmbda} and hierarchical lambda = {lmbda_hierarchical}\n')
 
     # Early stopping parameters
     patience = 10
     best_val_accuracy = 0.0
     counter = 0
 
-    print(f'Optimization started for lambda: {lmbda}\n')
+    print(f'Optimization started for lambda = {lmbda} and hierarchical lambda = {lmbda_hierarchical}\n')
     for epoch in tqdm(range(start, epochs)):
         model.train()
         batch_llikelihoods = torch.zeros(len(train_batches))
@@ -289,19 +306,23 @@ def run(
             optim.zero_grad()  # zero out gradients
             b = batch[0].to(device)
             id = batch[1].to(device)
-            logits = model(b, id)
-            anchor, positive, negative = torch.unbind(
-                torch.reshape(logits, (-1, 3, embed_dim)), dim=1)
-            c_entropy = ut.trinomial_loss(
-                anchor, positive, negative, task, temperature, distance_metric)
+            # logits = model(b, id)
+            # anchor, positive, negative = torch.unbind(
+            #     torch.reshape(logits, (-1, 3, embed_dim)), dim=1)
+            # c_entropy = ut.trinomial_loss(
+            #     anchor, positive, negative, task, temperature, distance_metric)
+
+            c_entropy, anchor, positive, negative = model(b, id, distance_metric)
+
             # few-dimensional representations of the items
             l1_pen_avg = md.l1_regularization(model, "fc.weight", agreement="few").to(
                 device)  # L1-norm to enforce sparsity (many 0s)
             # mostly agreement with item reps, but few dimensions may be downweighted
             l1_pen_ID = md.l1_regularization(model, "individual_", agreement="most").to(
                 device)  # L1-norm to enforce sparsity (many 0s)
-            W = model.fc.weight
-            Bs = model.individual_slopes.weight
+            W = model.model1.fc.weight
+            Bs = model.model1.individual_slopes.weight
+            temperature = model.model2(id[::3])
             # positivity constraint to enforce non-negative values in embedding matrix
             # pos_pen = torch.sum(F.relu(-W))
             pos_pen = torch.sum(
@@ -313,6 +334,13 @@ def run(
                 loss = c_entropy + 0.01 * pos_pen + complexity_loss_avg
             elif sparsity == 'both':
                 loss = c_entropy + 0.01 * pos_pen + complexity_loss_ID + complexity_loss_avg
+            elif sparsity == "items_and_random_ids":
+                # Gaussian loss on individual differences for each dimension
+                # is only computed by random model
+                gaussian_pen = model.model1.hierarchical_loss(id)
+                gaussian_loss = gaussian_pen * lmbda_hierarchical
+                loss = c_entropy + 0.01 * pos_pen + complexity_loss_avg + gaussian_loss
+
             loss.backward()
             optim.step()
             batch_losses_train[i] += loss.item()
@@ -320,7 +348,7 @@ def run(
             # batch_closses_ID[i] += complexity_loss_ID.item()
             batch_closses_avg[i] += complexity_loss_avg.item()
             batch_accs_train[i] += ut.choice_accuracy(
-                anchor, positive, negative, task, distance_metric)
+                anchor, positive, negative, task, distance_metric, scalingfactors=temperature)
             iter += 1
 
         avg_llikelihood = torch.mean(batch_llikelihoods).item()
@@ -361,11 +389,18 @@ def run(
             print("========================================================================================================\n")
 
         if (epoch + 1) % steps == 0:
-            W = model.fc.weight
-            id_slopes = model.individual_slopes
+            W = model.model1.fc.weight
+            id_slopes = model.model1.individual_slopes.weight
+            id_decision_scaling = model.model2.individual_temps.weight
             np.savetxt(os.path.join(
                 results_dir, f'sparse_embed_epoch{epoch+1:04d}.txt'), W.detach().cpu().numpy())
             logger.info(f'Saving model weights at epoch {epoch+1}')
+            np.savetxt(os.path.join(
+                results_dir, f'individual_slopes{epoch+1:04d}.txt'), id_slopes.detach().cpu().numpy())
+            logger.info(f'Saving individual decision weights at epoch {epoch+1}')
+            np.savetxt(os.path.join(
+                results_dir, f'individual_scalings{epoch+1:04d}.txt'), id_decision_scaling.detach().cpu().numpy())
+            logger.info(f'Saving individual decision scaling factors at epoch {epoch+1}')
 
             # save model and optim parameters for inference or to resume training
             # PyTorch convention is to save checkpoints as .tar files
@@ -375,7 +410,9 @@ def run(
                 'optim_state_dict': optim.state_dict(),
                 'n_embed': embed_dim,
                 'lambda': lmbda,
+                'lmbda_hierarchical': lmbda_hierarchical,
                 'sparsity': sparsity,
+                'modeltype': modeltype,
                 'subject_type': use_shuffled_subjects,
                 'loss': loss,
                 'train_losses': train_losses,
@@ -409,7 +446,7 @@ def run(
             #     break
 
     # save final model weights
-    ut.save_weights_(results_dir, model.fc.weight)
+    ut.save_weights_(results_dir, model.model1.fc.weight)
     results = {'epoch': len(
         train_accs), 'train_acc': train_accs[-1], 'val_acc': val_accs[-1], 'val_loss': val_losses[-1]}
     logger.info(
@@ -461,7 +498,7 @@ if __name__ == "__main__":
         loggername=args.loggername,
         rnd_seed=args.rnd_seed,
         results_dir=args.results_dir,
-        id_weights_only=args.id_weights_only,
+        modeltype=args.modeltype,
         plots_dir=args.plots_dir,
         triplets_dir=args.triplets_dir,
         device=device,
@@ -471,6 +508,7 @@ if __name__ == "__main__":
         window_size=args.window_size,
         sampling_method=args.sampling_method,
         lmbda=args.lmbda,
+        lmbda_hierarchical=args.lmbda_hierarchical,
         lr=args.learning_rate,
         steps=args.steps,
         resume=args.resume,
@@ -479,5 +517,6 @@ if __name__ == "__main__":
         temperature=args.temperature,
         early_stopping=args.early_stopping,
         use_shuffled_subjects=args.use_shuffled_subjects,
-        sparsity=args.sparsity
+        sparsity=args.sparsity,
+        splithalf=args.splithalf
     )

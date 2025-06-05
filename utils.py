@@ -292,7 +292,7 @@ def load_data(device: torch.device, triplets_dir: str, inference: bool = False) 
     return train_triplets, test_triplets
 
 
-def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = False, testcase: bool = False, use_shuffled_subjects: str = "actual") -> Tuple[torch.Tensor]:
+def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = False, testcase: bool = False, use_shuffled_subjects: str = "actual", splithalf: str = "no") -> Tuple[torch.Tensor]:
     """load train and test triplet datasets with associated participant ID into memory"""
     if inference:
         with open(pjoin(triplets_dir, 'test_triplets_ID.npy'), 'rb') as test_triplets:
@@ -310,22 +310,33 @@ def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = Fals
     except FileNotFoundError:
         print('\n...Could not find any .npy files for current modality.')
         print('...Now searching for .txt files.\n')
-        if testcase:
+        if splithalf == "no":
+            if testcase:
+                train_triplets = torch.from_numpy(np.loadtxt(
+                    pjoin(triplets_dir, 'train_90_ID_smallsample.txt'))).to(device).type(torch.LongTensor)
+                test_triplets = torch.from_numpy(np.loadtxt(
+                    pjoin(triplets_dir, 'test_10_ID_smallsample.txt'))).to(device).type(torch.LongTensor)
+            elif testcase == False:
+                if use_shuffled_subjects == "actual":
+                    train_triplets = torch.from_numpy(np.loadtxt(
+                        pjoin(triplets_dir, 'train_90_ID_item.txt'))).to(device).type(torch.LongTensor)
+                    test_triplets = torch.from_numpy(np.loadtxt(
+                        pjoin(triplets_dir, 'test_10_ID_item.txt'))).to(device).type(torch.LongTensor)
+                elif use_shuffled_subjects == "shuffled":
+                    train_triplets = torch.from_numpy(np.loadtxt(
+                        pjoin(triplets_dir, 'train_shuffled_90_ID_item.txt'))).to(device).type(torch.LongTensor)
+                    test_triplets = torch.from_numpy(np.loadtxt(
+                        pjoin(triplets_dir, 'test_shuffled_10_ID_item.txt'))).to(device).type(torch.LongTensor)
+        elif splithalf == "1":
             train_triplets = torch.from_numpy(np.loadtxt(
-                pjoin(triplets_dir, 'train_90_ID_smallsample.txt'))).to(device).type(torch.LongTensor)
+                pjoin(triplets_dir, 'splithalf_1_ID_item.txt'))).to(device).type(torch.LongTensor)
             test_triplets = torch.from_numpy(np.loadtxt(
-                pjoin(triplets_dir, 'test_10_ID_smallsample.txt'))).to(device).type(torch.LongTensor)
-        elif testcase == False:
-            if use_shuffled_subjects == "actual":
-                train_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'train_90_ID_item.txt'))).to(device).type(torch.LongTensor)
-                test_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'test_10_ID_item.txt'))).to(device).type(torch.LongTensor)
-            elif use_shuffled_subjects == "shuffled":
-                train_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'train_shuffled_90_ID_item.txt'))).to(device).type(torch.LongTensor)
-                test_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'test_shuffled_10_ID_item.txt'))).to(device).type(torch.LongTensor)
+                pjoin(triplets_dir, 'splithalf_2_ID_item.txt'))).to(device).type(torch.LongTensor)
+        elif splithalf == "2":
+            train_triplets = torch.from_numpy(np.loadtxt(
+                pjoin(triplets_dir, 'splithalf_2_ID_item.txt'))).to(device).type(torch.LongTensor)
+            test_triplets = torch.from_numpy(np.loadtxt(
+                pjoin(triplets_dir, 'splithalf_1_ID_item.txt'))).to(device).type(torch.LongTensor)
 
     return train_triplets, test_triplets
 
@@ -498,11 +509,13 @@ def accuracy_(probas: torch.Tensor) -> float:
     return acc
 
 
-def choice_accuracy(anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, method: str, distance_metric: str = 'dot') -> float:
-    similarities = compute_similarities(
+
+def choice_accuracy(anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, method: str, distance_metric: str = 'dot', scalingfactors: torch.Tensor = torch.Tensor(1)) -> float:
+    similarities_prep = compute_similarities(
         anchor, positive, negative, method, distance_metric)
-    probas = F.softmax(torch.stack(similarities, dim=-1),
-                       dim=1).detach().cpu().numpy()
+    similarities = torch.stack(similarities_prep, dim=-1)
+    similarities_scaled = similarities/scalingfactors
+    probas = F.softmax(similarities_scaled, dim=1).detach().cpu().numpy()
     return accuracy_(probas)
 
 
@@ -763,15 +776,17 @@ def validation(
             elif level_explanation == "ID":
                 b = batch[0].to(device)
                 id = batch[1].to(device)
-                logits = model(b, id)
-            anchor, positive, negative = torch.unbind(
-                torch.reshape(logits, (-1, 3, logits.shape[-1])), dim=1)
-
+                c_entropy, anchor, positive, negative = model(b, id, distance_metric)
+            # anchor, positive, negative = torch.unbind(
+            #     torch.reshape(logits, (-1, 3, logits.shape[-1])), dim=1)
+            temp_scaling = model.model2(id[::3])
             if sampling:
-                similarities = compute_similarities(
+                sims_prep = compute_similarities(
                     anchor, positive, negative, task, distance_metric)
-                probas = F.softmax(torch.stack(
-                    similarities, dim=-1), dim=1).numpy()
+                sims = torch.stack(sims_prep, dim=-1)
+                
+                sims_scaled = sims/temp_scaling
+                probas = F.softmax(sims_scaled, dim=1).numpy()
                 probas = probas[:, ::-1]
                 human_choices = batch.nonzero(
                     as_tuple=True)[-1].view(batch_size, -1).numpy()
@@ -779,9 +794,8 @@ def validation(
                                          ::-1] for h_choice, p in zip(human_choices, probas)])
                 sampled_choices[j*batch_size:(j+1)*batch_size] += model_choices
             else:
-                val_loss = trinomial_loss(
-                    anchor, positive, negative, task, temperature)
-                val_acc = choice_accuracy(anchor, positive, negative, task)
+                val_loss = c_entropy
+                val_acc = choice_accuracy(anchor, positive, negative, task, distance_metric, scalingfactors=temp_scaling)
 
             batch_losses_val[j] += val_loss.item()
             batch_accs_val[j] += val_acc
