@@ -3,13 +3,17 @@ from concurrent.futures import ThreadPoolExecutor
 
 import itertools
 
+import os
+os.environ["USE_OPENMP"] = "1"
+os.environ["MKL_THREADING_LAYER"] = "TBB"
+
 # Define the fixed parts of the dictionary
 base_dict = {
     'rnd_seed': 852,
     'triplets_dir': './data/',
     "task": "odd_one_out",
-    "epochs": 10,
-    "steps": 5,
+    "epochs": 2,
+    "steps": 1,
     "device": "cpu"  # "cuda:0"
 }
 

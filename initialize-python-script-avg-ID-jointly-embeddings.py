@@ -3,6 +3,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 import itertools
 
+import os
+os.environ["USE_OPENMP"] = "1"
+os.environ["MKL_THREADING_LAYER"] = "TBB"
+
+
 # Define the fixed parts of the dictionary
 base_dict = {
     'rnd_seed': 852,
