@@ -100,7 +100,7 @@ def parseargs():
     aa('--sparsity', type=str, 
         choices=['both', 'items', 'items_and_random_ids'], help='sparsity constraint setting')
     aa('--splithalf', type=str, 
-        choices=['firsthalf', 'secondhalf', 'no'], help='use first or second half of trials or use default train test split')
+        choices=['1', '2', 'no'], help='use first or second half of trials or use default train test split')
     args = parser.parse_args()
     return args
 
@@ -161,7 +161,7 @@ def run(
     logger.info("modeltype = ", f'{modeltype}')
     # load triplets into memory
     train_triplets_ID, test_triplets_ID = ut.load_data_ID(
-        device=device, triplets_dir=triplets_dir, testcase=True, use_shuffled_subjects=use_shuffled_subjects, splithalf=splithalf)
+        device=device, triplets_dir=triplets_dir, testcase=False, use_shuffled_subjects=use_shuffled_subjects, splithalf=splithalf)
     n_items_ID = ut.get_nitems(train_triplets_ID)
     logger.info("n_items = " + str(n_items_ID))
 
