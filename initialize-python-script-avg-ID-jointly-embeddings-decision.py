@@ -14,7 +14,7 @@ base_dict = {
     "task": "odd_one_out",
     "epochs": 2,
     "steps": 1,
-    "device": "cpu"  # "cuda:0"
+    "device": "cpu"  # "cuda:0" #
 }
 
 lmbda_list = [0.0005]

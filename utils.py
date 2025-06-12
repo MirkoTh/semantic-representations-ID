@@ -78,6 +78,8 @@ from models import model as md
 
 from transformers import AutoTokenizer, AutoModel, AutoModelForMaskedLM, BertTokenizer, BertModel
 
+from numba import njit
+
 
 class TripletDataset(Dataset):
 
@@ -516,7 +518,10 @@ def choice_accuracy(anchor: torch.Tensor, positive: torch.Tensor, negative: torc
     similarities = torch.stack(similarities_prep, dim=-1)
     similarities_scaled = similarities/scalingfactors
     probas = F.softmax(similarities_scaled, dim=1).detach().cpu().numpy()
-    return accuracy_(probas)
+    # the following uses the softmax policy
+    return probas[:, 0].mean()
+    # accuracy_ uses an argmax policy
+    #return accuracy_(probas)
 
 
 def trinomial_probs(anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, method: str, t: torch.Tensor, distance_metric: str = 'dot') -> torch.Tensor:
@@ -802,17 +807,17 @@ def validation(
                 sims_scaled = sims/temp_scaling
                 probas = F.softmax(sims_scaled, dim=1).numpy()
                 probas = probas[:, ::-1]
-                human_choices = batch.nonzero(
+                human_choices = b.nonzero(
                     as_tuple=True)[-1].view(batch_size, -1).numpy()
                 model_choices = np.array([np.random.choice(h_choice, size=len(p), replace=False, p=p)[
                                          ::-1] for h_choice, p in zip(human_choices, probas)])
-                sampled_choices[j*batch_size:(j+1)*batch_size] += model_choices
+                sampled_choices[j*batch_size:(j+1)*batch_size] += model_choices 
+
             else:
                 val_loss = c_entropy
                 val_acc = choice_accuracy(anchor, positive, negative, task, distance_metric, scalingfactors=temp_scaling)
-
-            batch_losses_val[j] += val_loss.item()
-            batch_accs_val[j] += val_acc
+                batch_losses_val[j] += val_loss.item()
+                batch_accs_val[j] += val_acc
 
     if sampling:
         return sampled_choices
