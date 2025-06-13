@@ -157,7 +157,7 @@ def run(
 ):
     # initialise logger and start logging events
     logger = setup_logging(file='avg-ID-jointly-embeddings.log',
-                           dir=f'./log_files/{modeltype}/splithalf_{splithalf}/ndim_{embed_dim}/lmbda_{lmbda}/lmbda_hierarchical_{lmbda_hierarchical}/sparsity_{sparsity}/{use_shuffled_subjects}_subjects', loggername=loggername)
+                           dir=f'./log_files/{modeltype}/splithalf_{splithalf}/temperature_{temperature}/ndim_{embed_dim}/lr_{lr}/lmbda_{lmbda}/lmbda_hierarchical_{lmbda_hierarchical}/sparsity_{sparsity}/{use_shuffled_subjects}_subjects', loggername=loggername)
     logger.info(f"modeltype = {modeltype}")
 
     # load triplets into memory
@@ -242,8 +242,10 @@ def run(
                     optim.load_state_dict(checkpoint['optim_state_dict'])
                     start = checkpoint['epoch'] + 1
                     loss = checkpoint['loss']
-                    train_accs = checkpoint['train_accs']
-                    val_accs = checkpoint['val_accs']
+                    train_accs_max = checkpoint['train_accs_max']
+                    train_accs_proba = checkpoint['train_accs_proba']
+                    val_accs_max = checkpoint['val_accs_max']
+                    val_accs_proba = checkpoint['val_accs_proba']
                     train_losses = checkpoint['train_losses']
                     val_losses = checkpoint['val_losses']
                     nneg_d_over_time = checkpoint['nneg_d_over_time']
@@ -254,7 +256,7 @@ def run(
                 except RuntimeError:
                     print(f'...Loading model and optimizer state dicts failed. Check whether you are currently using a different set of model parameters.\n')
                     start = 0
-                    train_accs, val_accs = [], []
+                    train_accs_max, train_accs_proba, val_accs_max, val_accs_proba = [], [], [], []
                     train_losses, val_losses = [], []
                     loglikelihoods, complexity_losses = [], []
                     nneg_d_over_time = []
@@ -268,7 +270,7 @@ def run(
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
         start = 0
-        train_accs, val_accs = [], []
+        train_accs_max, train_accs_proba, val_accs_max, val_accs_proba = [], [], [], []
         train_losses, val_losses = [], []
         loglikelihoods, complexity_losses = [], []
         nneg_d_over_time = []
@@ -278,7 +280,7 @@ def run(
     ################################################
 
     start = 0
-    train_accs, val_accs = [], []
+    train_accs_max, train_accs_proba, val_accs_max, val_accs_proba = [], [], [], []
     train_losses, val_losses = [], []
     loglikelihoods, complexity_losses_ID, complexity_losses_avg = [], [], []
     nneg_d_over_time = []
@@ -299,7 +301,8 @@ def run(
         batch_closses_avg = torch.zeros(len(train_batches))
         batch_closses_ID = torch.zeros(len(train_batches))
         batch_losses_train = torch.zeros(len(train_batches))
-        batch_accs_train = torch.zeros(len(train_batches))
+        batch_accs_max_train = torch.zeros(len(train_batches))
+        batch_accs_proba_train = torch.zeros(len(train_batches))
         for i, batch in enumerate(train_batches):
             optim.zero_grad()  # zero out gradients
             b = batch[0].to(device)
@@ -308,7 +311,7 @@ def run(
             anchor, positive, negative = torch.unbind(
                 torch.reshape(logits, (-1, 3, embed_dim)), dim=1)
             c_entropy = ut.trinomial_loss(
-                anchor, positive, negative, task, temperature, distance_metric) 
+                anchor, positive, negative, task, temperature, distance_metric)
 
             # few-dimensional representations of the items
             l1_pen_avg = md.l1_regularization(model, "fc.weight", agreement="few").to(
@@ -334,46 +337,55 @@ def run(
                 gaussian_pen = model.hierarchical_loss(id)
                 gaussian_loss = gaussian_pen * lmbda_hierarchical
                 loss = c_entropy + 0.01 * pos_pen + complexity_loss_avg + gaussian_loss
-
             loss.backward()
             optim.step()
             batch_losses_train[i] += loss.item()
             batch_llikelihoods[i] += c_entropy.item()
             # batch_closses_ID[i] += complexity_loss_ID.item()
             batch_closses_avg[i] += complexity_loss_avg.item()
-            batch_accs_train[i] += ut.choice_accuracy(
+            accs_train_proba, accs_train_max = ut.choice_accuracy(
                 anchor, positive, negative, task, distance_metric, scalingfactors=temperature)
+            batch_accs_proba_train[i] += accs_train_proba
+            batch_accs_max_train[i] += accs_train_max
             iter += 1
 
         avg_llikelihood = torch.mean(batch_llikelihoods).item()
         avg_closs_avg = torch.mean(batch_closses_avg).item()
         avg_train_loss = torch.mean(batch_losses_train).item()
-        avg_train_acc = torch.mean(batch_accs_train).item()
+        avg_train_acc_max = torch.mean(batch_accs_max_train).item()
+        avg_train_acc_proba = torch.mean(batch_accs_proba_train).item()
 
         loglikelihoods.append(avg_llikelihood)
         complexity_losses_avg.append(avg_closs_avg)
         train_losses.append(avg_train_loss)
-        train_accs.append(avg_train_acc)
+        train_accs_max.append(avg_train_acc_max)
+        train_accs_proba.append(avg_train_acc_proba)
 
         ################################################
         ################ validation ####################
         ################################################
 
-        avg_val_loss, avg_val_acc = ut.validation(
-            model, val_batches, task, device, level_explanation="ID", modeltype=modeltype)
+        avg_val_loss, avg_val_acc_proba, avg_val_acc_max = ut.validation(
+            model, val_batches, task, device, 
+            level_explanation="ID", modeltype=modeltype,
+            temperature=temperature
+            )
         val_losses.append(avg_val_loss)
-        val_accs.append(avg_val_acc)
+        val_accs_max.append(avg_val_acc_max)
+        val_accs_proba.append(avg_val_acc_proba)
 
         logger.info(f'Epoch: {epoch+1}/{epochs}')
-        logger.info(f'Train acc: {avg_train_acc:.5f}')
+        logger.info(f'Train acc max: {avg_train_acc_max:.5f}')
+        logger.info(f'Train acc proba: {avg_train_acc_proba:.5f}')
         logger.info(f'Train loss: {avg_train_loss:.5f}')
-        logger.info(f'Val acc: {avg_val_acc:.5f}')
+        logger.info(f'Val acc max: {avg_val_acc_max:.5f}')
+        logger.info(f'Val acc proba: {avg_val_acc_proba:.5f}')
         logger.info(f'Val loss: {avg_val_loss:.5f}\n')
 
         if show_progress:
             print("\n========================================================================================================")
             print(
-                f'====== Epoch: {epoch+1}, Train acc: {avg_train_acc:.5f}, Train loss: {avg_train_loss:.5f}, Val acc: {avg_val_acc:.5f}, Val loss: {avg_val_loss:.5f} ======')
+                f'====== Epoch: {epoch+1}, Train acc max: {avg_train_acc_max:.5f}, Train acc proba: {avg_train_acc_proba:.5f}, Train loss: {avg_train_loss:.5f}, \nVal acc max: {avg_val_acc_max:.5f}, Val acc proba: {avg_val_acc_proba:.5f}, Val loss: {avg_val_loss:.5f} ======')
             print("========================================================================================================\n")
             current_d = ut.get_nneg_dims(W)
             nneg_d_over_time.append((epoch+1, current_d))
@@ -406,9 +418,11 @@ def run(
                 'subject_type': use_shuffled_subjects,
                 'loss': loss,
                 'train_losses': train_losses,
-                'train_accs': train_accs,
+                'train_accs_max': train_accs_max,
+                'train_accs_proba': train_accs_proba,
                 'val_losses': val_losses,
-                'val_accs': val_accs,
+                'val_accs_max': val_accs_max,
+                'val_accs_proba': val_accs_proba,
                 'nneg_d_over_time': nneg_d_over_time,
                 'loglikelihoods': loglikelihoods,
                 'complexity_costs_ID': complexity_losses_ID,
@@ -420,8 +434,8 @@ def run(
         if early_stopping == "Yes" and (epoch + 1) > window_size and epoch >= 100:
             # check termination condition (we want to train until convergence)
             # Early stopping check
-            if avg_val_acc > best_val_accuracy:
-                best_val_accuracy = avg_val_acc
+            if avg_val_acc_max > best_val_accuracy:
+                best_val_accuracy = avg_val_acc_max
                 counter = 0
             else:
                 counter += 1
@@ -433,8 +447,14 @@ def run(
 
     # save final model weights
     ut.save_weights_(results_dir, model.fc.weight)
-    results = {'epoch': len(
-        train_accs), 'train_acc': train_accs[-1], 'val_acc': val_accs[-1], 'val_loss': val_losses[-1]}
+    results = {
+        'epoch': len(train_accs_max), 
+        'train_acc_max': train_accs_max[-1], 
+        'val_acc_max': val_accs_max[-1], 
+        'train_acc_proba': train_accs_proba[-1], 
+        'val_acc_proba': val_accs_proba[-1], 
+        'val_loss': val_losses[-1]
+        }
     logger.info(
         f'\nOptimization finished after {epoch+1} epochs for lambda: {lmbda}\n')
 
@@ -446,7 +466,10 @@ def run(
     logger.info(f'\nPlotting model performances over time for lambda: {lmbda}')
     # plot train and validation performance alongside each other to examine a potential overfit to the training data
     pl.plot_single_performance(
-        plots_dir=plots_dir, val_accs=val_accs, train_accs=train_accs)
+        plots_dir=plots_dir, val_accs=val_accs_max, train_accs=train_accs_max, max_or_proba="max")
+    pl.plot_single_performance(
+        plots_dir=plots_dir, val_accs=val_accs_proba, train_accs=train_accs_proba, max_or_proba="proba")
+    
     logger.info(f'\nPlotting losses over time for lambda: {lmbda}')
     # plot both log-likelihood of the data (i.e., cross-entropy loss) and complexity loss (i.e., l1-norm in DSPoSE and KLD in VSPoSE)
     pl.plot_complexities_and_loglikelihoods(

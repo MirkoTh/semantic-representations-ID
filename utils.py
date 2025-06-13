@@ -468,7 +468,8 @@ def softmax(sims: tuple, t: torch.Tensor) -> torch.Tensor:
 
 
 def cross_entropy_loss(sims: tuple, t: torch.Tensor) -> torch.Tensor:
-    return torch.mean(-torch.log(F.softmax(torch.stack(sims, dim=-1), dim=1)[:, 0]))
+    sims_scaled = torch.stack(sims, dim=-1)/t
+    return torch.mean(-torch.log(F.softmax(sims_scaled, dim=1)[:, 0]))
     #return torch.mean(-F.log_sotmax(torch.stack(sims, dim=-1)/t, dim=1)[:, 0])
     # replaced by torch softmax function with temperature == 1 to avoid Nan values
     # return torch.mean(-torch.log(softmax(sims, t)))
@@ -512,16 +513,21 @@ def accuracy_(probas: torch.Tensor) -> float:
 
 
 
-def choice_accuracy(anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, method: str, distance_metric: str = 'dot', scalingfactors: torch.Tensor = torch.Tensor(1)) -> float:
+def choice_accuracy(
+        anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, 
+        method: str, distance_metric: str = 'dot', 
+        scalingfactors: torch.Tensor = torch.Tensor([1])
+        ) -> float:
     similarities_prep = compute_similarities(
         anchor, positive, negative, method, distance_metric)
     similarities = torch.stack(similarities_prep, dim=-1)
     similarities_scaled = similarities/scalingfactors
     probas = F.softmax(similarities_scaled, dim=1).detach().cpu().numpy()
     # the following uses the softmax policy
-    return probas[:, 0].mean()
+    proba_correct = probas[:, 0].mean()
     # accuracy_ uses an argmax policy
-    #return accuracy_(probas)
+    max_correct = accuracy_(probas)
+    return proba_correct, max_correct
 
 
 def trinomial_probs(anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, method: str, t: torch.Tensor, distance_metric: str = 'dot') -> torch.Tensor:
@@ -759,6 +765,7 @@ def validation(
     val_batches,
     task: str,
     device: torch.device,
+    temperature: torch.tensor,
     sampling: bool = False,
     batch_size=None,
     distance_metric: str = 'dot',
@@ -770,12 +777,12 @@ def validation(
         sampled_choices = np.zeros(
             (int(len(val_batches) * batch_size), 3), dtype=int)
 
-    temperature = torch.tensor(1.).to(device)
-    temp_scaling = torch.tensor(1.).to(device)
     model.eval()
     with torch.no_grad():
         batch_losses_val = torch.zeros(len(val_batches))
-        batch_accs_val = torch.zeros(len(val_batches))
+        batch_accs_val_max = torch.zeros(len(val_batches))
+        batch_accs_val_proba = torch.zeros(len(val_batches))
+
         for j, batch in enumerate(val_batches):
             if level_explanation == 'avg':
                 batch = batch.to(device)
@@ -789,7 +796,7 @@ def validation(
                     b = batch[0].to(device)
                     id = batch[1].to(device)
                     c_entropy, anchor, positive, negative = model(b, id, distance_metric)
-                    temp_scaling = model.model2(id[::3])
+                    temperature = model.model2(id[::3])
                 else:
                     b = batch[0].to(device)
                     id = batch[1].to(device)
@@ -804,7 +811,7 @@ def validation(
                     anchor, positive, negative, task, distance_metric)
                 sims = torch.stack(sims_prep, dim=-1)
                 
-                sims_scaled = sims/temp_scaling
+                sims_scaled = sims/temperature
                 probas = F.softmax(sims_scaled, dim=1).numpy()
                 probas = probas[:, ::-1]
                 human_choices = b.nonzero(
@@ -815,16 +822,18 @@ def validation(
 
             else:
                 val_loss = c_entropy
-                val_acc = choice_accuracy(anchor, positive, negative, task, distance_metric, scalingfactors=temp_scaling)
+                val_acc_proba, val_acc_max = choice_accuracy(anchor, positive, negative, task, distance_metric, scalingfactors=temperature)
                 batch_losses_val[j] += val_loss.item()
-                batch_accs_val[j] += val_acc
+                batch_accs_val_proba[j] += val_acc_proba
+                batch_accs_val_max[j] += val_acc_max
 
     if sampling:
         return sampled_choices
 
     avg_val_loss = torch.mean(batch_losses_val).item()
-    avg_val_acc = torch.mean(batch_accs_val).item()
-    return avg_val_loss, avg_val_acc
+    avg_val_acc_max = torch.mean(batch_accs_val_max).item()
+    avg_val_acc_proba = torch.mean(batch_accs_val_proba).item()
+    return avg_val_loss, avg_val_acc_proba, avg_val_acc_max
 
 
 def get_digits(string: str) -> int:

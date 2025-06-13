@@ -149,14 +149,24 @@ class Scaling_ID(nn.Module):
         in_size: int,
         out_size: int,
         num_participants: int,
+        init_weights: bool = True,
     ):
         super(Scaling_ID, self).__init__()
         self.in_size = in_size
         self.out_size = out_size
         self.individual_temps = nn.Embedding(num_participants, 1)
 
+        if init_weights:
+            self._initialize_weights()
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return torch.exp(self.individual_temps(x))
+    
+    def _initialize_weights(self) -> None:
+        mn, std = -2.3, .5
+        for m in self.modules():
+            if isinstance(m, nn.Embedding):
+                m.weight.data.normal_(mn, std)
     
 
 
@@ -184,7 +194,8 @@ class CombinedModel(nn.Module):
         self.model2 = Scaling_ID(
             in_size=1, 
             out_size=1, 
-            num_participants=num_participants
+            num_participants=num_participants,
+            init_weights=self.init_weights
             )
 
     def forward(self, x, id, distance_metric):

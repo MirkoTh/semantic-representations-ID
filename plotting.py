@@ -63,6 +63,7 @@ def plot_single_performance(
                             plots_dir:str,
                             val_accs:list,
                             train_accs:list,
+                            max_or_proba:str
                             ) -> None:
     fig = plt.figure(figsize=(10, 6), dpi=100)
     ax = plt.subplot(111)
@@ -87,7 +88,7 @@ def plot_single_performance(
     if not os.path.exists(PATH):
         os.makedirs(PATH)
 
-    plt.savefig(pjoin(PATH, 'single_model_performance_over_time.png'))
+    plt.savefig(pjoin(PATH, f'single_model_performance_over_time_acc_{max_or_proba}.png'))
     plt.close()
 
 def plot_multiple_performances(
@@ -147,7 +148,7 @@ def plot_val_accs_across_seeds(plots_dir:str, lmbdas:np.ndarray, val_accs:np.nda
 
     ax.plot(lmbdas, val_accs*100)
     ax.set_xticks(lmbdas)
-    ax.set_xlabel(f'$\lambda')
+    ax.set_xlabel(f'lambda')
     ax.set_ylabel(r'Val acc (%)')
 
     plt.savefig(pjoin(plots_dir, 'lambda_search_results.png'))
