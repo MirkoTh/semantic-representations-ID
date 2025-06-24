@@ -158,6 +158,11 @@ class Scaling_ID(nn.Module):
 
         if init_weights:
             self._initialize_weights()
+        
+    def hierarchical_loss(self, id: torch.Tensor):
+        """just returns 0, because temps are fitted freely"""
+        return 0
+
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return torch.exp(self.individual_temps(x))
@@ -169,6 +174,39 @@ class Scaling_ID(nn.Module):
                 m.weight.data.normal_(mn, std)
     
 
+class Scaling_ID_Random(nn.Module):
+    def __init__(
+        self,
+        in_size: int,
+        out_size: int,
+        num_participants: int,
+        init_weights: bool = True,
+    ):
+        super(Scaling_ID, self).__init__()
+        self.in_size = in_size
+        self.out_size = out_size
+        self.individual_temps = nn.Embedding(num_participants, 1)
+
+        # Define learnable global mean & std
+        self.global_mean = nn.Parameter(torch.ones(out_size))
+        self.global_std = nn.Parameter(torch.ones(out_size))
+
+
+        if init_weights:
+            self._initialize_weights()
+        
+    def hierarchical_loss(self, id: torch.Tensor):
+        """Encourage slopes to stay within a normal distribution."""
+        return torch.mean((self.individual_temps(id) - self.global_mean) ** 2 / (2 * self.global_std**2))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.exp(self.individual_temps(x))
+    
+    def _initialize_weights(self) -> None:
+        mn, std = -2.3, .5
+        for m in self.modules():
+            if isinstance(m, nn.Embedding):
+                m.weight.data.normal_(mn, std)
 
 class CombinedModel(nn.Module):
     def __init__(
@@ -176,6 +214,7 @@ class CombinedModel(nn.Module):
             in_size: int,
             out_size: int,
             num_participants: int,
+            scaling: str = "free",
             init_weights=True,
     ):
         super(CombinedModel, self).__init__()
@@ -190,13 +229,22 @@ class CombinedModel(nn.Module):
             num_participants=self.num_participants,
             init_weights=self.init_weights
         )
-        # freely-varying by-participant softmax temperatures
-        self.model2 = Scaling_ID(
-            in_size=1, 
-            out_size=1, 
-            num_participants=num_participants,
-            init_weights=self.init_weights
-            )
+        if scaling == "free":
+            # freely-varying by-participant softmax temperatures
+            self.model2 = Scaling_ID(
+                in_size=1, 
+                out_size=1, 
+                num_participants=num_participants,
+                init_weights=self.init_weights
+                )
+        elif scaling == "random":
+            # freely-varying by-participant softmax temperatures
+            self.model2 = Scaling_ID_Random(
+                in_size=1, 
+                out_size=1, 
+                num_participants=num_participants,
+                init_weights=self.init_weights
+                )
 
     def forward(self, x, id, distance_metric):
         x = self.model1(x, id)

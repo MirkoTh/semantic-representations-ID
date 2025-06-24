@@ -792,7 +792,7 @@ def validation(
                 c_entropy = trinomial_loss(anchor, positive, negative, task, temperature, distance_metric)
             
             elif level_explanation == "ID":
-                if modeltype == "random_weights_free_scaling":
+                if modeltype in ["random_weights_free_scaling", "random_weights_random_scaling"] :
                     b = batch[0].to(device)
                     id = batch[1].to(device)
                     c_entropy, anchor, positive, negative = model(b, id, distance_metric)
