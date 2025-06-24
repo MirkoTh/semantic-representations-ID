@@ -13,7 +13,7 @@ import re
 from tqdm.notebook import tqdm
 import pickle
 
-nbilly = 8
+nbilly = 70
 engine = f"""meta-llama/Llama-3.1-{nbilly}B-Instruct"""
 model, tokenizer = FastLanguageModel.from_pretrained(
     model_name=engine,
@@ -32,19 +32,19 @@ FastLanguageModel.for_inference(model)
 
 device = "cuda:0"
 model = model.to(device)
-model.parallelize()
+#model.parallelize()
 
 
-results_dir = f"""semantic-representations-ID/results/in-context-learning/lama-3.1-{nbilly}B"""
+results_dir = f"""results/in-context-learning/lama-3.1-{nbilly}B"""
 if not os.path.exists(results_dir):
     os.makedirs(results_dir)
 
 
 train_triplets = torch.from_numpy(np.loadtxt(
-    pjoin("./semantic-representations-ID/data/", 'train_90_ID.txt'))).to(device).type(torch.LongTensor)
+    pjoin("./data/", 'train_90_ID.txt'))).to(device).type(torch.LongTensor)
 triplet_ids = train_triplets.detach().numpy()
 tbl_labels = pd.read_csv(
-    "./semantic-representations-ID/data/unique_id.txt", delimiter="\\", header=None)
+    "./data/unique_id.txt", delimiter="\\", header=None)
 tbl_labels[0] = tbl_labels[0].str.replace(r'\d+', '', regex=True)
 
 
@@ -69,14 +69,16 @@ randomize_and_extract_partial = partial(
 
 # first start with an equal number of trials for each participant
 # this can be changed later to the actual number of trials for each participant
-n_trials = 100
+n_trials = 207
+participant_ids = np.unique(triplet_ids[:, 3])
 
 # here one participant is selected
 # this can be put into a function be called for each participant
 
 l_dfs_results = []
 
-for participant_id in range(0, 3):
+for participant_id in participant_ids:
+    participant_id = int(participant_id)
 
     l_trials = list(map(randomize_and_extract_partial,
                     triplet_ids[triplet_ids[:, 3] == participant_id]))
@@ -192,6 +194,8 @@ for participant_id in range(0, 3):
         "selected == predicted").shape[0] / df_trials_pred.shape[0]
     df_trials_pred["accuracy"] = df_trials_pred["selected"] == df_trials_pred["predicted"]
     df_trials_pred["accuracy"] = df_trials_pred["accuracy"].astype(int)
+    df_trials_pred["trial_id"] = df_trials_pred.reset_index().index + 1
+    df_trials_pred["participant_id"] = participant_id
     l_dfs_results.append(df_trials_pred)
 
     pth_file = os.path.join(results_dir, "results.pkl")
