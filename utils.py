@@ -1358,3 +1358,47 @@ def delta_avg_id(anchors, positives, negatives, anchors_weighted, positives_weig
     acc_eval_id = one_id.sum() / np.sum(ids == idx)
     delta = acc_eval_id - acc_eval_avg
     return delta, one_avg, one_id
+
+
+def delta_avg_triplet(
+        anchors, positives, negatives, anchors_weighted, positives_weighted, negatives_weighted, 
+        array_weights_items, array_weights_id, df_diagnostic_data
+        ):
+    # prepare avg and id weights
+    anchors = torch.Tensor(np.array([array_weights_items[i,:] for i in list(df_diagnostic_data.loc[:, 0])]))
+    positives = torch.Tensor(np.array([array_weights_items[i,:] for i in list(df_diagnostic_data.loc[:, 1])]))
+    negatives = torch.Tensor(np.array([array_weights_items[i,:] for i in list(df_diagnostic_data.loc[:, 2])]))
+    anchors_weighted = [a*array_weights_id.numpy()[df_diagnostic_data.loc[id, "id_subject"]] for id, a in enumerate(anchors)]
+    positives_weighted = [a*array_weights_id.numpy()[df_diagnostic_data.loc[id, "id_subject"]] for id, a in enumerate(positives)]
+    negatives_weighted = [a*array_weights_id.numpy()[df_diagnostic_data.loc[id, "id_subject"]] for id, a in enumerate(negatives)]
+    anchors_weighted = torch.vstack(anchors_weighted)
+    positives_weighted = torch.vstack(positives_weighted)
+    negatives_weighted = torch.vstack(negatives_weighted)
+    # compute similarities for every triplet
+    sims_avg = ut.compute_similarities(
+        anchors, positives, negatives, method="odd_one_out")
+    sims_id = ut.compute_similarities(
+            anchors_weighted, positives_weighted, negatives_weighted, method="odd_one_out")
+    # mark correct and incorrect decisions given similarities (argmax)
+    one_avg = (sims_avg[0] > sims_avg[1]).numpy() & (
+            sims_avg[0] > sims_avg[2]).numpy()
+    one_id = (sims_id[0] > sims_id[1]).numpy() & (
+            sims_id[0] > sims_id[2]).numpy()
+    # and add back into df
+    df_diagnostic_data["correct_avg"] = one_avg
+    df_diagnostic_data["correct_id"] = one_id
+    # group by triplet and calculate prop correct
+    df_items_delta = (
+        df_diagnostic_data
+        .groupby("triplet_id")
+        .agg(
+            correct_avg=("correct_avg", "mean"),
+            correct_id=("correct_id", "mean"),
+            n=("correct_avg", "count")  # or use any column to count rows
+        )
+        .reset_index()
+    )
+    # calculate prop improvement: delta
+    df_items_delta["delta"] = df_items_delta["correct_id"] - df_items_delta["correct_avg"]
+    df_items_delta["Accuracy Avg. Model"] = pd.cut(df_items_delta["correct_avg"], 10, labels=False)
+    return df_items_delta
