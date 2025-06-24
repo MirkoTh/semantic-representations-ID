@@ -213,13 +213,19 @@ def run(
     logger.info(f'...Creating PATHs')
     if results_dir == './results/':
         results_dir = os.path.join(
-            results_dir, "avg-ID-jointly-embeddings", f'modeltype_{modeltype}', f'splithalf_{splithalf}', f'{embed_dim}d', str(lmbda), str(lmbda_hierarchical), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
+            results_dir, "avg-ID-jointly-embeddings", f'modeltype_{modeltype}', 
+            f'splithalf_{splithalf}', f'temperature_{temperature}', f'{embed_dim}d',
+              str(lmbda), str(lmbda_hierarchical), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}'
+              )
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
     if plots_dir == './plots/':
         plots_dir = os.path.join(
-            plots_dir, "avg-ID-jointly-embeddings", f'modeltype_{modeltype}', f'splithalf_{splithalf}', f'{embed_dim}d', str(lmbda), str(lmbda_hierarchical), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}')
+            plots_dir, "avg-ID-jointly-embeddings", f'modeltype_{modeltype}',
+              f'splithalf_{splithalf}', f'temperature_{temperature}', f'{embed_dim}d', 
+              str(lmbda), str(lmbda_hierarchical), sparsity, f'subjects_{use_shuffled_subjects}', f'seed{rnd_seed}'
+              )
     if not os.path.exists(plots_dir):
         os.makedirs(plots_dir)
 
@@ -410,12 +416,14 @@ def run(
                 'epoch': epoch + 1,
                 'model_state_dict': model.state_dict(),
                 'optim_state_dict': optim.state_dict(),
+                'modeltype': modeltype,
+                'sparsity': sparsity,
                 'n_embed': embed_dim,
                 'lambda': lmbda,
                 'lmbda_hierarchical': lmbda_hierarchical,
-                'sparsity': sparsity,
-                'modeltype': modeltype,
                 'subject_type': use_shuffled_subjects,
+                'temperature': temperature,
+                'splithalf': splithalf,
                 'loss': loss,
                 'train_losses': train_losses,
                 'train_accs_max': train_accs_max,
