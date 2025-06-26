@@ -1402,3 +1402,15 @@ def delta_avg_triplet(
     df_items_delta["delta"] = df_items_delta["correct_id"] - df_items_delta["correct_avg"]
     df_items_delta["Accuracy Avg. Model"] = pd.cut(df_items_delta["correct_avg"], 10, labels=False)
     return df_items_delta
+
+
+def gini(x):
+    x = np.array(x, dtype=np.float64)
+    if np.amin(x) < 0:
+        raise ValueError("Values cannot be negative")
+    if np.all(x == 0):
+        return 0.0
+    x = np.sort(x)
+    n = len(x)
+    index = np.arange(1, n + 1)
+    return (np.sum((2 * index - n - 1) * x)) / (n * np.sum(x))
