@@ -53,7 +53,7 @@ def parseargs():
     aa('--triplets_dir', type=str,
         help='directory from where to load triplets')
     aa('--modeltype', type=str, default="random_weights_free_scaling",
-        choices=["random_weights_free_scaling"], help='only by-participant slopes or by-participant intercepts as well')
+        choices=["random_weights_free_scaling", "random_weights_random_scaling"], help='freely or randomly varying varying temperatures (by participant)')
     aa('--results_dir', type=str, default='./results/',
         help='optional specification of results directory (if not provided will resort to ./results/lambda/rnd_seed/)')
     aa('--plots_dir', type=str, default='./plots/',
@@ -185,10 +185,19 @@ def run(
 
     temperature = torch.tensor(temperature).clone().detach()
     if modeltype == "random_weights_free_scaling":
+        scaling = "free"
         model = md.CombinedModel(
             in_size=n_items_ID, out_size=embed_dim,
-            num_participants=n_participants, init_weights=True
+            num_participants=n_participants, init_weights=True,
+            scaling=scaling
         )
+    elif modeltype == "random_weights_random_scaling":
+        scaling = "random"
+        model = md.CombinedModel(
+            in_size=n_items_ID, out_size=embed_dim,
+            num_participants=n_participants, init_weights=True,
+            scaling=scaling
+            )
     else:
         # so far, only random weights and free scaling implemented
         exit()
@@ -316,7 +325,7 @@ def run(
 
             # Gaussian loss on individual differences for each dimension
             # is only computed by random model
-            gaussian_pen = model.model1.hierarchical_loss(id)
+            gaussian_pen = model.model1.hierarchical_loss(id) + model.model2.hierarchical_loss(id)
             gaussian_loss = gaussian_pen * lmbda_hierarchical
             loss = c_entropy + 0.01 * pos_pen + complexity_loss_avg + gaussian_loss
 
@@ -397,12 +406,14 @@ def run(
                 'epoch': epoch + 1,
                 'model_state_dict': model.state_dict(),
                 'optim_state_dict': optim.state_dict(),
+                'modeltype': modeltype,
+                'sparsity': sparsity,
+                'subject_type': use_shuffled_subjects,
+                'splithalf': splithalf,
                 'n_embed': embed_dim,
                 'lambda': lmbda,
                 'lmbda_hierarchical': lmbda_hierarchical,
-                'sparsity': sparsity,
-                'modeltype': modeltype,
-                'subject_type': use_shuffled_subjects,
+                'scaling': scaling,
                 'loss': loss,
                 'train_losses': train_losses,
                 'train_accs_max': train_accs_max,
