@@ -182,7 +182,7 @@ class Scaling_ID_Random(nn.Module):
         num_participants: int,
         init_weights: bool = True,
     ):
-        super(Scaling_ID, self).__init__()
+        super(Scaling_ID_Random, self).__init__()
         self.in_size = in_size
         self.out_size = out_size
         self.individual_temps = nn.Embedding(num_participants, 1)
@@ -197,7 +197,7 @@ class Scaling_ID_Random(nn.Module):
         
     def hierarchical_loss(self, id: torch.Tensor):
         """Encourage slopes to stay within a normal distribution."""
-        return torch.mean((self.individual_temps(id) - self.global_mean) ** 2 / (2 * self.global_std**2))
+        return torch.mean((torch.exp(self.individual_temps(id)) - self.global_mean) ** 2 / (2 * self.global_std**2))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return torch.exp(self.individual_temps(x))
