@@ -470,13 +470,13 @@ def softmax(sims: tuple, t: torch.Tensor) -> torch.Tensor:
 def cross_entropy_loss(sims: tuple, t: torch.Tensor) -> torch.Tensor:
     sims_scaled = torch.stack(sims, dim=-1)/t
     return torch.mean(-torch.log(F.softmax(sims_scaled, dim=1)[:, 0]))
-    #return torch.mean(-F.log_sotmax(torch.stack(sims, dim=-1)/t, dim=1)[:, 0])
+    # return torch.mean(-F.log_sotmax(torch.stack(sims, dim=-1)/t, dim=1)[:, 0])
     # replaced by torch softmax function with temperature == 1 to avoid Nan values
     # return torch.mean(-torch.log(softmax(sims, t)))
 
+
 def temperature_softmax(logits, temperature=1.0, dim=-1):
     return F.softmax(logits / temperature, dim=dim)
-
 
 
 def compute_similarities(anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, method: str, distance_metric: str = 'dot') -> Tuple:
@@ -512,12 +512,11 @@ def accuracy_(probas: torch.Tensor) -> float:
     return acc
 
 
-
 def choice_accuracy(
-        anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, 
-        method: str, distance_metric: str = 'dot', 
+        anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor,
+        method: str, distance_metric: str = 'dot',
         scalingfactors: torch.Tensor = torch.Tensor([1])
-        ) -> float:
+) -> float:
     similarities_prep = compute_similarities(
         anchor, positive, negative, method, distance_metric)
     similarities = torch.stack(similarities_prep, dim=-1)
@@ -789,28 +788,30 @@ def validation(
                 logits = model(batch)
                 anchor, positive, negative = torch.unbind(
                     torch.reshape(logits, (-1, 3, logits.shape[-1])), dim=1)
-                c_entropy = trinomial_loss(anchor, positive, negative, task, temperature, distance_metric)
-            
+                c_entropy = trinomial_loss(
+                    anchor, positive, negative, task, temperature, distance_metric)
+
             elif level_explanation == "ID":
-                if modeltype in ["random_weights_free_scaling", "random_weights_random_scaling"] :
+                if modeltype in ["random_weights_free_scaling", "random_weights_random_scaling"]:
                     b = batch[0].to(device)
                     id = batch[1].to(device)
-                    c_entropy, anchor, positive, negative = model(b, id, distance_metric)
+                    c_entropy, anchor, positive, negative = model(
+                        b, id, distance_metric)
                     temperature = model.model2(id[::3])
                 else:
                     b = batch[0].to(device)
                     id = batch[1].to(device)
                     logits = model(b, id)
                     anchor, positive, negative = torch.unbind(
-                            torch.reshape(logits, (-1, 3, logits.shape[-1])), dim=1)
-                    c_entropy = trinomial_loss(anchor, positive, negative, task, temperature, distance_metric)
-            
-            
+                        torch.reshape(logits, (-1, 3, logits.shape[-1])), dim=1)
+                    c_entropy = trinomial_loss(
+                        anchor, positive, negative, task, temperature, distance_metric)
+
             if sampling:
                 sims_prep = compute_similarities(
                     anchor, positive, negative, task, distance_metric)
                 sims = torch.stack(sims_prep, dim=-1)
-                
+
                 sims_scaled = sims/temperature
                 probas = F.softmax(sims_scaled, dim=1).numpy()
                 probas = probas[:, ::-1]
@@ -818,11 +819,12 @@ def validation(
                     as_tuple=True)[-1].view(batch_size, -1).numpy()
                 model_choices = np.array([np.random.choice(h_choice, size=len(p), replace=False, p=p)[
                                          ::-1] for h_choice, p in zip(human_choices, probas)])
-                sampled_choices[j*batch_size:(j+1)*batch_size] += model_choices 
+                sampled_choices[j*batch_size:(j+1)*batch_size] += model_choices
 
             else:
                 val_loss = c_entropy
-                val_acc_proba, val_acc_max = choice_accuracy(anchor, positive, negative, task, distance_metric, scalingfactors=temperature)
+                val_acc_proba, val_acc_max = choice_accuracy(
+                    anchor, positive, negative, task, distance_metric, scalingfactors=temperature)
                 batch_losses_val[j] += val_loss.item()
                 batch_accs_val_proba[j] += val_acc_proba
                 batch_accs_val_max[j] += val_acc_max
@@ -1361,29 +1363,35 @@ def delta_avg_id(anchors, positives, negatives, anchors_weighted, positives_weig
 
 
 def delta_avg_triplet(
-        anchors, positives, negatives, anchors_weighted, positives_weighted, negatives_weighted, 
+        anchors, positives, negatives, anchors_weighted, positives_weighted, negatives_weighted,
         array_weights_items, array_weights_id, df_diagnostic_data
-        ):
+):
     # prepare avg and id weights
-    anchors = torch.Tensor(np.array([array_weights_items[i,:] for i in list(df_diagnostic_data.loc[:, 0])]))
-    positives = torch.Tensor(np.array([array_weights_items[i,:] for i in list(df_diagnostic_data.loc[:, 1])]))
-    negatives = torch.Tensor(np.array([array_weights_items[i,:] for i in list(df_diagnostic_data.loc[:, 2])]))
-    anchors_weighted = [a*array_weights_id.numpy()[df_diagnostic_data.loc[id, "id_subject"]] for id, a in enumerate(anchors)]
-    positives_weighted = [a*array_weights_id.numpy()[df_diagnostic_data.loc[id, "id_subject"]] for id, a in enumerate(positives)]
-    negatives_weighted = [a*array_weights_id.numpy()[df_diagnostic_data.loc[id, "id_subject"]] for id, a in enumerate(negatives)]
+    anchors = torch.Tensor(np.array(
+        [array_weights_items[i, :] for i in list(df_diagnostic_data.loc[:, 0])]))
+    positives = torch.Tensor(np.array(
+        [array_weights_items[i, :] for i in list(df_diagnostic_data.loc[:, 1])]))
+    negatives = torch.Tensor(np.array(
+        [array_weights_items[i, :] for i in list(df_diagnostic_data.loc[:, 2])]))
+    anchors_weighted = [a*array_weights_id.numpy()[df_diagnostic_data.loc[id, "id_subject"]]
+                        for id, a in enumerate(anchors)]
+    positives_weighted = [a*array_weights_id.numpy()[df_diagnostic_data.loc[id, "id_subject"]]
+                          for id, a in enumerate(positives)]
+    negatives_weighted = [a*array_weights_id.numpy()[df_diagnostic_data.loc[id, "id_subject"]]
+                          for id, a in enumerate(negatives)]
     anchors_weighted = torch.vstack(anchors_weighted)
     positives_weighted = torch.vstack(positives_weighted)
     negatives_weighted = torch.vstack(negatives_weighted)
     # compute similarities for every triplet
-    sims_avg = ut.compute_similarities(
+    sims_avg = compute_similarities(
         anchors, positives, negatives, method="odd_one_out")
-    sims_id = ut.compute_similarities(
-            anchors_weighted, positives_weighted, negatives_weighted, method="odd_one_out")
+    sims_id = compute_similarities(
+        anchors_weighted, positives_weighted, negatives_weighted, method="odd_one_out")
     # mark correct and incorrect decisions given similarities (argmax)
     one_avg = (sims_avg[0] > sims_avg[1]).numpy() & (
-            sims_avg[0] > sims_avg[2]).numpy()
+        sims_avg[0] > sims_avg[2]).numpy()
     one_id = (sims_id[0] > sims_id[1]).numpy() & (
-            sims_id[0] > sims_id[2]).numpy()
+        sims_id[0] > sims_id[2]).numpy()
     # and add back into df
     df_diagnostic_data["correct_avg"] = one_avg
     df_diagnostic_data["correct_id"] = one_id
@@ -1399,8 +1407,10 @@ def delta_avg_triplet(
         .reset_index()
     )
     # calculate prop improvement: delta
-    df_items_delta["delta"] = df_items_delta["correct_id"] - df_items_delta["correct_avg"]
-    df_items_delta["Accuracy Avg. Model"] = pd.cut(df_items_delta["correct_avg"], 10, labels=False)
+    df_items_delta["delta"] = df_items_delta["correct_id"] - \
+        df_items_delta["correct_avg"]
+    df_items_delta["Accuracy Avg. Model"] = pd.cut(
+        df_items_delta["correct_avg"], 10, labels=False)
     return df_items_delta
 
 
