@@ -10,6 +10,7 @@ import re
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import utils as ut
 
 
 class SPoSE(nn.Module):
@@ -107,6 +108,153 @@ class SPoSE_ID(nn.Module):
                 m.weight.data.normal_(mean_avg, std_avg)
             elif isinstance(m, nn.Embedding):
                 m.weight.data.normal_(mean_id, std_id)
+
+
+class SPoSE_ID_Random(nn.Module):
+    def __init__(self, in_size: int, out_size: int, num_participants: int,
+        init_weights: bool = True,):
+        super().__init__()
+        self.in_size = in_size
+        self.out_size = out_size
+        self.fc = nn.Linear(in_size, out_size, bias=False)
+        self.individual_slopes = nn.Embedding(num_participants, out_size)
+
+        # Define learnable global mean & std
+        self.global_mean = nn.Parameter(torch.ones(out_size))
+        self.global_std = nn.Parameter(torch.ones(out_size))
+
+        if init_weights:
+            self._initialize_weights()
+
+    def hierarchical_loss(self, id: torch.Tensor):
+        """Encourage slopes to stay within a normal distribution."""
+        return torch.mean((self.individual_slopes(id) - self.global_mean) ** 2 / (2 * self.global_std**2))
+
+    def forward(self, x: torch.Tensor, id: torch.Tensor):
+        w_i = self.individual_slopes(id)
+        return w_i * self.fc(x)
+
+    def _initialize_weights(self) -> None:
+        mean_avg, std_avg = .1, .01
+        mean_id, std_id = .5, .15
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                m.weight.data.normal_(mean_avg, std_avg)
+            elif isinstance(m, nn.Embedding):
+                m.weight.data.normal_(mean_id, std_id)
+
+class Scaling_ID(nn.Module):
+    def __init__(
+        self,
+        in_size: int,
+        out_size: int,
+        num_participants: int,
+        init_weights: bool = True,
+    ):
+        super(Scaling_ID, self).__init__()
+        self.in_size = in_size
+        self.out_size = out_size
+        self.individual_temps = nn.Embedding(num_participants, 1)
+
+        if init_weights:
+            self._initialize_weights()
+        
+    def hierarchical_loss(self, id: torch.Tensor):
+        """just returns 0, because temps are fitted freely"""
+        return 0
+
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.exp(self.individual_temps(x))
+    
+    def _initialize_weights(self) -> None:
+        mn, std = -2.3, .5
+        for m in self.modules():
+            if isinstance(m, nn.Embedding):
+                m.weight.data.normal_(mn, std)
+    
+
+class Scaling_ID_Random(nn.Module):
+    def __init__(
+        self,
+        in_size: int,
+        out_size: int,
+        num_participants: int,
+        init_weights: bool = True,
+    ):
+        super(Scaling_ID_Random, self).__init__()
+        self.in_size = in_size
+        self.out_size = out_size
+        self.individual_temps = nn.Embedding(num_participants, 1)
+
+        # Define learnable global mean & std
+        self.global_mean = nn.Parameter(torch.ones(out_size))
+        self.global_std = nn.Parameter(torch.ones(out_size))
+
+
+        if init_weights:
+            self._initialize_weights()
+        
+    def hierarchical_loss(self, id: torch.Tensor):
+        """Encourage slopes to stay within a normal distribution."""
+        return torch.mean((torch.exp(self.individual_temps(id)) - self.global_mean) ** 2 / (2 * self.global_std**2))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.exp(self.individual_temps(x))
+    
+    def _initialize_weights(self) -> None:
+        mn, std = -2.3, .5
+        for m in self.modules():
+            if isinstance(m, nn.Embedding):
+                m.weight.data.normal_(mn, std)
+
+class CombinedModel(nn.Module):
+    def __init__(
+            self,
+            in_size: int,
+            out_size: int,
+            num_participants: int,
+            scaling: str = "free",
+            init_weights=True,
+    ):
+        super(CombinedModel, self).__init__()
+        self.in_size = in_size
+        self.out_size = out_size
+        self.num_participants = num_participants
+        self.init_weights = init_weights
+        # embedding model with random by-participant dimension weights
+        self.model1 = SPoSE_ID_Random(
+            in_size=self.in_size,
+            out_size=self.out_size, 
+            num_participants=self.num_participants,
+            init_weights=self.init_weights
+        )
+        if scaling == "free":
+            # freely-varying by-participant softmax temperatures
+            self.model2 = Scaling_ID(
+                in_size=1, 
+                out_size=1, 
+                num_participants=num_participants,
+                init_weights=self.init_weights
+                )
+        elif scaling == "random":
+            # freely-varying by-participant softmax temperatures
+            self.model2 = Scaling_ID_Random(
+                in_size=1, 
+                out_size=1, 
+                num_participants=num_participants,
+                init_weights=self.init_weights
+                )
+
+    def forward(self, x, id, distance_metric):
+        x = self.model1(x, id)
+        anchor, positive, negative = torch.unbind(torch.reshape(x, (-1, 3, self.out_size)), dim=1)
+        sims_prep = ut.compute_similarities(anchor, positive, negative, "odd_one_out", distance_metric)
+        sims = torch.stack(sims_prep, dim=-1)
+        temp_scaling = self.model2(id[::3])
+        sims_scaled = sims/temp_scaling
+        loss = torch.mean(-torch.log(F.softmax(sims_scaled, dim=1)[:, 0]))
+        return loss, anchor, positive, negative
 
 
 class SPoSE_ID_IC(nn.Module):

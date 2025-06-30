@@ -78,6 +78,8 @@ from models import model as md
 
 from transformers import AutoTokenizer, AutoModel, AutoModelForMaskedLM, BertTokenizer, BertModel
 
+from numba import njit
+
 
 class TripletDataset(Dataset):
 
@@ -292,7 +294,7 @@ def load_data(device: torch.device, triplets_dir: str, inference: bool = False) 
     return train_triplets, test_triplets
 
 
-def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = False, testcase: bool = False, use_shuffled_subjects: str = "actual") -> Tuple[torch.Tensor]:
+def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = False, testcase: bool = False, use_shuffled_subjects: str = "actual", splithalf: str = "no") -> Tuple[torch.Tensor]:
     """load train and test triplet datasets with associated participant ID into memory"""
     if inference:
         with open(pjoin(triplets_dir, 'test_triplets_ID.npy'), 'rb') as test_triplets:
@@ -310,22 +312,33 @@ def load_data_ID(device: torch.device, triplets_dir: str, inference: bool = Fals
     except FileNotFoundError:
         print('\n...Could not find any .npy files for current modality.')
         print('...Now searching for .txt files.\n')
-        if testcase:
+        if splithalf == "no":
+            if testcase:
+                train_triplets = torch.from_numpy(np.loadtxt(
+                    pjoin(triplets_dir, 'train_90_ID_smallsample.txt'))).to(device).type(torch.LongTensor)
+                test_triplets = torch.from_numpy(np.loadtxt(
+                    pjoin(triplets_dir, 'test_10_ID_smallsample.txt'))).to(device).type(torch.LongTensor)
+            elif testcase == False:
+                if use_shuffled_subjects == "actual":
+                    train_triplets = torch.from_numpy(np.loadtxt(
+                        pjoin(triplets_dir, 'train_90_ID_item.txt'))).to(device).type(torch.LongTensor)
+                    test_triplets = torch.from_numpy(np.loadtxt(
+                        pjoin(triplets_dir, 'test_10_ID_item.txt'))).to(device).type(torch.LongTensor)
+                elif use_shuffled_subjects == "shuffled":
+                    train_triplets = torch.from_numpy(np.loadtxt(
+                        pjoin(triplets_dir, 'train_shuffled_90_ID_item.txt'))).to(device).type(torch.LongTensor)
+                    test_triplets = torch.from_numpy(np.loadtxt(
+                        pjoin(triplets_dir, 'test_shuffled_10_ID_item.txt'))).to(device).type(torch.LongTensor)
+        elif splithalf == "1":
             train_triplets = torch.from_numpy(np.loadtxt(
-                pjoin(triplets_dir, 'train_90_ID_smallsample.txt'))).to(device).type(torch.LongTensor)
+                pjoin(triplets_dir, 'splithalf_1_ID_item.txt'))).to(device).type(torch.LongTensor)
             test_triplets = torch.from_numpy(np.loadtxt(
-                pjoin(triplets_dir, 'test_10_ID_smallsample.txt'))).to(device).type(torch.LongTensor)
-        elif testcase == False:
-            if use_shuffled_subjects == "actual":
-                train_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'train_90_ID_item.txt'))).to(device).type(torch.LongTensor)
-                test_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'test_10_ID_item.txt'))).to(device).type(torch.LongTensor)
-            elif use_shuffled_subjects == "shuffled":
-                train_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'train_shuffled_90_ID_item.txt'))).to(device).type(torch.LongTensor)
-                test_triplets = torch.from_numpy(np.loadtxt(
-                    pjoin(triplets_dir, 'test_shuffled_10_ID_item.txt'))).to(device).type(torch.LongTensor)
+                pjoin(triplets_dir, 'splithalf_2_ID_item.txt'))).to(device).type(torch.LongTensor)
+        elif splithalf == "2":
+            train_triplets = torch.from_numpy(np.loadtxt(
+                pjoin(triplets_dir, 'splithalf_2_ID_item.txt'))).to(device).type(torch.LongTensor)
+            test_triplets = torch.from_numpy(np.loadtxt(
+                pjoin(triplets_dir, 'splithalf_1_ID_item.txt'))).to(device).type(torch.LongTensor)
 
     return train_triplets, test_triplets
 
@@ -455,9 +468,15 @@ def softmax(sims: tuple, t: torch.Tensor) -> torch.Tensor:
 
 
 def cross_entropy_loss(sims: tuple, t: torch.Tensor) -> torch.Tensor:
-    return torch.mean(-torch.log(F.softmax(torch.stack(sims, dim=-1), dim=1)[:, 0]))
+    sims_scaled = torch.stack(sims, dim=-1)/t
+    return torch.mean(-torch.log(F.softmax(sims_scaled, dim=1)[:, 0]))
+    #return torch.mean(-F.log_sotmax(torch.stack(sims, dim=-1)/t, dim=1)[:, 0])
     # replaced by torch softmax function with temperature == 1 to avoid Nan values
     # return torch.mean(-torch.log(softmax(sims, t)))
+
+def temperature_softmax(logits, temperature=1.0, dim=-1):
+    return F.softmax(logits / temperature, dim=dim)
+
 
 
 def compute_similarities(anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, method: str, distance_metric: str = 'dot') -> Tuple:
@@ -493,12 +512,22 @@ def accuracy_(probas: torch.Tensor) -> float:
     return acc
 
 
-def choice_accuracy(anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, method: str, distance_metric: str = 'dot') -> float:
-    similarities = compute_similarities(
+
+def choice_accuracy(
+        anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, 
+        method: str, distance_metric: str = 'dot', 
+        scalingfactors: torch.Tensor = torch.Tensor([1])
+        ) -> float:
+    similarities_prep = compute_similarities(
         anchor, positive, negative, method, distance_metric)
-    probas = F.softmax(torch.stack(similarities, dim=-1),
-                       dim=1).detach().cpu().numpy()
-    return accuracy_(probas)
+    similarities = torch.stack(similarities_prep, dim=-1)
+    similarities_scaled = similarities/scalingfactors
+    probas = F.softmax(similarities_scaled, dim=1).detach().cpu().numpy()
+    # the following uses the softmax policy
+    proba_correct = probas[:, 0].mean()
+    # accuracy_ uses an argmax policy
+    max_correct = accuracy_(probas)
+    return proba_correct, max_correct
 
 
 def trinomial_probs(anchor: torch.Tensor, positive: torch.Tensor, negative: torch.Tensor, method: str, t: torch.Tensor, distance_metric: str = 'dot') -> torch.Tensor:
@@ -736,57 +765,75 @@ def validation(
     val_batches,
     task: str,
     device: torch.device,
+    temperature: torch.tensor,
     sampling: bool = False,
     batch_size=None,
     distance_metric: str = 'dot',
     level_explanation="avg",
+    modeltype="free_weights"
 ):
     if sampling:
         assert isinstance(batch_size, int), 'batch size must be defined'
         sampled_choices = np.zeros(
             (int(len(val_batches) * batch_size), 3), dtype=int)
 
-    temperature = torch.tensor(1.).to(device)
     model.eval()
     with torch.no_grad():
         batch_losses_val = torch.zeros(len(val_batches))
-        batch_accs_val = torch.zeros(len(val_batches))
+        batch_accs_val_max = torch.zeros(len(val_batches))
+        batch_accs_val_proba = torch.zeros(len(val_batches))
+
         for j, batch in enumerate(val_batches):
             if level_explanation == 'avg':
                 batch = batch.to(device)
                 logits = model(batch)
+                anchor, positive, negative = torch.unbind(
+                    torch.reshape(logits, (-1, 3, logits.shape[-1])), dim=1)
+                c_entropy = trinomial_loss(anchor, positive, negative, task, temperature, distance_metric)
+            
             elif level_explanation == "ID":
-                b = batch[0].to(device)
-                id = batch[1].to(device)
-                logits = model(b, id)
-            anchor, positive, negative = torch.unbind(
-                torch.reshape(logits, (-1, 3, logits.shape[-1])), dim=1)
-
+                if modeltype in ["random_weights_free_scaling", "random_weights_random_scaling"] :
+                    b = batch[0].to(device)
+                    id = batch[1].to(device)
+                    c_entropy, anchor, positive, negative = model(b, id, distance_metric)
+                    temperature = model.model2(id[::3])
+                else:
+                    b = batch[0].to(device)
+                    id = batch[1].to(device)
+                    logits = model(b, id)
+                    anchor, positive, negative = torch.unbind(
+                            torch.reshape(logits, (-1, 3, logits.shape[-1])), dim=1)
+                    c_entropy = trinomial_loss(anchor, positive, negative, task, temperature, distance_metric)
+            
+            
             if sampling:
-                similarities = compute_similarities(
+                sims_prep = compute_similarities(
                     anchor, positive, negative, task, distance_metric)
-                probas = F.softmax(torch.stack(
-                    similarities, dim=-1), dim=1).numpy()
+                sims = torch.stack(sims_prep, dim=-1)
+                
+                sims_scaled = sims/temperature
+                probas = F.softmax(sims_scaled, dim=1).numpy()
                 probas = probas[:, ::-1]
-                human_choices = batch.nonzero(
+                human_choices = b.nonzero(
                     as_tuple=True)[-1].view(batch_size, -1).numpy()
                 model_choices = np.array([np.random.choice(h_choice, size=len(p), replace=False, p=p)[
                                          ::-1] for h_choice, p in zip(human_choices, probas)])
-                sampled_choices[j*batch_size:(j+1)*batch_size] += model_choices
-            else:
-                val_loss = trinomial_loss(
-                    anchor, positive, negative, task, temperature)
-                val_acc = choice_accuracy(anchor, positive, negative, task)
+                sampled_choices[j*batch_size:(j+1)*batch_size] += model_choices 
 
-            batch_losses_val[j] += val_loss.item()
-            batch_accs_val[j] += val_acc
+            else:
+                val_loss = c_entropy
+                val_acc_proba, val_acc_max = choice_accuracy(anchor, positive, negative, task, distance_metric, scalingfactors=temperature)
+                batch_losses_val[j] += val_loss.item()
+                batch_accs_val_proba[j] += val_acc_proba
+                batch_accs_val_max[j] += val_acc_max
 
     if sampling:
         return sampled_choices
 
     avg_val_loss = torch.mean(batch_losses_val).item()
-    avg_val_acc = torch.mean(batch_accs_val).item()
-    return avg_val_loss, avg_val_acc
+    avg_val_acc_max = torch.mean(batch_accs_val_max).item()
+    avg_val_acc_proba = torch.mean(batch_accs_val_proba).item()
+    return avg_val_loss, avg_val_acc_proba, avg_val_acc_max
 
 
 def get_digits(string: str) -> int:
@@ -1311,3 +1358,59 @@ def delta_avg_id(anchors, positives, negatives, anchors_weighted, positives_weig
     acc_eval_id = one_id.sum() / np.sum(ids == idx)
     delta = acc_eval_id - acc_eval_avg
     return delta, one_avg, one_id
+
+
+def delta_avg_triplet(
+        anchors, positives, negatives, anchors_weighted, positives_weighted, negatives_weighted, 
+        array_weights_items, array_weights_id, df_diagnostic_data
+        ):
+    # prepare avg and id weights
+    anchors = torch.Tensor(np.array([array_weights_items[i,:] for i in list(df_diagnostic_data.loc[:, 0])]))
+    positives = torch.Tensor(np.array([array_weights_items[i,:] for i in list(df_diagnostic_data.loc[:, 1])]))
+    negatives = torch.Tensor(np.array([array_weights_items[i,:] for i in list(df_diagnostic_data.loc[:, 2])]))
+    anchors_weighted = [a*array_weights_id.numpy()[df_diagnostic_data.loc[id, "id_subject"]] for id, a in enumerate(anchors)]
+    positives_weighted = [a*array_weights_id.numpy()[df_diagnostic_data.loc[id, "id_subject"]] for id, a in enumerate(positives)]
+    negatives_weighted = [a*array_weights_id.numpy()[df_diagnostic_data.loc[id, "id_subject"]] for id, a in enumerate(negatives)]
+    anchors_weighted = torch.vstack(anchors_weighted)
+    positives_weighted = torch.vstack(positives_weighted)
+    negatives_weighted = torch.vstack(negatives_weighted)
+    # compute similarities for every triplet
+    sims_avg = ut.compute_similarities(
+        anchors, positives, negatives, method="odd_one_out")
+    sims_id = ut.compute_similarities(
+            anchors_weighted, positives_weighted, negatives_weighted, method="odd_one_out")
+    # mark correct and incorrect decisions given similarities (argmax)
+    one_avg = (sims_avg[0] > sims_avg[1]).numpy() & (
+            sims_avg[0] > sims_avg[2]).numpy()
+    one_id = (sims_id[0] > sims_id[1]).numpy() & (
+            sims_id[0] > sims_id[2]).numpy()
+    # and add back into df
+    df_diagnostic_data["correct_avg"] = one_avg
+    df_diagnostic_data["correct_id"] = one_id
+    # group by triplet and calculate prop correct
+    df_items_delta = (
+        df_diagnostic_data
+        .groupby("triplet_id")
+        .agg(
+            correct_avg=("correct_avg", "mean"),
+            correct_id=("correct_id", "mean"),
+            n=("correct_avg", "count")  # or use any column to count rows
+        )
+        .reset_index()
+    )
+    # calculate prop improvement: delta
+    df_items_delta["delta"] = df_items_delta["correct_id"] - df_items_delta["correct_avg"]
+    df_items_delta["Accuracy Avg. Model"] = pd.cut(df_items_delta["correct_avg"], 10, labels=False)
+    return df_items_delta
+
+
+def gini(x):
+    x = np.array(x, dtype=np.float64)
+    if np.amin(x) < 0:
+        raise ValueError("Values cannot be negative")
+    if np.all(x == 0):
+        return 0.0
+    x = np.sort(x)
+    n = len(x)
+    index = np.arange(1, n + 1)
+    return (np.sum((2 * index - n - 1) * x)) / (n * np.sum(x))
