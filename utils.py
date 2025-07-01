@@ -1402,7 +1402,6 @@ def delta_avg_triplet(
         .agg(
             correct_avg=("correct_avg", "mean"),
             correct_id=("correct_id", "mean"),
-            n=("correct_avg", "count")  # or use any column to count rows
         )
         .reset_index()
     )
