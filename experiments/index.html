@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Object Comparison Task</title>
+    <script src="/jspsych-dist/dist/jspsych.js"></script>
+    <script src="/jspsych-dist/dist/plugin-html-button-response.js"></script>
+    <script src="/jspsych-dist/dist/plugin-html-keyboard-response.js"></script>
+    <script src="/jspsych-dist/dist/plugin-preload.js"></script>
+    <script src="/jspsych-dist/dist/plugin-survey-text.js"></script>
+    <script src="/jspsych-dist/dist/plugin-survey-multi-choice.js"></script>
+    <script src="/jspsych-dist/dist/plugin-fullscreen.js"></script>
+
+    <script src="expt-utils/jquery.min.js"></script>
+    <script src="expt-utils/js-helpers.js"></script>
+    <script src="expt-utils/jspsych-psychophysics.js"></script>
+
+    <script src="https://pixijs.download/release/pixi.js"></script>
+
+    <link rel="stylesheet" href="/jspsych-dist/dist/jspsych.css">
+
+    </link>
+</head>
+
+
+<body></body>
+<script>
+
+
+    // still to do
+    // save data on server
+    // create fixed stimulus set and load it
+
+
+    // This file demonstrates how to present multiple images in random order in succession.
+    // That is, Rapid serial visual presentation (RSVP) 
+
+    const jsPsych = initJsPsych({
+        show_progress_bar: true,
+        auto_update_progress_bar: false,
+        on_finish: function () {
+            jsPsych.data.displayData();
+        }
+    })
+
+    const pixi_flag = jsPsych.data.getURLVariable('pixi_flag') === '1' ? true : false;
+
+
+    session_id = getQueryVariable('session');
+    if (!session_id) { session_id = 0 }
+    set_size = 5 // starting length of each trial (i.e., min number of letters in a trial)
+    n_upd_steps = 7 // ending length of each trial (i.e., max number of letters in a trial)
+    rep_set = 3 // number of times each set size should be repeated
+    randomize = true // present different set sizes in random order. if false, set sizes will be presented in ascending order
+    file_name = null // file name for data file. if null, a default name consisting of the participant ID and a unique number is chosen.
+    local = false // save the data file locally.
+    var n_comprehension_attempts = 1;
+
+    var t_start = Date.now();
+    // If this test is being run online (e.g., on MTurk), true will cause the file to be downloaded to the participant's computer.
+    // If this test is on a server, and you wish to save the data file to that server, change this to false.
+    // If changed to false, ensure that the php file (its in the directory!) and the empty "data" folder has also been appropriately uploaded to the server.
+    // Incase of problems, feel free to contact me :)
+
+    //----------------------------------------------------------------------
+
+
+
+    if (window.location.search.indexOf('PROLIFIC_PID') > -1) {
+        var participant_id = getQueryVariable('PROLIFIC_PID');
+    }
+    // If no ID is present, generate one using random numbers - this is useful for testing
+    else {
+        var participant_id = Math.floor(Math.random() * 1000);
+    }
+    // STUDY ID
+    if (window.location.search.indexOf('STUDY_ID') > -1) {
+        var studyID = getQueryVariable('STUDY_ID');
+    }
+    progress_url = updateQueryStringParameter("../../task/main.html", "PROLIFIC_PID", participant_id);
+
+
+    var possibleNumbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+
+    var nTrials_update = 20 // number of trials2 // 1//
+    var nTrials_immediate = 5 // 1 //1//
+    var nPracticeTrials = 2
+
+    // max possible number correct recalled items
+    const n_max_correct = (nTrials_immediate + nTrials_update) * set_size;
+    // counter for actually correctly recalled items
+    var n_recalled_cumulative = 0;
+
+    var totalTrials = nPracticeTrials + nTrials_update + nTrials_immediate; //total number of trials in the entire task (practice + main task)
+
+    var n = 0 //keeps track of number of trials gone by
+    var n_update = 0;
+    var n_immediate = 0;
+    var is_practice = 1;
+
+
+    // uncomment below and comment references to pre-loaded arrays below to randomly generate stimuli for every participant on the fly
+
+    /* var tr_update = "update ".repeat(nTrials_update).split(" ");
+    tr_update.pop();
+    var tr_immediate = "immediate ".repeat(nTrials_immediate).split(" ");
+    tr_immediate.pop();
+    var trial_type = tr_update.concat(tr_immediate);
+    trial_type = jsPsych.randomization.sampleWithoutReplacement(trial_type, nTrials_update + nTrials_immediate); */
+
+
+
+    //jsPsych.randomization.sampleWithoutReplacement(..., nTrials_update + nTrials_immediate);
+
+    // we need
+    // a sequence of numbers, which serve as the initial memory set
+    // a sequence of locations, which are sequentially updated in every trial
+    // a sequence of numbers, which serve as the items to replace the previous items
+
+    /* var initial_locations = [0, 1, 2, 3];
+    var initial_set = [];
+    var locations_update = [];
+    var items_replace = [];
+    var final_set = [];
+    var immediate_set = [];
+
+    for (var i = 0; i <= nTrials_update; i++) {
+        initial_set[i] = jsPsych.randomization.sampleWithoutReplacement(possibleNumbers, set_size);
+        locations_update[i] = jsPsych.randomization.sampleWithReplacement(Array(set_size).fill().map((element, index) => index), n_upd_steps);
+        items_replace[i] = jsPsych.randomization.sampleWithoutReplacement(possibleNumbers, n_upd_steps);
+        final_set[i] = initial_set[i];
+        for (var j = 0; j <= n_upd_steps; j++) {
+            final_set[i][locations_update[i][j]] = items_replace[i][j];
+        }
+    }
+
+    for (var i = 0; i <= nTrials_immediate; i++) {
+        immediate_set[i] = jsPsych.randomization.sampleWithoutReplacement(possibleNumbers, set_size);
+    } */
+
+    var initial_set = initial_set_updating[session_id];
+    var immediate_set = immediate_set_updating[session_id];
+    var trial_type = trial_type_updating[session_id];
+    var locations_update = locations_update_updating[session_id];
+    var items_replace = items_replace_updating[session_id];
+    var final_set = final_set_updating[session_id];
+
+    var n_recalled;
+    var n_recalled_correctly;
+    var data_cumulative;
+    data_cumulative = [];
+
+    var instructionsGo = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: '<div style="font-size:30px;"><br>Click on "Next" to start.<br><br></div>',
+        choices: ["Next"]
+    };
+
+
+    /*     var instructions0 = {
+            type: jsPsychHtmlButtonResponse,
+            stimulus: `<div style="font-size:25px;"><b>IMPORTANT</b><br>
+            Your data are used for scientific purposes.<br>
+            We have invested a lot of time to develop this study.<br>
+            If you use external aids in any of the tasks, we cannot use your data at all!<br>
+            Click the proceed button, if you commit to being honest.<br><br>`,
+            choices: ["Proceed"]
+        }; */
+
+    var instructions1 = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: '<div style="font-size:30px;"><b>INSTRUCTIONS</b><br><br><br>This is the updating task. It has two parts: <br><br>(1) Memorization of the initially presented digits <br><br>(2) Individually updating selected digits <br><br><br><br>This task is going to be in full-screen mode.<br><br><b> Please do not leave the full-screen mode. <br><br>Otherwise, the presented numbers may be illegible.<br><br></div>',
+        choices: ["Next"]
+    };
+    var instructions2 = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: '<div style="font-size:30px;">In every trial, five digits colored in different colors are presented on the screen.<br><br>Remember these five digits in the correct order.<br><br>There will be a series of seven updating steps.<br><br>At every updating step, one digit is replaced by a different digit.<br><br>Occasionally, it may be replaced by the same digit already<br><br>presented previously at that location.<br><br></div>',
+        choices: ["Next"]
+    };
+    var instructions2b = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: '<div style="font-size:30px;">In the end of the trial,<br><br>you are required to recall the last five digits at every location.<br><br> Please note that the ordering of the digits is important.<br><br>A recalled digit is only going to be counted as correct<br><br>if it is recalled in the correct location.<br><br></div>',
+        choices: ["Next"]
+    };
+    var instructions3 = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: '<div style="font-size:30px;">Recall the digits using the number pad on your keyboard.<br><br>For example, assume that the last five digits were 9, 3, 6, 9, 2.<br><br>Please respond "93692".<br><br><br>If you are unsure what has been presented most recently<br><br> at one or several locations, please guess<br><br>in these locations.<br><br></div>',
+        choices: ["Next"]
+    };
+    var instructions4 = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: '<div style="font-size:30px;">Occasionally, you have to recall the initial set of digits immediately. <br><br>Again, please recall in the correct order.<br><br>You get two practice trials to get used to the two versions<br><br>of the task.<br><br>(immediate recall and recall after the updating steps).<br><br></div>',
+        choices: ["Start Practice"]
+    };
+    var instructions_test = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: '<div style="font-size:30px;">These were the two practice trials.<br><br>The main part of the updating task is going to start now.<br>Good luck. </div>',
+        choices: ["Start Main Part"]
+    };
+
+
+
+    const viewing_time_initial = 5000; // 5000
+    const viewing_time_updating = 1250; // ms
+    const isi = 250; // ms
+
+    stepsize_x = screen.width / 10;
+    stepsize_y = screen.height / 10;
+
+    trial_time_updating = n_upd_steps * viewing_time_updating + viewing_time_initial;
+    rect_object_ll_u = make_rect(-2.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_updating);
+    rect_object_l_u = make_rect(-1.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_updating);
+    rect_object_m_u = make_rect(-.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_updating);
+    rect_object_r_u = make_rect(.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_updating);
+    rect_object_rr_u = make_rect(1.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_updating);
+
+    const updating_object = [rect_object_ll_u, rect_object_l_u, rect_object_m_u, rect_object_r_u, rect_object_rr_u];
+    for (let i = set_size; i < (n_upd_steps + 2 * set_size); i++) {
+        const updating_temporal_object = {
+            obj_type: 'text',
+        }
+        updating_object.push(updating_temporal_object)
+    }
+
+    trial_time_immediate = viewing_time_initial;
+    rect_object_ll_i = make_rect(-2.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_immediate);
+    rect_object_l_i = make_rect(-1.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_immediate);
+    rect_object_m_i = make_rect(-.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_immediate);
+    rect_object_r_i = make_rect(.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_immediate);
+    rect_object_rr_i = make_rect(1.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_immediate);
+
+    const immediate_object = [rect_object_ll_i, rect_object_l_i, rect_object_m_i, rect_object_r_i, rect_object_rr_i];
+    for (let i = set_size; i < 2 * set_size; i++) {
+        const immediate_temporal_object = {
+            obj_type: 'text',
+        }
+        immediate_object.push(immediate_temporal_object)
+    }
+    function toNumber(value) {
+        return Number(value);
+    }
+    const cued_response = {
+        type: jsPsychSurveyText,
+        textarea: "width:40%;height:40%",
+        questions: [
+            {
+                prompt: `Please recall the five items from left to right;<br>
+                Please guess when you are unsure about a position: `}
+        ],
+        on_finish: function (data) {
+            n_recalled_correctly = 0;
+            var str_response = data.response["Q0"].toString();
+            var str_trim = str_response.trim();
+            var regex = /[.,;:]/g;
+            var result = str_trim.replace(regex, '');
+            var result_array = result.split("");
+            var result_array = result_array.map(toNumber);
+            data.response_clean = result;
+            data.response_array = result_array;
+
+            var n_type;
+            var correct_sequence;
+            if (trial_type[n] == "update") {
+                n_type = n_update;
+                correct_sequence = final_set[n_update];
+            } else if (trial_type[n] == "immediate") {
+                n_type = n_immediate;
+                correct_sequence = immediate_set[n_immediate];
+            }
+            for (let i = 0; i < set_size; i++) {
+                if (correct_sequence[i] == result_array[i]) {
+                    n_recalled_correctly += 1
+                }
+            }
+            data_recall = {
+                participant_id: participant_id,
+                session_id: session_id,
+                is_practice: is_practice,
+                trial_type: trial_type[n],
+                trial_id: n_type,
+                set_size: set_size,
+                sequence_correct: correct_sequence,
+                sequence_recalled: result_array,
+                n_correct: n_recalled_correctly,
+                rt: data.rt
+            };
+            data_cumulative.push(data_recall);
+
+
+            var trial_data = {
+                rt: data.rt,
+                accuracy: n_recalled_correctly
+            }
+
+            if (local) {
+
+            } else if (!local) {
+                saveData(JSON.stringify(data_recall), "WMU_" + session_id + "_" + participant_id + ".json", "WMU", flag_save = false);
+                let dataSaved = false;
+                saveSeveralDataOverwrite(data_cumulative, "WMU_allinone_" + session_id + "_" + participant_id + ".json", "WMU");
+                checkDataSaving();
+            }
+
+            // update trial counters
+            if (trial_type[n] == "update") {
+                n_update += 1;
+            } else if (trial_type[n] == "immediate") {
+                n_immediate += 1;
+            }
+
+            if (n >= nPracticeTrials) {
+                n_recalled_cumulative += n_recalled_correctly;
+            }
+            n += 1;
+            if (is_practice == 0) {
+                jsPsych.setProgressBar((n - nPracticeTrials) / (nTrials_update + nTrials_immediate));
+            }
+            // move on to the next trial
+            jsPsych.finishTrial(trial_data);
+        }
+    };
+
+    var feedback = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: function () {
+            pageOne = "<div style='font-size:20px;'><b>You recalled <font color='blue'>" + n_recalled_correctly + " digits in their correct order.</b><br><br>"
+            return pageOne
+        },
+        allow_backward: false,
+        choices: ["Next Trial"],
+        show_clickable_nav: true,
+        on_finish: function () {
+            n_recalled_correctly = 0
+        }
+    }
+
+
+    const mixed_trial = {
+        type: jsPsychPsychophysics,
+        pixi: pixi_flag,
+        stimuli: function () {
+            if (trial_type[n] == "update") {
+                return updating_object
+            } else if (trial_type[n] == "immediate") {
+                return immediate_object
+            }
+        },
+        trial_duration: function () {
+            if (trial_type[n] == "update") {
+                return n_upd_steps * viewing_time_updating + viewing_time_initial
+            } else if (trial_type[n] == "immediate") {
+                return viewing_time_initial
+            }
+        },
+        response_start_time: function () {
+            if (trial_type[n] == "update") {
+                return n_upd_steps * viewing_time_updating + viewing_time_initial
+            } else if (trial_type[n] == "immediate") {
+                return viewing_time_initial
+            }
+        },
+        //response_start_time: viewing_time_initial + (viewing_time_updating + isi) * n_upd_steps - isi, // not to respond until all images are presented.
+        on_start: function (trial) {
+            // Set parameters for each image dynamically
+            if (trial_type[n] == "update") {
+                for (let i = set_size; i < (2 * set_size); i++) {
+                    trial.stimuli[i].content = initial_set[n_update][i - set_size].toString();
+                    trial.stimuli[i].show_start_time = 0;
+                    trial.stimuli[i].show_end_time = viewing_time_initial;
+                    trial.stimuli[i].origin_center = true;
+                    trial.stimuli[i].startX = [-2.5 * stepsize_x, -1.5 * stepsize_x, -.5 * stepsize_x, .5 * stepsize_x, 1.5 * stepsize_x][i - set_size];
+                    trial.stimuli[i].text_color = ["red", "black", "green", "blue", "orange"][i - set_size];
+                    trial.stimuli[i].font = '60px Arial';
+                }
+                for (let i = (2 * set_size); i < (n_upd_steps + 2 * set_size); i++) {
+                    trial.stimuli[i].content = items_replace[n_update][i - 2 * set_size].toString();
+                    trial.stimuli[i].show_start_time = viewing_time_initial + viewing_time_updating * (i - 2 * set_size);
+                    trial.stimuli[i].show_end_time = viewing_time_initial + viewing_time_updating * (i - 2 * set_size) + viewing_time_updating;
+                    trial.stimuli[i].origin_center = true;
+                    trial.stimuli[i].startX = [-2.5 * stepsize_x, -1.5 * stepsize_x, -.5 * stepsize_x, .5 * stepsize_x, 1.5 * stepsize_x][locations_update[n_update][i - 2 * set_size]];
+                    trial.stimuli[i].text_color = ["red", "black", "green", "blue", "orange"][locations_update[n_update][i - 2 * set_size]];
+                    trial.stimuli[i].font = '60px Arial';
+                }
+            } else if (trial_type[n] == "immediate") {
+                for (let i = set_size; i < (2 * set_size); i++) {
+                    trial.stimuli[i].content = immediate_set[n_immediate][i - set_size].toString();
+                    trial.stimuli[i].show_start_time = 0;
+                    trial.stimuli[i].origin_center = true;
+                    trial.stimuli[i].show_end_time = viewing_time_initial;
+                    trial.stimuli[i].startX = [-2.5 * stepsize_x, -1.5 * stepsize_x, -.5 * stepsize_x, .5 * stepsize_x, 1.5 * stepsize_x][i - set_size];
+                    trial.stimuli[i].text_color = ["red", "black", "green", "blue", "orange"][i - set_size];
+                    trial.stimuli[i].font = '60px Arial';
+                }
+            }
+            //trial.stimuli[n_upd_steps + set_size - 1].trial_duration = 0;
+        }
+    }
+
+
+
+    timeline_mixed = [];
+
+    const fullscreen_on = {
+        type: jsPsychFullscreen,
+        fullscreen_mode: true
+    };
+
+    const mixed_node_practice = {
+        timeline: [mixed_trial, cued_response, feedback],
+        repetitions: 2,
+    };
+
+    //compcheck1: if answer incorrect, compcheck1 will be repeated until correct response inserted
+    var comp_check_wmu_loop = {
+        timeline: [comprehension_question_wmu_allinone, comp_feedback_wmu_verbose],
+        loop_function: function (data) {
+            len_data = data.values().length;
+
+            if (
+                data.values()[len_data - 2].correct == true
+            ) {
+                is_practice = 0;
+                data_comprehension = {
+                    participant_id: participant_id,
+                    n_attempts: n_comprehension_attempts,
+                    t_comprehension: Date.now() - t_start
+                };
+                let dataSaved = false;
+                saveData(JSON.stringify(data_comprehension), "WMU_comprehension_check_" + session_id + "_" + participant_id + ".json", "WMU");
+                checkDataSaving();
+
+                return false;
+            } else {
+                n_comprehension_attempts += 1;
+                n = 0 // keeps track of number of trials gone by
+                n_update = 0;
+                n_immediate = 0;
+                return true;
+            }
+        }
+    };
+    //timeline_mixed.push(instructions0);
+    timeline_mixed.push(instructions0, instructions1, fullscreen_on, instructions2, instructions2b, instructions3, instructions4, instructionsGo, mixed_node_practice);
+    timeline_mixed.push(comp_check_wmu_loop);
+
+    const mixed_node_main = {
+        timeline: [mixed_trial, cued_response, feedback],
+        repetitions: nTrials_update + nTrials_immediate,
+    };
+    timeline_mixed.push(instructions_test);
+    timeline_mixed.push(mixed_node_main);
+    timeline_mixed.push({
+        type: jsPsychFullscreen,
+        fullscreen_mode: false
+    });
+
+    var instructions_go_on = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: '<div style="font-size:30px;"><br>Well done!<br>You have now carried out three out of six tasks. Take a break and rest a few minutes to take a deep breath and prepare for tasks four to six.<br>Click on "Next" to continue with the decision games.<br></div>',
+        choices: ["Next"],
+        on_finish: function () {
+            data_bonus = {
+                participant_id: participant_id,
+                prop_correct: Math.round(100 * (n_recalled_cumulative / n_max_correct)) / 100
+            };
+            let dataSaved = false;
+            saveData(JSON.stringify(data_bonus), "WMU_bonus_" + session_id + "_" + participant_id + ".json", "WMU");
+            checkDataSaving();
+            window.location.href = progress_url + "&session=" + session_id;
+        }
+    };
+    timeline_mixed.push(instructions_go_on);
+
+    jsPsych.run(timeline_mixed);
+
+
+</script>
+
+</html>
