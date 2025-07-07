@@ -1,480 +1,171 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
+
+
 
 <head>
-    <title>Object Comparison Task</title>
-    <script src="/jspsych-dist/dist/jspsych.js"></script>
-    <script src="/jspsych-dist/dist/plugin-html-button-response.js"></script>
-    <script src="/jspsych-dist/dist/plugin-html-keyboard-response.js"></script>
-    <script src="/jspsych-dist/dist/plugin-preload.js"></script>
-    <script src="/jspsych-dist/dist/plugin-survey-text.js"></script>
-    <script src="/jspsych-dist/dist/plugin-survey-multi-choice.js"></script>
-    <script src="/jspsych-dist/dist/plugin-fullscreen.js"></script>
+    <meta charset="utf-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="-1">
 
+    <title>Casino Challenge</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Casino Challenge">
+    <meta name="author" content="Mirko Thalmann & Eric Schulz">
+
+    <link rel="stylesheet" href="expt-utils/my_style.css">
     <script src="expt-utils/jquery.min.js"></script>
-    <script src="expt-utils/js-helpers.js"></script>
-    <script src="expt-utils/jspsych-psychophysics.js"></script>
+    <script src="expt-utils/js-helpers.js" charset="utf-8" cache-control="public"></script>
+    <script>
+        var _rollbarConfig = {
+            accessToken: 'ce189ef6e760416db77b45599958b9e8',
+            captureUncaught: true,
+            captureUnhandledRejections: true,
+            payload: {
+                environment: 'production',
+                //context: 'home/index',
+                //trace_id: 'abc123',
+                client: {
+                    javascript: {
+                        code_version: '1.0.0',
+                        //source_map_enabled: true,
+                        //guess_uncaught_frames: true
+                    }
+                }
+            }
+        };
+        // Rollbar Snippet
+        !function (r) { var e = {}; function o(n) { if (e[n]) return e[n].exports; var t = e[n] = { i: n, l: !1, exports: {} }; return r[n].call(t.exports, t, t.exports, o), t.l = !0, t.exports } o.m = r, o.c = e, o.d = function (r, e, n) { o.o(r, e) || Object.defineProperty(r, e, { enumerable: !0, get: n }) }, o.r = function (r) { "undefined" != typeof Symbol && Symbol.toStringTag && Object.defineProperty(r, Symbol.toStringTag, { value: "Module" }), Object.defineProperty(r, "__esModule", { value: !0 }) }, o.t = function (r, e) { if (1 & e && (r = o(r)), 8 & e) return r; if (4 & e && "object" == typeof r && r && r.__esModule) return r; var n = Object.create(null); if (o.r(n), Object.defineProperty(n, "default", { enumerable: !0, value: r }), 2 & e && "string" != typeof r) for (var t in r) o.d(n, t, function (e) { return r[e] }.bind(null, t)); return n }, o.n = function (r) { var e = r && r.__esModule ? function () { return r.default } : function () { return r }; return o.d(e, "a", e), e }, o.o = function (r, e) { return Object.prototype.hasOwnProperty.call(r, e) }, o.p = "", o(o.s = 0) }([function (r, e, o) { "use strict"; var n = o(1), t = o(5); _rollbarConfig = _rollbarConfig || {}, _rollbarConfig.rollbarJsUrl = _rollbarConfig.rollbarJsUrl || "https://cdn.rollbar.com/rollbarjs/refs/tags/v2.24.0/rollbar.min.js", _rollbarConfig.async = void 0 === _rollbarConfig.async || _rollbarConfig.async; var a = n.setupShim(window, _rollbarConfig), l = t(_rollbarConfig); window.rollbar = n.Rollbar, a.loadFull(window, document, !_rollbarConfig.async, _rollbarConfig, l) }, function (r, e, o) { "use strict"; var n = o(2), t = o(3); function a(r) { return function () { try { return r.apply(this, arguments) } catch (r) { try { console.error("[Rollbar]: Internal error", r) } catch (r) { } } } } var l = 0; function i(r, e) { this.options = r, this._rollbarOldOnError = null; var o = l++; this.shimId = function () { return o }, "undefined" != typeof window && window._rollbarShims && (window._rollbarShims[o] = { handler: e, messages: [] }) } var s = o(4), d = function (r, e) { return new i(r, e) }, c = function (r) { return new s(d, r) }; function u(r) { return a((function () { var e = this, o = Array.prototype.slice.call(arguments, 0), n = { shim: e, method: r, args: o, ts: new Date }; window._rollbarShims[this.shimId()].messages.push(n) })) } i.prototype.loadFull = function (r, e, o, n, t) { var l = !1, i = e.createElement("script"), s = e.getElementsByTagName("script")[0], d = s.parentNode; i.crossOrigin = "", i.src = n.rollbarJsUrl, o || (i.async = !0), i.onload = i.onreadystatechange = a((function () { if (!(l || this.readyState && "loaded" !== this.readyState && "complete" !== this.readyState)) { i.onload = i.onreadystatechange = null; try { d.removeChild(i) } catch (r) { } l = !0, function () { var e; if (void 0 === r._rollbarDidLoad) { e = new Error("rollbar.js did not load"); for (var o, n, a, l, i = 0; o = r._rollbarShims[i++];)for (o = o.messages || []; n = o.shift();)for (a = n.args || [], i = 0; i < a.length; ++i)if ("function" == typeof (l = a[i])) { l(e); break } } "function" == typeof t && t(e) }() } })), d.insertBefore(i, s) }, i.prototype.wrap = function (r, e, o) { try { var n; if (n = "function" == typeof e ? e : function () { return e || {} }, "function" != typeof r) return r; if (r._isWrap) return r; if (!r._rollbar_wrapped && (r._rollbar_wrapped = function () { o && "function" == typeof o && o.apply(this, arguments); try { return r.apply(this, arguments) } catch (o) { var e = o; throw e && ("string" == typeof e && (e = new String(e)), e._rollbarContext = n() || {}, e._rollbarContext._wrappedSource = r.toString(), window._rollbarWrappedError = e), e } }, r._rollbar_wrapped._isWrap = !0, r.hasOwnProperty)) for (var t in r) r.hasOwnProperty(t) && (r._rollbar_wrapped[t] = r[t]); return r._rollbar_wrapped } catch (e) { return r } }; for (var p = "log,debug,info,warn,warning,error,critical,global,configure,handleUncaughtException,handleAnonymousErrors,handleUnhandledRejection,captureEvent,captureDomContentLoaded,captureLoad".split(","), f = 0; f < p.length; ++f)i.prototype[p[f]] = u(p[f]); r.exports = { setupShim: function (r, e) { if (r) { var o = e.globalAlias || "Rollbar"; if ("object" == typeof r[o]) return r[o]; r._rollbarShims = {}, r._rollbarWrappedError = null; var l = new c(e); return a((function () { e.captureUncaught && (l._rollbarOldOnError = r.onerror, n.captureUncaughtExceptions(r, l, !0), e.wrapGlobalEventHandlers && t(r, l, !0)), e.captureUnhandledRejections && n.captureUnhandledRejections(r, l, !0); var a = e.autoInstrument; return !1 !== e.enabled && (void 0 === a || !0 === a || "object" == typeof a && a.network) && r.addEventListener && (r.addEventListener("load", l.captureLoad.bind(l)), r.addEventListener("DOMContentLoaded", l.captureDomContentLoaded.bind(l))), r[o] = l, l }))() } }, Rollbar: c } }, function (r, e, o) { "use strict"; function n(r, e, o, n) { r._rollbarWrappedError && (n[4] || (n[4] = r._rollbarWrappedError), n[5] || (n[5] = r._rollbarWrappedError._rollbarContext), r._rollbarWrappedError = null); var t = e.handleUncaughtException.apply(e, n); o && o.apply(r, n), "anonymous" === t && (e.anonymousErrorsPending += 1) } r.exports = { captureUncaughtExceptions: function (r, e, o) { if (r) { var t; if ("function" == typeof e._rollbarOldOnError) t = e._rollbarOldOnError; else if (r.onerror) { for (t = r.onerror; t._rollbarOldOnError;)t = t._rollbarOldOnError; e._rollbarOldOnError = t } e.handleAnonymousErrors(); var a = function () { var o = Array.prototype.slice.call(arguments, 0); n(r, e, t, o) }; o && (a._rollbarOldOnError = t), r.onerror = a } }, captureUnhandledRejections: function (r, e, o) { if (r) { "function" == typeof r._rollbarURH && r._rollbarURH.belongsToShim && r.removeEventListener("unhandledrejection", r._rollbarURH); var n = function (r) { var o, n, t; try { o = r.reason } catch (r) { o = void 0 } try { n = r.promise } catch (r) { n = "[unhandledrejection] error getting `promise` from event" } try { t = r.detail, !o && t && (o = t.reason, n = t.promise) } catch (r) { } o || (o = "[unhandledrejection] error getting `reason` from event"), e && e.handleUnhandledRejection && e.handleUnhandledRejection(o, n) }; n.belongsToShim = o, r._rollbarURH = n, r.addEventListener("unhandledrejection", n) } } } }, function (r, e, o) { "use strict"; function n(r, e, o) { if (e.hasOwnProperty && e.hasOwnProperty("addEventListener")) { for (var n = e.addEventListener; n._rollbarOldAdd && n.belongsToShim;)n = n._rollbarOldAdd; var t = function (e, o, t) { n.call(this, e, r.wrap(o), t) }; t._rollbarOldAdd = n, t.belongsToShim = o, e.addEventListener = t; for (var a = e.removeEventListener; a._rollbarOldRemove && a.belongsToShim;)a = a._rollbarOldRemove; var l = function (r, e, o) { a.call(this, r, e && e._rollbar_wrapped || e, o) }; l._rollbarOldRemove = a, l.belongsToShim = o, e.removeEventListener = l } } r.exports = function (r, e, o) { if (r) { var t, a, l = "EventTarget,Window,Node,ApplicationCache,AudioTrackList,ChannelMergerNode,CryptoOperation,EventSource,FileReader,HTMLUnknownElement,IDBDatabase,IDBRequest,IDBTransaction,KeyOperation,MediaController,MessagePort,ModalWindow,Notification,SVGElementInstance,Screen,TextTrack,TextTrackCue,TextTrackList,WebSocket,WebSocketWorker,Worker,XMLHttpRequest,XMLHttpRequestEventTarget,XMLHttpRequestUpload".split(","); for (t = 0; t < l.length; ++t)r[a = l[t]] && r[a].prototype && n(e, r[a].prototype, o) } } }, function (r, e, o) { "use strict"; function n(r, e) { this.impl = r(e, this), this.options = e, function (r) { for (var e = function (r) { return function () { var e = Array.prototype.slice.call(arguments, 0); if (this.impl[r]) return this.impl[r].apply(this.impl, e) } }, o = "log,debug,info,warn,warning,error,critical,global,configure,handleUncaughtException,handleAnonymousErrors,handleUnhandledRejection,_createItem,wrap,loadFull,shimId,captureEvent,captureDomContentLoaded,captureLoad".split(","), n = 0; n < o.length; n++)r[o[n]] = e(o[n]) }(n.prototype) } n.prototype._swapAndProcessMessages = function (r, e) { var o, n, t; for (this.impl = r(this.options); o = e.shift();)n = o.method, t = o.args, this[n] && "function" == typeof this[n] && ("captureDomContentLoaded" === n || "captureLoad" === n ? this[n].apply(this, [t[0], o.ts]) : this[n].apply(this, t)); return this }, r.exports = n }, function (r, e, o) { "use strict"; r.exports = function (r) { return function (e) { if (!e && !window._rollbarInitialized) { for (var o, n, t = (r = r || {}).globalAlias || "Rollbar", a = window.rollbar, l = function (r) { return new a(r) }, i = 0; o = window._rollbarShims[i++];)n || (n = o.handler), o.handler._swapAndProcessMessages(l, o.messages); window[t] = n, window._rollbarInitialized = !0 } } } }]);
+        // End Rollbar Snippet
 
-    <script src="https://pixijs.download/release/pixi.js"></script>
+    </script>
 
-    <link rel="stylesheet" href="/jspsych-dist/dist/jspsych.css">
-
-    </link>
 </head>
 
-
-<body></body>
-<script>
-
-
-    // still to do
-    // save data on server
-    // create fixed stimulus set and load it
-
-
-    // This file demonstrates how to present multiple images in random order in succession.
-    // That is, Rapid serial visual presentation (RSVP) 
-
-    const jsPsych = initJsPsych({
-        show_progress_bar: true,
-        auto_update_progress_bar: false,
-        on_finish: function () {
-            jsPsych.data.displayData();
-        }
-    })
-
-    const pixi_flag = jsPsych.data.getURLVariable('pixi_flag') === '1' ? true : false;
-
-
-    session_id = getQueryVariable('session');
-    if (!session_id) { session_id = 0 }
-    set_size = 5 // starting length of each trial (i.e., min number of letters in a trial)
-    n_upd_steps = 7 // ending length of each trial (i.e., max number of letters in a trial)
-    rep_set = 3 // number of times each set size should be repeated
-    randomize = true // present different set sizes in random order. if false, set sizes will be presented in ascending order
-    file_name = null // file name for data file. if null, a default name consisting of the participant ID and a unique number is chosen.
-    local = false // save the data file locally.
-    var n_comprehension_attempts = 1;
-
-    var t_start = Date.now();
-    // If this test is being run online (e.g., on MTurk), true will cause the file to be downloaded to the participant's computer.
-    // If this test is on a server, and you wish to save the data file to that server, change this to false.
-    // If changed to false, ensure that the php file (its in the directory!) and the empty "data" folder has also been appropriately uploaded to the server.
-    // Incase of problems, feel free to contact me :)
-
-    //----------------------------------------------------------------------
-
-
-
-    if (window.location.search.indexOf('PROLIFIC_PID') > -1) {
-        var participant_id = getQueryVariable('PROLIFIC_PID');
-    }
-    // If no ID is present, generate one using random numbers - this is useful for testing
-    else {
-        var participant_id = Math.floor(Math.random() * 1000);
-    }
-    // STUDY ID
-    if (window.location.search.indexOf('STUDY_ID') > -1) {
-        var studyID = getQueryVariable('STUDY_ID');
-    }
-    progress_url = updateQueryStringParameter("../../task/main.html", "PROLIFIC_PID", participant_id);
-
-
-    var possibleNumbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-
-
-    var nTrials_update = 20 // number of trials2 // 1//
-    var nTrials_immediate = 5 // 1 //1//
-    var nPracticeTrials = 2
-
-    // max possible number correct recalled items
-    const n_max_correct = (nTrials_immediate + nTrials_update) * set_size;
-    // counter for actually correctly recalled items
-    var n_recalled_cumulative = 0;
-
-    var totalTrials = nPracticeTrials + nTrials_update + nTrials_immediate; //total number of trials in the entire task (practice + main task)
-
-    var n = 0 //keeps track of number of trials gone by
-    var n_update = 0;
-    var n_immediate = 0;
-    var is_practice = 1;
-
-
-    // uncomment below and comment references to pre-loaded arrays below to randomly generate stimuli for every participant on the fly
-
-    /* var tr_update = "update ".repeat(nTrials_update).split(" ");
-    tr_update.pop();
-    var tr_immediate = "immediate ".repeat(nTrials_immediate).split(" ");
-    tr_immediate.pop();
-    var trial_type = tr_update.concat(tr_immediate);
-    trial_type = jsPsych.randomization.sampleWithoutReplacement(trial_type, nTrials_update + nTrials_immediate); */
-
-
-
-    //jsPsych.randomization.sampleWithoutReplacement(..., nTrials_update + nTrials_immediate);
-
-    // we need
-    // a sequence of numbers, which serve as the initial memory set
-    // a sequence of locations, which are sequentially updated in every trial
-    // a sequence of numbers, which serve as the items to replace the previous items
-
-    /* var initial_locations = [0, 1, 2, 3];
-    var initial_set = [];
-    var locations_update = [];
-    var items_replace = [];
-    var final_set = [];
-    var immediate_set = [];
-
-    for (var i = 0; i <= nTrials_update; i++) {
-        initial_set[i] = jsPsych.randomization.sampleWithoutReplacement(possibleNumbers, set_size);
-        locations_update[i] = jsPsych.randomization.sampleWithReplacement(Array(set_size).fill().map((element, index) => index), n_upd_steps);
-        items_replace[i] = jsPsych.randomization.sampleWithoutReplacement(possibleNumbers, n_upd_steps);
-        final_set[i] = initial_set[i];
-        for (var j = 0; j <= n_upd_steps; j++) {
-            final_set[i][locations_update[i][j]] = items_replace[i][j];
-        }
-    }
-
-    for (var i = 0; i <= nTrials_immediate; i++) {
-        immediate_set[i] = jsPsych.randomization.sampleWithoutReplacement(possibleNumbers, set_size);
-    } */
-
-    var initial_set = initial_set_updating[session_id];
-    var immediate_set = immediate_set_updating[session_id];
-    var trial_type = trial_type_updating[session_id];
-    var locations_update = locations_update_updating[session_id];
-    var items_replace = items_replace_updating[session_id];
-    var final_set = final_set_updating[session_id];
-
-    var n_recalled;
-    var n_recalled_correctly;
-    var data_cumulative;
-    data_cumulative = [];
-
-    var instructionsGo = {
-        type: jsPsychHtmlButtonResponse,
-        stimulus: '<div style="font-size:30px;"><br>Click on "Next" to start.<br><br></div>',
-        choices: ["Next"]
-    };
-
-
-    /*     var instructions0 = {
-            type: jsPsychHtmlButtonResponse,
-            stimulus: `<div style="font-size:25px;"><b>IMPORTANT</b><br>
-            Your data are used for scientific purposes.<br>
-            We have invested a lot of time to develop this study.<br>
-            If you use external aids in any of the tasks, we cannot use your data at all!<br>
-            Click the proceed button, if you commit to being honest.<br><br>`,
-            choices: ["Proceed"]
-        }; */
-
-    var instructions1 = {
-        type: jsPsychHtmlButtonResponse,
-        stimulus: '<div style="font-size:30px;"><b>INSTRUCTIONS</b><br><br><br>This is the updating task. It has two parts: <br><br>(1) Memorization of the initially presented digits <br><br>(2) Individually updating selected digits <br><br><br><br>This task is going to be in full-screen mode.<br><br><b> Please do not leave the full-screen mode. <br><br>Otherwise, the presented numbers may be illegible.<br><br></div>',
-        choices: ["Next"]
-    };
-    var instructions2 = {
-        type: jsPsychHtmlButtonResponse,
-        stimulus: '<div style="font-size:30px;">In every trial, five digits colored in different colors are presented on the screen.<br><br>Remember these five digits in the correct order.<br><br>There will be a series of seven updating steps.<br><br>At every updating step, one digit is replaced by a different digit.<br><br>Occasionally, it may be replaced by the same digit already<br><br>presented previously at that location.<br><br></div>',
-        choices: ["Next"]
-    };
-    var instructions2b = {
-        type: jsPsychHtmlButtonResponse,
-        stimulus: '<div style="font-size:30px;">In the end of the trial,<br><br>you are required to recall the last five digits at every location.<br><br> Please note that the ordering of the digits is important.<br><br>A recalled digit is only going to be counted as correct<br><br>if it is recalled in the correct location.<br><br></div>',
-        choices: ["Next"]
-    };
-    var instructions3 = {
-        type: jsPsychHtmlButtonResponse,
-        stimulus: '<div style="font-size:30px;">Recall the digits using the number pad on your keyboard.<br><br>For example, assume that the last five digits were 9, 3, 6, 9, 2.<br><br>Please respond "93692".<br><br><br>If you are unsure what has been presented most recently<br><br> at one or several locations, please guess<br><br>in these locations.<br><br></div>',
-        choices: ["Next"]
-    };
-    var instructions4 = {
-        type: jsPsychHtmlButtonResponse,
-        stimulus: '<div style="font-size:30px;">Occasionally, you have to recall the initial set of digits immediately. <br><br>Again, please recall in the correct order.<br><br>You get two practice trials to get used to the two versions<br><br>of the task.<br><br>(immediate recall and recall after the updating steps).<br><br></div>',
-        choices: ["Start Practice"]
-    };
-    var instructions_test = {
-        type: jsPsychHtmlButtonResponse,
-        stimulus: '<div style="font-size:30px;">These were the two practice trials.<br><br>The main part of the updating task is going to start now.<br>Good luck. </div>',
-        choices: ["Start Main Part"]
-    };
-
-
-
-    const viewing_time_initial = 5000; // 5000
-    const viewing_time_updating = 1250; // ms
-    const isi = 250; // ms
-
-    stepsize_x = screen.width / 10;
-    stepsize_y = screen.height / 10;
-
-    trial_time_updating = n_upd_steps * viewing_time_updating + viewing_time_initial;
-    rect_object_ll_u = make_rect(-2.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_updating);
-    rect_object_l_u = make_rect(-1.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_updating);
-    rect_object_m_u = make_rect(-.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_updating);
-    rect_object_r_u = make_rect(.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_updating);
-    rect_object_rr_u = make_rect(1.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_updating);
-
-    const updating_object = [rect_object_ll_u, rect_object_l_u, rect_object_m_u, rect_object_r_u, rect_object_rr_u];
-    for (let i = set_size; i < (n_upd_steps + 2 * set_size); i++) {
-        const updating_temporal_object = {
-            obj_type: 'text',
-        }
-        updating_object.push(updating_temporal_object)
-    }
-
-    trial_time_immediate = viewing_time_initial;
-    rect_object_ll_i = make_rect(-2.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_immediate);
-    rect_object_l_i = make_rect(-1.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_immediate);
-    rect_object_m_i = make_rect(-.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_immediate);
-    rect_object_r_i = make_rect(.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_immediate);
-    rect_object_rr_i = make_rect(1.5 * stepsize_x, 0, stepsize_x, stepsize_y * 1.2, trial_time_immediate);
-
-    const immediate_object = [rect_object_ll_i, rect_object_l_i, rect_object_m_i, rect_object_r_i, rect_object_rr_i];
-    for (let i = set_size; i < 2 * set_size; i++) {
-        const immediate_temporal_object = {
-            obj_type: 'text',
-        }
-        immediate_object.push(immediate_temporal_object)
-    }
-    function toNumber(value) {
-        return Number(value);
-    }
-    const cued_response = {
-        type: jsPsychSurveyText,
-        textarea: "width:40%;height:40%",
-        questions: [
-            {
-                prompt: `Please recall the five items from left to right;<br>
-                Please guess when you are unsure about a position: `}
-        ],
-        on_finish: function (data) {
-            n_recalled_correctly = 0;
-            var str_response = data.response["Q0"].toString();
-            var str_trim = str_response.trim();
-            var regex = /[.,;:]/g;
-            var result = str_trim.replace(regex, '');
-            var result_array = result.split("");
-            var result_array = result_array.map(toNumber);
-            data.response_clean = result;
-            data.response_array = result_array;
-
-            var n_type;
-            var correct_sequence;
-            if (trial_type[n] == "update") {
-                n_type = n_update;
-                correct_sequence = final_set[n_update];
-            } else if (trial_type[n] == "immediate") {
-                n_type = n_immediate;
-                correct_sequence = immediate_set[n_immediate];
-            }
-            for (let i = 0; i < set_size; i++) {
-                if (correct_sequence[i] == result_array[i]) {
-                    n_recalled_correctly += 1
-                }
-            }
-            data_recall = {
-                participant_id: participant_id,
-                session_id: session_id,
-                is_practice: is_practice,
-                trial_type: trial_type[n],
-                trial_id: n_type,
-                set_size: set_size,
-                sequence_correct: correct_sequence,
-                sequence_recalled: result_array,
-                n_correct: n_recalled_correctly,
-                rt: data.rt
-            };
-            data_cumulative.push(data_recall);
-
-
-            var trial_data = {
-                rt: data.rt,
-                accuracy: n_recalled_correctly
-            }
-
-            if (local) {
-
-            } else if (!local) {
-                saveData(JSON.stringify(data_recall), "WMU_" + session_id + "_" + participant_id + ".json", "WMU", flag_save = false);
-                let dataSaved = false;
-                saveSeveralDataOverwrite(data_cumulative, "WMU_allinone_" + session_id + "_" + participant_id + ".json", "WMU");
-                checkDataSaving();
-            }
-
-            // update trial counters
-            if (trial_type[n] == "update") {
-                n_update += 1;
-            } else if (trial_type[n] == "immediate") {
-                n_immediate += 1;
-            }
-
-            if (n >= nPracticeTrials) {
-                n_recalled_cumulative += n_recalled_correctly;
-            }
-            n += 1;
-            if (is_practice == 0) {
-                jsPsych.setProgressBar((n - nPracticeTrials) / (nTrials_update + nTrials_immediate));
-            }
-            // move on to the next trial
-            jsPsych.finishTrial(trial_data);
-        }
-    };
-
-    var feedback = {
-        type: jsPsychHtmlButtonResponse,
-        stimulus: function () {
-            pageOne = "<div style='font-size:20px;'><b>You recalled <font color='blue'>" + n_recalled_correctly + " digits in their correct order.</b><br><br>"
-            return pageOne
-        },
-        allow_backward: false,
-        choices: ["Next Trial"],
-        show_clickable_nav: true,
-        on_finish: function () {
-            n_recalled_correctly = 0
-        }
-    }
-
-
-    const mixed_trial = {
-        type: jsPsychPsychophysics,
-        pixi: pixi_flag,
-        stimuli: function () {
-            if (trial_type[n] == "update") {
-                return updating_object
-            } else if (trial_type[n] == "immediate") {
-                return immediate_object
-            }
-        },
-        trial_duration: function () {
-            if (trial_type[n] == "update") {
-                return n_upd_steps * viewing_time_updating + viewing_time_initial
-            } else if (trial_type[n] == "immediate") {
-                return viewing_time_initial
-            }
-        },
-        response_start_time: function () {
-            if (trial_type[n] == "update") {
-                return n_upd_steps * viewing_time_updating + viewing_time_initial
-            } else if (trial_type[n] == "immediate") {
-                return viewing_time_initial
-            }
-        },
-        //response_start_time: viewing_time_initial + (viewing_time_updating + isi) * n_upd_steps - isi, // not to respond until all images are presented.
-        on_start: function (trial) {
-            // Set parameters for each image dynamically
-            if (trial_type[n] == "update") {
-                for (let i = set_size; i < (2 * set_size); i++) {
-                    trial.stimuli[i].content = initial_set[n_update][i - set_size].toString();
-                    trial.stimuli[i].show_start_time = 0;
-                    trial.stimuli[i].show_end_time = viewing_time_initial;
-                    trial.stimuli[i].origin_center = true;
-                    trial.stimuli[i].startX = [-2.5 * stepsize_x, -1.5 * stepsize_x, -.5 * stepsize_x, .5 * stepsize_x, 1.5 * stepsize_x][i - set_size];
-                    trial.stimuli[i].text_color = ["red", "black", "green", "blue", "orange"][i - set_size];
-                    trial.stimuli[i].font = '60px Arial';
-                }
-                for (let i = (2 * set_size); i < (n_upd_steps + 2 * set_size); i++) {
-                    trial.stimuli[i].content = items_replace[n_update][i - 2 * set_size].toString();
-                    trial.stimuli[i].show_start_time = viewing_time_initial + viewing_time_updating * (i - 2 * set_size);
-                    trial.stimuli[i].show_end_time = viewing_time_initial + viewing_time_updating * (i - 2 * set_size) + viewing_time_updating;
-                    trial.stimuli[i].origin_center = true;
-                    trial.stimuli[i].startX = [-2.5 * stepsize_x, -1.5 * stepsize_x, -.5 * stepsize_x, .5 * stepsize_x, 1.5 * stepsize_x][locations_update[n_update][i - 2 * set_size]];
-                    trial.stimuli[i].text_color = ["red", "black", "green", "blue", "orange"][locations_update[n_update][i - 2 * set_size]];
-                    trial.stimuli[i].font = '60px Arial';
-                }
-            } else if (trial_type[n] == "immediate") {
-                for (let i = set_size; i < (2 * set_size); i++) {
-                    trial.stimuli[i].content = immediate_set[n_immediate][i - set_size].toString();
-                    trial.stimuli[i].show_start_time = 0;
-                    trial.stimuli[i].origin_center = true;
-                    trial.stimuli[i].show_end_time = viewing_time_initial;
-                    trial.stimuli[i].startX = [-2.5 * stepsize_x, -1.5 * stepsize_x, -.5 * stepsize_x, .5 * stepsize_x, 1.5 * stepsize_x][i - set_size];
-                    trial.stimuli[i].text_color = ["red", "black", "green", "blue", "orange"][i - set_size];
-                    trial.stimuli[i].font = '60px Arial';
-                }
-            }
-            //trial.stimuli[n_upd_steps + set_size - 1].trial_duration = 0;
-        }
-    }
-
-
-
-    timeline_mixed = [];
-
-    const fullscreen_on = {
-        type: jsPsychFullscreen,
-        fullscreen_mode: true
-    };
-
-    const mixed_node_practice = {
-        timeline: [mixed_trial, cued_response, feedback],
-        repetitions: 2,
-    };
-
-    //compcheck1: if answer incorrect, compcheck1 will be repeated until correct response inserted
-    var comp_check_wmu_loop = {
-        timeline: [comprehension_question_wmu_allinone, comp_feedback_wmu_verbose],
-        loop_function: function (data) {
-            len_data = data.values().length;
-
-            if (
-                data.values()[len_data - 2].correct == true
-            ) {
-                is_practice = 0;
-                data_comprehension = {
-                    participant_id: participant_id,
-                    n_attempts: n_comprehension_attempts,
-                    t_comprehension: Date.now() - t_start
-                };
-                let dataSaved = false;
-                saveData(JSON.stringify(data_comprehension), "WMU_comprehension_check_" + session_id + "_" + participant_id + ".json", "WMU");
-                checkDataSaving();
-
-                return false;
-            } else {
-                n_comprehension_attempts += 1;
-                n = 0 // keeps track of number of trials gone by
-                n_update = 0;
-                n_immediate = 0;
-                return true;
-            }
-        }
-    };
-    //timeline_mixed.push(instructions0);
-    timeline_mixed.push(instructions0, instructions1, fullscreen_on, instructions2, instructions2b, instructions3, instructions4, instructionsGo, mixed_node_practice);
-    timeline_mixed.push(comp_check_wmu_loop);
-
-    const mixed_node_main = {
-        timeline: [mixed_trial, cued_response, feedback],
-        repetitions: nTrials_update + nTrials_immediate,
-    };
-    timeline_mixed.push(instructions_test);
-    timeline_mixed.push(mixed_node_main);
-    timeline_mixed.push({
-        type: jsPsychFullscreen,
-        fullscreen_mode: false
-    });
-
-    var instructions_go_on = {
-        type: jsPsychHtmlButtonResponse,
-        stimulus: '<div style="font-size:30px;"><br>Well done!<br>You have now carried out three out of six tasks. Take a break and rest a few minutes to take a deep breath and prepare for tasks four to six.<br>Click on "Next" to continue with the decision games.<br></div>',
-        choices: ["Next"],
-        on_finish: function () {
-            data_bonus = {
-                participant_id: participant_id,
-                prop_correct: Math.round(100 * (n_recalled_cumulative / n_max_correct)) / 100
-            };
-            let dataSaved = false;
-            saveData(JSON.stringify(data_bonus), "WMU_bonus_" + session_id + "_" + participant_id + ".json", "WMU");
-            checkDataSaving();
-            window.location.href = progress_url + "&session=" + session_id;
-        }
-    };
-    timeline_mixed.push(instructions_go_on);
-
-    jsPsych.run(timeline_mixed);
-
-
-</script>
+<body>
+    <!-- initialize a few variables -->
+
+    <div class='midwindow'>
+        <!-- version for main study -->
+        <div id="page0" style="display:block">
+
+            <h1>Welcome to the study</h1>
+
+            This study is part of a research project conducted
+            by the <a href="https://hcai-munich.com/" target="_blank">Human-Centered AI Lab</a><br>
+            at Helmholtz Munich, Germany.<br><br><br>
+
+
+                <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
+                    <img title="helmholtz" src="expt-utils/Helmholtz_Munich_Logo.jpg" height="80px" cache-control="public">
+                    <img title="helmholtz" src="expt-utils/hh-munich.jpg" height="250px" cache-control="public">
+                    <div style="margin-left: 20px; max-width: 250px;">
+                        <figcaption style="font-size: 12px; line-height: 1.3; white-space: normal;">
+                        By Ako Helmholtz – own work, CC BY-SA 4.0, <a href="https://commons.wikimedia.org/w/index.php?curid=107599452" target="_blank">Source</a>
+                        </figcaption>
+                    </div>
+                </div>
+
+
+            <br>
+            <b>Please</b>
+            <ul>
+                <li>
+                    Make sure you have a good internet connection from the beginning to the end of the study.
+                    Disconnections will cause problems in displaying visuals and we will not be able to use your data.
+                </li>
+                <li>
+                    Switch off your addblockers during the study. That will allow us to trace back any unexpected
+                    errors.
+                </li>
+                <li>
+                    Do not 'refresh' your browser during the study. You will have to start from the very beginning again
+                    and we will not be able to use your data.
+                </li>
+                <li>
+                    Some of the tasks are going to be in fullscreen mode. Please do not switch off fullscreen mode if
+                    switched on because presented objects will become illegible.
+                </li>
+
+            </ul>
+
+            <br><br>
+
+            <button id="consent_button" type="button" name="button" id="buttonConsentForm" class="default_button"
+                onclick="clickStart('page0', 'page1')"> Progress to Informed Consent</button><br>
+        </div>
+
+        <div id="page1" style="display:none;">
+            <h1>Information on tasks and purpose of the study</h4>
+                Today, you are first going to carry out a similarity rating task.<br>
+                Then, you are going to fill out various questionnaires on your habits.<br>
+                There will be options for short breaks during and after the similarity rating task.<br> 
+                You are going to be led through the two parts of the study and are presented with detailed
+                instructions.<br>
+                For each task, you are going to be tested on comprehension questions after a practice phase. You can
+                only continue to the main part of a task if you have answered all comprehension questions correctly.<br>
+                <br>
+
+                To be eligible to participate, you <strong> MUST </strong> meet the following criteria:
+                <ol>
+                    <li style="font-size: 100%;">Be between 18 and 70 years of age.</li>
+                    <li style="font-size: 100%;">Be a fluent speaker of English.</li>
+                </ol>
+                <b style="color:maroon;">Please use a device with a keyboard.
+                    Please do not accept this task if you are using a touch screen device, it will not work!</b><br>
+
+                <h4>How much time will it take and how much can you earn?</h4>
+                <h5>Study duration</h5>
+                The duration of the study should be approximately 75 minutes.<br>
+                <h5>Payment</h5>
+                You will be paid <b>9.00</b> pounds for your participation.<br>
+
+                Please note that this is going to be a <b>long and challenging </b>study requiring a lot of sustained
+                attention!</b><br>
+
+                <h4>Confidentiality</h4>
+                Your participation in this study will remain confidential.
+                Your Prolific ID will NOT be shared with anyone outside the research team.
+
+                <h4>Participation and withdrawal</h4>
+                Your participation in this study is completely voluntary and you may refuse to participate<br>
+                or you may choose to withdraw at any time.<br>
+                However, you will only be paid for the participation upon completion<br>
+                and after clicking the button re-directing you to the prolific webpage and storing your completion code.
+
+                <h4>How to contact the researchers?</h4>
+                If you have questions or concerns about your participation or payment
+                please email <a href="mailto:mirko.thalmann@helmholtz-munich.de">the main researcher</a>
+                or the <a href="mailto:eric.schulz@helmholtz-munich.de">principal investigator</a>.
+
+
+                <h4>Data protection</h4>
+                Your data will be anonymized and only used in the manner described in our data protection sheet,
+                available <a href="https://kyblab.tuebingen.mpg.de/t-reps/data_protection.pdf" target="_blank">here</a>
+                (please do not fill out this sheet!). <br>
+                The following text box summarizes the main points. Please read it carefully and provide consent
+                below:<br>
+                <br>
+
+                <body onload="myDataProtection()"></body>
+                <textarea id="DataProtection" title="DataProtection" rows="15" cols="100" style="font-size: 100%;"
+                    readonly></textarea>
+
+                <br>
+                <br>
+                By selecting the consent option below, you acknowledge that you fulfill all of the participation
+                criteria and you agree to your data being used as described.
+                <br>
+                <br>
+
+                <button type="button" name="button" id="buttonConsentForm" class="default_button"
+                    onclick="direct_to_ooo()">I consent
+                    to participate</button><br><br>
+        </div>
+
+    </div>
+</body>
 
 </html>
