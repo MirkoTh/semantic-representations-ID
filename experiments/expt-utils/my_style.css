@@ -1,0 +1,19 @@
+.centeredtext {
+    text-align: center;
+    float: left;
+    margin-left: 20px;
+    border: none;
+    width: 95%;
+    height: 95%;
+    list-style-position: inside;
+    font-size: 130%
+}
+.midwindow {
+    margin-left: auto;
+    margin-right: auto;
+    width: 50%;
+    height: 80%;
+    border: none;
+    list-style-position: inside;
+    font-size: 130%
+}

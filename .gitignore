@@ -1,1 +1,8 @@
+__pycache__/
+.ipynb_checkpoints/
+.Rhistory
 data/
+log_files/
+plots/
+requirements.txt
+results/
