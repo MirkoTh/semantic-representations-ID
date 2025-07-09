@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+
+
+<head>
+
+    <script src="jatos.js"></script>
+
+    <script>
+        jatos.onLoad(function() {
+          // Start here with your code that uses jatos.js' variables and functions
+        });
+    </script>
+
+    <meta charset="utf-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="-1">
+
+    <title>Casino Challenge</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Casino Challenge">
+    <meta name="author" content="Mirko Thalmann & Eric Schulz">
+
+    <link rel="stylesheet" href="expt-utils/my_style.css">
+    <script src="expt-utils/jquery.min.js"></script>
+    <script src="expt-utils/js-helpers.js" charset="utf-8" cache-control="public"></script>
+    
+
+</head>
+
+
+
+
+<body>
+    <!-- initialize a few variables -->
+
+    <div class='midwindow'>
+        <!-- version for main study -->
+        <div id="page0" style="display:block">
+
+            <h1>Welcome to the study</h1>
+
+            This study is part of a research project conducted
+            by the <a href="https://hcai-munich.com/" target="_blank">Human-Centered AI Lab</a><br>
+            at Helmholtz Munich, Germany.<br><br><br>
+
+
+                <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
+                    <img title="helmholtz" src="expt-utils/Helmholtz_Munich_Logo.jpg" height="80px" cache-control="public">
+                    <img title="helmholtz" src="expt-utils/hh-munich.jpg" height="250px" cache-control="public">
+                    <div style="margin-left: 20px; max-width: 250px;">
+                        <figcaption style="font-size: 12px; line-height: 1.3; white-space: normal;">
+                        By Ako Helmholtz – own work, CC BY-SA 4.0, <a href="https://commons.wikimedia.org/w/index.php?curid=107599452" target="_blank">Source</a>
+                        </figcaption>
+                    </div>
+                </div>
+
+
+            <br>
+            <b>Please</b>
+            <ul>
+                <li>
+                    Make sure you have a good internet connection from the beginning to the end of the study.
+                    Disconnections will cause problems in displaying visuals and we will not be able to use your data.
+                </li>
+                <li>
+                    Switch off your addblockers during the study. That will allow us to trace back any unexpected
+                    errors.
+                </li>
+                <li>
+                    Do not 'refresh' your browser during the study. You will have to start from the very beginning again
+                    and we will not be able to use your data.
+                </li>
+                <li>
+                    Some of the tasks are going to be in fullscreen mode. Please do not switch off fullscreen mode if
+                    switched on because presented objects will become illegible.
+                </li>
+
+            </ul>
+
+            <br><br>
+
+            <button id="consent_button" type="button" name="button" id="buttonConsentForm" class="default_button"
+                onclick="clickStart('page0', 'page1')"> Progress to Informed Consent</button><br>
+        </div>
+
+        <div id="page1" style="display:none;">
+            <h1>Information on tasks and purpose of the study</h4>
+                Today, you are first going to carry out a similarity rating task.<br>
+                Then, you are going to fill out various questionnaires on your habits.<br>
+                There will be options for short breaks during and after the similarity rating task.<br> 
+                You are going to be led through the two parts of the study and are presented with detailed
+                instructions.<br>
+                For each task, you are going to be tested on comprehension questions after a practice phase. You can
+                only continue to the main part of a task if you have answered all comprehension questions correctly.<br>
+                <br>
+
+                To be eligible to participate, you <strong> MUST </strong> meet the following criteria:
+                <ol>
+                    <li style="font-size: 100%;">Be between 18 and 70 years of age.</li>
+                    <li style="font-size: 100%;">Be a fluent speaker of English.</li>
+                </ol>
+                <b style="color:maroon;">Please use a device with a keyboard.
+                    Please do not accept this task if you are using a touch screen device, it will not work!</b><br>
+
+                <h4>How much time will it take and how much can you earn?</h4>
+                <h5>Study duration</h5>
+                The duration of the study should be approximately 75 minutes.<br>
+                <h5>Payment</h5>
+                You will be paid <b>9.00</b> pounds for your participation.<br>
+
+                Please note that this is going to be a <b>long and challenging </b>study requiring a lot of sustained
+                attention!</b><br>
+
+                <h4>Confidentiality</h4>
+                Your participation in this study will remain confidential.
+                Your Prolific ID will NOT be shared with anyone outside the research team.
+
+                <h4>Participation and withdrawal</h4>
+                Your participation in this study is completely voluntary and you may refuse to participate<br>
+                or you may choose to withdraw at any time.<br>
+                However, you will only be paid for the participation upon completion<br>
+                and after clicking the button re-directing you to the prolific webpage and storing your completion code.
+
+                <h4>How to contact the researchers?</h4>
+                If you have questions or concerns about your participation or payment
+                please email <a href="mailto:mirko.thalmann@helmholtz-munich.de">the main researcher</a>
+                or the <a href="mailto:eric.schulz@helmholtz-munich.de">principal investigator</a>.
+
+
+                <h4>Data protection</h4>
+                Your data will be anonymized and only used in the manner described in our data protection sheet,
+                available <a href="https://kyblab.tuebingen.mpg.de/t-reps/data_protection.pdf" target="_blank">here</a>
+                (please do not fill out this sheet!). <br>
+                The following text box summarizes the main points. Please read it carefully and provide consent
+                below:<br>
+                <br>
+
+                <body onload="myDataProtection()"></body>
+                <textarea id="DataProtection" title="DataProtection" rows="15" cols="100" style="font-size: 100%;"
+                    readonly></textarea>
+
+                <br>
+                <br>
+                By selecting the consent option below, you acknowledge that you fulfill all of the participation
+                criteria and you agree to your data being used as described.
+                <br>
+                <br>
+
+                <button type="button" name="button" id="buttonConsentForm" class="default_button"
+                    onclick="direct_to_ooo()">I consent
+                    to participate</button><br><br>
+        </div>
+
+    </div>
+</body>
+
+</html>
