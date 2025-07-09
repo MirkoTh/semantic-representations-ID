@@ -1633,3 +1633,20 @@ def split_half_reliabilities(l_splithalf, idxs, ndims):
     df_corr.columns = ["r", "ndims"]
 
     return df_sh, df_corr, g
+
+
+def extract_image(l_concepts_filtered, i):
+    '''load the relevant image from all images from disk'''
+
+    imagename = l_concepts_filtered[i]
+    path = os.path.join("data", "images", imagename)
+    all_dirs = os.listdir(path)
+
+    l_names = [re.match("^[a-z]", all_dirs[i])
+               for i in range(0, len(all_dirs))]
+    l_names_filter = [l_names[i] != None for i in range(0, len(l_names))]
+    l_names_filtered = [value for value, flag in zip(
+        all_dirs, l_names_filter) if flag]
+    just_first = l_names_filtered[0]
+    path_keep = os.path.join(path, just_first)
+    return path_keep
