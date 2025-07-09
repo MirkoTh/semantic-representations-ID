@@ -6,3 +6,4 @@ log_files/
 plots/
 requirements.txt
 results/
+.Rproj.user
