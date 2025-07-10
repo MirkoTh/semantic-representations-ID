@@ -242,7 +242,10 @@ function createDemographics() {
 
     var box = document.createElement("input");
     box.setAttribute("class", "textEntry");
-    box.setAttribute("type", "text");
+    box.setAttribute("type", "number");
+    box.setAttribute("min", "0");             // optional: minimum age
+    box.setAttribute("max", "120");           // optional: maximum age
+    box.setAttribute("step", "1");            // optional: whole numbers only
     box.setAttribute("id", "Age");
     box.name = 'question';
 
@@ -273,7 +276,10 @@ function createDemographics() {
 
     var box = document.createElement("input");
     box.setAttribute("class", "textEntry");
-    box.setAttribute("type", "text");
+    box.setAttribute("type", "number");
+    box.setAttribute("min", "0");             // optional: minimum age
+    box.setAttribute("max", "100");           // optional: maximum age
+    box.setAttribute("step", "1");            // optional: whole numbers only
     box.setAttribute("id", "Edu");
     box.name = 'question';
 
@@ -286,8 +292,8 @@ function createDemographics() {
 
     qDataIncome = {
         qNumber: 0,
-        prompt: "What is your average monthly income?",
-        labels: ['<$500', '$500 - $1000', '$1000 - $1500', '$1500 - $2000', '$2000 - $2500', '$2500 - $3000', '$3500 - $4000', '>$4000']
+        prompt: "What is your average monthly income before taxes?",
+        labels: ['<$500', '$500 - $1000', '$1000 - $1500', '$1500 - $2000', '$2000 - $2500', '$2500 - $3000', '$3500 - $4000', '$4000 - $4500', '$4500 - $5000', '> $5000']
     };
 
     incomeQuestion = createQuestion('income', qDataIncome);
@@ -444,6 +450,23 @@ function getValues() {
 
             }
 
+            // Get responses to number items
+            else if (inputs[i].querySelector('input[type="number"]')) {
+                let rawValue = inputs[i].querySelector('input[type="number"]').value;
+                let digitsOnly = rawValue.match(/\d+/g)?.join('') || '';
+
+                if (digitsOnly.length == 0) {
+                    legend.style.color = "#ff0000";
+                    incomplete.push(id);
+                }
+
+                else {
+                    legend.style.color = "#000000";
+                    values[id] = digitsOnly;
+                }
+            }
+
+
             else {
                 legend.style.color = "#ff0000";
                 incomplete.push(id);
@@ -576,9 +599,12 @@ $.getJSON('experiments/expt-utils/questionnaires.json', function (data) {
     // A smarter way to do this would be to shuffle the keys of the questionnaire_data object
     // and then loop through them, rather than creating them all individually as I've done here
     
-    createQuestionnaire(questionnaire_data.IUS);
-    createQuestionnaire(questionnaire_data.RRQ);
-    createQuestionnaire(questionnaire_data.PSWQ);
+    // createQuestionnaire(questionnaire_data.IUS);
+    // createQuestionnaire(questionnaire_data.PID);
+    // createQuestionnaire(questionnaire_data.CAPE);
+    // createQuestionnaire(questionnaire_data.RRQ);
+    // createQuestionnaire(questionnaire_data.PSWQ);
+    createQuestionnaire(questionnaire_data.I_8);
 
     createEndQuestions();
 
