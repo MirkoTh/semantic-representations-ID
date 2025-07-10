@@ -3,7 +3,7 @@
 
 <head>
     <script src="jatos.js"></script>
-    <link rel="stylesheet" type="text/css" href="experiments/questionnaires.css">
+    <link rel="stylesheet" type="text/css" href="experiments/expt-utils/questionnaires.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
     <meta charset="UTF-8">
     <title>Questionnaires</title>
@@ -13,20 +13,16 @@
 
 var questionnaire_data
 var submitted = false
-var subjectID = jatos.studySessionData.valueOf()["ID"];
-
-// if subjectID is undefined, make a random one
-if (subjectID == undefined) {
-    
-  subjectID =  'test-' +Math.floor(Math.random() * 1000000000);
-}
+var participant_id = jatos.studySessionData.valueOf()["participant_id"];
+var session_id = jatos.studySessionData.valueOf()["session_id"];
+console.log("session_id = ", session_id)
+console.log("participant_id = ", participant_id)
 
 
-  // Get Firebase UID
+// Get Firebase UID
 
 var uid = jatos.studySessionData.valueOf()["uid"];
 if (uid == undefined) {
-   
   uid = "zGT4IfDtT5MRkS7rAprmI8HgWVq2"
 }
 
@@ -540,7 +536,7 @@ function getValues() {
 
 
 // Load questionnaires
-$.getJSON('experiments/questionnaires.json', function (data) {
+$.getJSON('experiments/expt-utils/questionnaires.json', function (data) {
     // THis function creates the whole questionnaire
     start = Number(new Date());
     questionnaire_data = data;

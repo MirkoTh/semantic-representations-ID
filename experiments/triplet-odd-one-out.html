@@ -36,9 +36,18 @@
 <div id="jspsych-target"></div>
 
 <script>
+    const jsPsych = initJsPsych({
+        show_progress_bar: true,
+        auto_update_progress_bar: false,
+        display_element: 'jspsych-target'
+    })
     jatos.onLoad(function() {
       // Start here with your code that uses jatos.js' variables and functions
-    });
+    var participant_id = jatos.studySessionData.valueOf()["participant_id"];
+    var session_id = jatos.studySessionData.valueOf()["session_id"];
+
+    console.log("participant_id = ", participant_id)
+    console.log("session_id = ", session_id)
 
     // still to do
     // save data on server
@@ -48,14 +57,7 @@
     // This file demonstrates how to present multiple images in random order in succession.
     // That is, Rapid serial visual presentation (RSVP) 
 
-    const jsPsych = initJsPsych({
-        show_progress_bar: true,
-        auto_update_progress_bar: false,
-        display_element: 'jspsych-target',
-        on_finish: function () {
-            jsPsych.data.displayData();
-        }
-    })
+    
 
     const pixi_flag = jsPsych.data.getURLVariable('pixi_flag') === '1' ? true : false;
 
@@ -73,11 +75,6 @@
     // ask for demogrphic information
     // set up specific questionnaires
     // implement triplet odd-one-out task
-
-
-    session_id = getQueryVariable('session');
-    if (!session_id) { session_id = 1 }
-
     
     var n_comprehension_attempts = 1;
 
@@ -91,19 +88,9 @@
 
 
 
-    if (window.location.search.indexOf('PROLIFIC_PID') > -1) {
-        var participant_id = getQueryVariable('PROLIFIC_PID');
-    }
-    // If no ID is present, generate one using random numbers - this is useful for testing
-    else {
-        var participant_id = Math.floor(Math.random() * 1000);
-    }
-    // STUDY ID
-    if (window.location.search.indexOf('STUDY_ID') > -1) {
-        var studyID = getQueryVariable('STUDY_ID');
-    }
+    
 
-    var n_trials_proper = properIdsTriplets.length // number of trials2 // 440//
+    var n_trials_proper = 5//properIdsTriplets.length // number of trials2 // 440//
     var n_trials_practice = practiceIdsTriplets.length //5 // 1 //1//
 
     var totalTrials = n_trials_practice + n_trials_proper; //total number of trials in the entire task (practice + main task)
@@ -160,7 +147,7 @@
     var timeline_variables_proper = [];
     
 
-    for (var i = 0; i < triplet_images_practice.length; i++) {
+    for (var i = 0; i < n_trials_practice; i++) {
         timeline_variables_practice.push({ 
             trial_id: i,
             images: triplet_images_practice[i],
@@ -170,7 +157,7 @@
         });
     }
 
-    for (var i = 0; i < triplet_images_proper.length; i++) {
+    for (var i = 0; i < n_trials_proper; i++) {
         timeline_variables_proper.push({
             trial_id: i,
             images: triplet_images_proper[i],
@@ -314,6 +301,7 @@
     timeline.push(instructions_go_on);
 
     jsPsych.run(timeline);
+    });
 
 </script>
 

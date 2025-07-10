@@ -485,10 +485,7 @@ var comprehension_question_ooo_allinone = {
 var comp_feedback = {
   type: jsPsychHtmlButtonResponse,
   stimulus: function () {
-    var last_resp_correct = jsPsych.data
-      .get()
-      .last(1)
-      .filter({ correct: true });
+    var last_resp_correct = jsPsych.data.get().last(1).filter({ correct: true });
     if (last_resp_correct.count() == 1) {
       return "<p align='center'><b>Well done! You answered all questions correctly.</b></p>";
     } else {
@@ -501,10 +498,7 @@ var comp_feedback = {
 var comp_feedback_ooo_verbose = {
   type: jsPsychHtmlButtonResponse,
   stimulus: function () {
-    var last_resp_correct = jsPsych.data
-      .get()
-      .last(1)
-      .filter({ correct: true });
+    var last_resp_correct = jsPsych.data.get().last(1).filter({ correct: true });
     if (last_resp_correct.count() == 1) {
       var info =
         "<p align='center'><b>Well done! You answered all questions correctly.<br><br></b></p>";
@@ -647,20 +641,10 @@ function direct_to_ooo() {
     var participant_id = Math.floor(Math.random() * 1000);
   }
 
-  var session = 1;
+  // only one session anyway
+  var session_id = 1;
 
-  progress_url = updateQueryStringParameter(
-    "triplet-odd-one-out.html",
-    "PROLIFIC_PID",
-    participant_id
-  );
-  progress_url_session = updateQueryStringParameter(
-    progress_url,
-    "session",
-    session
-  );
-
-  //window.location.href = progress_url_session;
+  jatos.setStudySessionData({"participant_id": participant_id, "session_id":session_id})
 
   jatos.startComponent(66)
 }
@@ -673,12 +657,6 @@ function direct_to_qs() {
   else {
     var participant_id = Math.floor(Math.random() * 1000);
   }
-
-  progress_url = updateQueryStringParameter(
-    "questionnaires.html",
-    "PROLIFIC_PID",
-    participant_id
-  );
 
   window.location.href = progress_url;
 }

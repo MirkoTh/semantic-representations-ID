@@ -1,7 +1,7 @@
 import json
 import pandas as pd
 
-questionnaire_data = pd.read_csv('experiments\questionnaire-setup\questionnaires_info.csv', sep = ";")
+questionnaire_data = pd.read_csv('experiments\expt-utils\questionnaires_info.csv', sep = ";")
 
 data = {}
 
@@ -15,6 +15,5 @@ for i in questionnaire_data.Measure.unique():
 
 json_data = json.dumps(data)
 
-with open('experiments\questionnaire-setup\questionnaires.json', 'w') as outfile:
+with open('experiments\expt-utils\questionnaires.json', 'w') as outfile:
     json.dump(data, outfile)
-
