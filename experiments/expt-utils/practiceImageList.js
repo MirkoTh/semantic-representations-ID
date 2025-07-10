@@ -1,37 +1,27 @@
 const practiceImageList = [
-  {
-    images_practice: [
-      "../data/images/coffeemaker/coffeemaker_01b.jpg",
-      "../data/images/lemonade/lemonade_01b.jpg",
-      "../data/images/saddle/saddle_01s.jpg",
-    ],
-  },
-  {
-    images_practice: [
-      "../data/images/extinguisher/extinguisher_01b.jpg",
-      "../data/images/lemon/lemon_01b.jpg",
-      "../data/images/mouth/mouth_01b.jpg",
-    ],
-  },
-  {
-    images_practice: [
-      "../data/images/champagne/champagne_01b.jpg",
-      "../data/images/drumstick/drumstick_01s.jpg",
-      "../data/images/mullet/mullet_01b.jpg",
-    ],
-  },
-  {
-    images_practice: [
-      "../data/images/satellite_dish/satellite_dish_01b.jpg",
-      "../data/images/velcro/velcro_01b.jpg",
-      "../data/images/worm/worm_01b.jpg",
-    ],
-  },
-  {
-    images_practice: [
-      "../data/images/chili/chili_01b.jpg",
-      "../data/images/light_switch/light_switch_01b.jpg",
-      "../data/images/lunchbox/lunchbox_01b.jpg",
-    ],
-  },
+  [
+    "data/images/champagne/champagne_01b.jpg",
+    "data/images/drumstick/drumstick_01s.jpg",
+    "data/images/mullet/mullet_01b.jpg"
+  ],
+  [
+    "data/images/extinguisher/extinguisher_01b.jpg",
+    "data/images/lemon/lemon_01b.jpg",
+    "data/images/mouth/mouth_01b.jpg"
+  ],
+  [
+    "data/images/chili/chili_01b.jpg",
+    "data/images/light_switch/light_switch_01b.jpg",
+    "data/images/lunchbox/lunchbox_01b.jpg"
+  ],
+  [
+    "data/images/satellite_dish/satellite_dish_01b.jpg",
+    "data/images/velcro/velcro_01b.jpg",
+    "data/images/worm/worm_01b.jpg"
+  ],
+  [
+    "data/images/coffeemaker/coffeemaker_01b.jpg",
+    "data/images/lemonade/lemonade_01b.jpg",
+    "data/images/saddle/saddle_01s.jpg"
+  ]
 ];

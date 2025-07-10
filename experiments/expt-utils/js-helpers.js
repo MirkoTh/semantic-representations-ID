@@ -411,58 +411,52 @@ var final_set_updating = [
   ],
 ];
 
-// COMPREHENSION CHECK WMU
+// COMPREHENSION CHECK OOO
 
-var comprehension_question_wmu_allinone = {
+       // how many images are going to be displayed?
+        // what is your task when the three objects are displayed on screen?
+        // how do you select the image you find the most different from the others?
+        // how do you respond the questions?
+        // how do you redirect to prolific to confirm the successful completion of the study?
+
+
+var comprehension_question_ooo_allinone = {
   type: jsPsychSurveyMultiChoice,
   questions: [
     {
       prompt:
-        "<div align=center><b>What is your goal in the updating trials?</b></div>",
+        "<div align=center><b>How many images are going to be displayed in every trial?</b></div>",
       options: [
-        "Remember the first four digits initially presented and recall them.",
-        "Update the individually presented digits and recall the last set.",
-        "Update every second presented digit and recall the last set.",
-        "Reorder the presented digits in backward order and recall the first set.",
+        "Sometimes two, but sometimes three, or four.",
+        "It is a pairwise similarity judgment task, so two items are displayed in every trial.",
+        "It is a triplet similarity judgment task, so three items are displayed in every trial.",
+        "The number of items is randomly determined by a human-like large language model.",
       ],
-
       required: true,
     },
     {
-      prompt: "<div align=center><b>How do you recall digits?</b></div>",
+      prompt: "<div align=center><b>What is your task when the three objects are displayed on screen?</b></div>",
       options: [
-        "By clicking on the respective locations on the screen.",
-        "By typing the first character of the respective color to be recalled.",
-        "I only have to remember the digits. I do not have to recall them.",
-        "By typing the digits in the correct serial order using the keyboard.",
+        "Click on the most similar item with the mouse.",
+        "Click on the item the least similar to the remaining two items.",
+        "Report the pairwise similarity between all three possible pairs.",
+        "Rate all three objects sequentially.",
       ],
-
       required: true,
     },
     {
       prompt:
-        "<div align=center><b>What are the different trials you are going to experience?</b></div>",
+        "<div align=center><b>How do you select the image you find the most different from the others?</b></div>",
       options: [
-        "It is a mixture of updating digits and recalling them and immediately recalling the initially presented digits.",
-        "Recall after updating, immediate recalls, and random trials.",
-        "There are not different trials. It is only an updating task.",
-        "Sometimes I have to use a slider bar to give a response, but usually I have to click on locations on the screen.",
+        "Select it with a mouse click.",
+        "Select it by pressing L (left), M (middle), or R (right) on the keyboard.",
+        "Unselect the maximally similar items with double mouse clicks.",
+        "Select it via the speech recognition system.",
       ],
 
       required: true,
     },
-    {
-      prompt:
-        "<div align=center><b>What purpose served the practice trials?</b></div>",
-      options: [
-        "I can maximize my reward by performing well on them.",
-        "I can leave them out if I want to.",
-        "They are used to determine the final reward in the study.",
-        "I should use them to get used to the task procedure. They do not contribute to my final reward.",
-      ],
-
-      required: true,
-    },
+    
   ],
   preamble: "<h3>Please answer the following question.</h3>",
   randomize_question_order: true,
@@ -472,18 +466,14 @@ var comprehension_question_wmu_allinone = {
     var answer_Q1 = data.response.Q0;
     var answer_Q2 = data.response.Q1;
     var answer_Q3 = data.response.Q2;
-    var answer_Q4 = data.response.Q3;
 
     if (
       answer_Q1 ==
-        "Update the individually presented digits and recall the last set." &&
+        "It is a triplet similarity judgment task, so three items are displayed in every trial." &&
       answer_Q2 ==
-        "By typing the digits in the correct serial order using the keyboard." &&
+        "Click on the item the least similar to the remaining two items." &&
       answer_Q3 ==
-        "It is a mixture of updating digits and recalling them and immediately recalling the initially presented digits." &&
-      answer_Q4 ==
-        "I should use them to get used to the task procedure. They do not contribute to my final reward."
-    ) {
+        "Select it with a mouse click.") {
       data.correct = true;
     } else {
       data.correct = false;
@@ -508,7 +498,7 @@ var comp_feedback = {
   choices: ["Next"],
 };
 
-var comp_feedback_wmu_verbose = {
+var comp_feedback_ooo_verbose = {
   type: jsPsychHtmlButtonResponse,
   stimulus: function () {
     var last_resp_correct = jsPsych.data
@@ -527,37 +517,30 @@ var comp_feedback_wmu_verbose = {
     var answer_Q1 = q_responses[0].response.Q0;
     var answer_Q2 = q_responses[0].response.Q1;
     var answer_Q3 = q_responses[0].response.Q2;
-    var answer_Q4 = q_responses[0].response.Q3;
     var qna1 =
-      "<b>What is your goal in the updating trials?<br>Your response: </b>" +
+      "<b>How many images are going to be displayed in every trial?<br>Your response: </b>" +
       answer_Q1 +
       "<br>";
     var qna2 =
-      "<b>How do you recall digits?<br>Your response: </b>" +
+      "<b>What is your task when the three objects are displayed on screen?<br>Your response: </b>" +
       answer_Q2 +
       "<br>";
     var qna3 =
-      "<b>What are the different trials you are going to experience?<br>Your response: </b>" +
+      "<b>How do you select the image you find the most different from the others?<br>Your response: </b>" +
       answer_Q3 +
       "<br>";
-    var qna4 =
-      "<b>What purpose served the practice trials?<br>Your response: </b>" +
-      answer_Q4 +
-      "<br>";
+
 
     var explain1 =
-      "<b>Hint:</b> Things change: Update a digit when a new one is presented at its location; recall only the final set.<br><br></p>";
+      "<b>Hint:</b> It is a triplet similarity judgment task.<br><br></p>";
     var explain2 =
-      "<b>Hint:</b> Use the numbers on your keyboard and type the final set in the correct serial order.<br><br></p>";
+      "<b>Hint:</b> Find the outlier, i.e., the object that is most different from the other two.<br><br></p>";
     var explain3 =
-      "<b>Hint:</b> It is a mix: sometimes recall what is presented initially, sometimes recall the set after seven updating steps.<br><br></p>";
-    var explain4 =
-      "<b>Hint:</b> They were just for your help and do not contribute to your bonus payment.<br><br></p>";
+      "<b>Hint:</b> Just use your mouse for that.<br><br></p>";
 
     if (
-      answer_Q1 ==
-      "Update the individually presented digits and recall the last set."
-    ) {
+      answer_Q1 == 
+      "It is a triplet similarity judgment task, so three items are displayed in every trial.") {
       var t1 =
         '<p style="color:green;align=center">' + "<b>CORRECT! </b>" + qna1;
     } else {
@@ -569,7 +552,7 @@ var comp_feedback_wmu_verbose = {
     }
     if (
       answer_Q2 ==
-      "By typing the digits in the correct serial order using the keyboard."
+      "Click on the item the least similar to the remaining two items."
     ) {
       var t2 =
         '<p style="color:green;align=center"">' + "<b>CORRECT! </b>" + qna2;
@@ -582,7 +565,7 @@ var comp_feedback_wmu_verbose = {
     }
     if (
       answer_Q3 ==
-      "It is a mixture of updating digits and recalling them and immediately recalling the initially presented digits."
+      "Select it with a mouse click."
     ) {
       var t3 =
         '<p style="color:green;align=center"">' + "<b>CORRECT! </b>" + qna3;
@@ -593,21 +576,7 @@ var comp_feedback_wmu_verbose = {
         qna3 +
         explain3;
     }
-    if (
-      answer_Q4 ==
-      "I should use them to get used to the task procedure. They do not contribute to my final reward."
-    ) {
-      var t4 =
-        '<p style="color:green;align=center"">' + "<b>CORRECT! </b>" + qna4;
-    } else {
-      var t4 =
-        '<p style="color:red;align=center"">' +
-        "<b>INCORRECT! </b>" +
-        qna4 +
-        explain4;
-    }
-
-    var pg = info + t1 + t2 + t3 + t4;
+    var pg = info + t1 + t2 + t3;
 
     return pg;
   },
@@ -667,6 +636,8 @@ inside of the Max Planck Society and affiliated research institutes, or at partn
 }
 
 function direct_to_ooo() {
+
+
   if (window.location.search.indexOf("PROLIFIC_PID") > -1) {
     var participant_id = getQueryVariable("PROLIFIC_PID");
   }
@@ -689,7 +660,9 @@ function direct_to_ooo() {
     session
   );
 
-  window.location.href = progress_url_session;
+  //window.location.href = progress_url_session;
+
+  jatos.startComponent(66)
 }
 
 function direct_to_qs() {
