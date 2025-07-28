@@ -2,34 +2,52 @@
 <html>
 
 <head>
-    <title>Object Comparison Task</title>
-    <script src="jspsych-dist/dist/jspsych.js"></script>
-    <script src="jspsych-dist/dist/plugin-html-button-response.js"></script>
-    <script src="jspsych-dist/dist/plugin-html-keyboard-response.js"></script>
-    <script src="jspsych-dist/dist/plugin-preload.js"></script>
-    <script src="jspsych-dist/dist/plugin-survey-text.js"></script>
-    <script src="jspsych-dist/dist/plugin-survey-multi-choice.js"></script>
-    <script src="jspsych-dist/dist/plugin-fullscreen.js"></script>
 
-    <script src="expt-utils/jquery.min.js"></script>
-    <script src="expt-utils/js-helpers.js"></script>
-    <script src="expt-utils/jspsych-psychophysics.js"></script>
-    <script src="expt-utils/practiceImageList.js"></script>
-    <script src="expt-utils/properImageList.js"></script>
-    
+    <script src="jatos.js"></script>
+
+
+    <title>Object Comparison Task</title>
+    <script src="experiments/jspsych-dist/dist/jspsych.js"></script>
+    <script src="experiments/jspsych-dist/dist/plugin-html-button-response.js"></script>
+    <script src="experiments/jspsych-dist/dist/plugin-html-keyboard-response.js"></script>
+    <script src="experiments/jspsych-dist/dist/plugin-preload.js"></script>
+    <script src="experiments/jspsych-dist/dist/plugin-survey-text.js"></script>
+    <script src="experiments/jspsych-dist/dist/plugin-survey-multi-choice.js"></script>
+    <script src="experiments/jspsych-dist/dist/plugin-fullscreen.js"></script>
+
+    <script src="experiments/expt-utils/jquery.min.js"></script>
+    <script src="experiments/expt-utils/js-helpers.js"></script>
+    <script src="experiments/expt-utils/jspsych-psychophysics.js"></script>
+    <script src="experiments/expt-utils/practiceImageList.js"></script>
+    <script src="experiments/expt-utils/properImageList.js"></script>
+    <script src="experiments/expt-utils/practiceIdsTriplets.js"></script>
+    <script src="experiments/expt-utils/properIdsTriplets.js"></script>
+    <script src="experiments/expt-utils/practiceIdsItems.js"></script>
+    <script src="experiments/expt-utils/properIdsItems.js"></script>
     
 
     <script src="https://pixijs.download/release/pixi.js"></script>
 
-    <link rel="stylesheet" href="/jspsych-dist/dist/jspsych.css">
+    <link rel="stylesheet" href="experiments/jspsych-dist/dist/jspsych.css">
 
     </link>
 </head>
 
+<div id="jspsych-target"></div>
 
-<body></body>
 <script>
+    const jsPsych = initJsPsych({
+        show_progress_bar: true,
+        auto_update_progress_bar: false,
+        display_element: 'jspsych-target'
+    })
+    jatos.onLoad(function() {
+      // Start here with your code that uses jatos.js' variables and functions
+    var participant_id = jatos.studySessionData.valueOf()["participant_id"];
+    var session_id = jatos.studySessionData.valueOf()["session_id"];
 
+    console.log("participant_id = ", participant_id)
+    console.log("session_id = ", session_id)
 
     // still to do
     // save data on server
@@ -39,13 +57,7 @@
     // This file demonstrates how to present multiple images in random order in succession.
     // That is, Rapid serial visual presentation (RSVP) 
 
-    const jsPsych = initJsPsych({
-        show_progress_bar: true,
-        auto_update_progress_bar: false,
-        on_finish: function () {
-            jsPsych.data.displayData();
-        }
-    })
+    
 
     const pixi_flag = jsPsych.data.getURLVariable('pixi_flag') === '1' ? true : false;
 
@@ -63,11 +75,6 @@
     // ask for demogrphic information
     // set up specific questionnaires
     // implement triplet odd-one-out task
-
-
-    session_id = getQueryVariable('session');
-    if (!session_id) { session_id = 1 }
-
     
     var n_comprehension_attempts = 1;
 
@@ -81,33 +88,15 @@
 
 
 
-    if (window.location.search.indexOf('PROLIFIC_PID') > -1) {
-        var participant_id = getQueryVariable('PROLIFIC_PID');
-    }
-    // If no ID is present, generate one using random numbers - this is useful for testing
-    else {
-        var participant_id = Math.floor(Math.random() * 1000);
-    }
-    // STUDY ID
-    if (window.location.search.indexOf('STUDY_ID') > -1) {
-        var studyID = getQueryVariable('STUDY_ID');
-    }
+    
 
-
-    var possibleNumbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-
-
-    var n_trials_proper = 5 // number of trials2 // 440//
-    var n_trials_practice = 5 // 1 //1//
+    var n_trials_proper = 5//properIdsTriplets.length // number of trials2 // 440//
+    var n_trials_practice = practiceIdsTriplets.length //5 // 1 //1//
 
     var totalTrials = n_trials_practice + n_trials_proper; //total number of trials in the entire task (practice + main task)
 
-    var n = 0 //keeps track of number of trials gone by
+    var n = 1 //keeps track of number of trials gone by
     var is_practice = 1;
-
-
-    var triplet_set_practice = practiceImageList;
-    var triplet_set_proper = properImageList;
 
     var data_cumulative;
     data_cumulative = [];
@@ -120,7 +109,7 @@
 
     var instructions1 = {
         type: jsPsychHtmlButtonResponse,
-        stimulus: '<div style="font-size:30px;"><b>INSTRUCTIONS</b><br><br><br>This is the similarity rating task.<br><br><br><br>This task is going to be in full-screen mode.<br><br><b> Please do not leave the full-screen mode. <br><br>Otherwise, the presented images may be illegible.<br><br></div>',
+        stimulus: '<div style="font-size:30px;"><b>INSTRUCTIONS</b><br><br><br>This is the similarity judgment task.<br><br><br><br>This task is going to be in full-screen mode.<br><br><b> Please do not leave the full-screen mode. <br><br>Otherwise, the presented images may be illegible.<br><br></div>',
         choices: ["Next"]
     };
     var instructions2 = {
@@ -130,63 +119,124 @@
     };
     var instructions3 = {
         type: jsPsychHtmlButtonResponse,
-        stimulus: '<div style="font-size:30px;">Please base your judgment on the objects, and nothing else than the objects.<br><br>If you do not recognize an object, base your judgment on your best guess as to what the object could be.</div>',
+        stimulus: '<div style="font-size:30px;">Please base your judgment on the objects, and nothing else than the objects.<br><br>If you do not recognize an object, base your judgment on your best guess as to what the object could be.<br><br></div>',
         choices: ["Next"]
     };
     var instructions4 = {
         type: jsPsychHtmlButtonResponse,
-        stimulus: '<div style="font-size:30px;">You get two practice trials to get used to the task.<br><br></div>',
+        stimulus: '<div style="font-size:30px;">You get five practice trials to get used to the task.<br><br></div>',
         choices: ["Start Practice"]
     };
     var instructions_proper = {
         type: jsPsychHtmlButtonResponse,
-        stimulus: '<div style="font-size:30px;">These were the two practice trials.<br><br>The main part of the similarity rating task is going to start now.</div>',
+        stimulus: '<div style="font-size:30px;">These were the five practice trials.<br><br>The main part of the similarity judgment task is going to start now.<br><br></div>',
         choices: ["Start Main Part"]
     };
 
     const iti = 500; // ms
 
-    var triplet_images_practice = practiceImageList;
-    var triplet_images_proper = properImageList;
+    const triplet_images_practice = practiceImageList;
+    const triplet_images_proper = properImageList;
+    const triplet_ids_practice = practiceIdsTriplets;
+    const triplet_ids_proper = properIdsTriplets;
+    const item_ids_practice = practiceIdsItems;
+    const item_ids_proper = properIdsItems;
 
 
+    var timeline_variables_practice = [];
+    var timeline_variables_proper = [];
+    
+
+    for (var i = 0; i < n_trials_practice; i++) {
+        timeline_variables_practice.push({ 
+            trial_id: i,
+            images: triplet_images_practice[i],
+            triplet_id: triplet_ids_practice[i],
+            stimulus_ids: item_ids_practice[i],
+            is_practice: 1
+        });
+    }
+
+    for (var i = 0; i < n_trials_proper; i++) {
+        timeline_variables_proper.push({
+            trial_id: i,
+            images: triplet_images_proper[i],
+            triplet_id: triplet_ids_proper[i],
+            stimulus_ids: item_ids_proper[i],
+            is_practice: 0
+        });
+    }
+
+    // practice trials
     var trial_template_practice = {
 
-        type: jsPsychHtmlButtonResponse,
-        stimulus: "",
-        choices: ["", "", ""],
-        button_html: function() {
-            let imgs = jsPsych.timelineVariable('images_practice');
-            return imgs.map(img => 
-            `<button class='jspsych-btn' style='background:none; border:none; padding:0;'>
-                <img src='${img}' width='150' height='150'>
-            </button>`
-            );
-        },
-        prompt: "<p>Select the image the least similar to the other two.</p>"
+        timeline: [{
+            type: jsPsychHtmlButtonResponse,
+            stimulus: "",
+            choices: ["", "", ""],
+            data: {
+                triplet_id: jsPsych.timelineVariable('triplet_id'),
+                stimulus_ids: jsPsych.timelineVariable('stimulus_ids'),
+                is_practice: jsPsych.timelineVariable('is_practice'),
+                trial_id: jsPsych.timelineVariable("trial_id"),
+            },
+            button_html: function() {
+                let imgs = jsPsych.timelineVariable('images', true);
+                return imgs.map(img => 
+                `<div style="display: flex; justify-content: center; align-items: center">
+                    <button class='jspsych-btn' style='background:none; border:none; padding:0;'>
+                        <img src='${img}' width='250' height='250'>
+                    </button>
+                </div>`
+                );
+            },
+            prompt: "<p>Select the image the least similar to the other two.</p>",
+            on_finish: function(data) {
+                // This runs after the participant clicks a button
+                console.log("participant_id: ", participant_id)
+                console.log("trial_id: ", n)
+                console.log("triplet_id: ", data.triplet_id)
+                console.log("stimulus_ids: ", data.stimulus_ids)
+                console.log("Choice made:", data.response);
+                console.log("Reaction time:", data.rt);
+
+                // save for our purposes
+                var data_ooo = {
+                    participant_id: participant_id,
+                    session_id: session_id,
+                    is_practice: data.is_practice,
+                    trial_id: data.trial_id,
+                    triplet_id: data.triplet_id,
+                    stimulus_ids: data.stimulus_ids,
+                    response: data.response,
+                    rt: data.rt
+                };
+
+                // You can call any custom function here
+                jatos.appendResultData(data_ooo, "odd-one-out.csv")
+                console.log("n = ", n)
+                console.log("n / totalTrials = ", n / totalTrials)
+                jsPsych.setProgressBar(n / totalTrials);
+                n += 1
+                // move on to the next trial
+                jsPsych.finishTrial(data_ooo);
+            } 
+        }],
+        timeline_variables: timeline_variables_practice
+        
+    };
+
+    // study trials
+    var trial_template_proper = {
+        ...trial_template_practice,
+        timeline_variables: timeline_variables_proper
     };
 
     
-    var trial_template_proper = {
-
-        type: jsPsychHtmlButtonResponse,
-        stimulus: "",
-        choices: ["", "", ""],
-        button_html: function() {
-            let imgs = jsPsych.timelineVariable('images_proper');
-            return imgs.map(img => 
-            `<button class='jspsych-btn' style='background:none; border:none; padding:0;'>
-                <img src='${img}' width='150' height='150'>
-            </button>`
-            );
-        },
-        prompt: "<p>Select the image the least similar to the other two.</p>"
-    };
-
 
     //compcheck1: if answer incorrect, compcheck1 will be repeated until correct response inserted
     var comp_check_ooo_loop = {
-        timeline: [comprehension_question_wmu_allinone, comp_feedback_wmu_verbose],
+        timeline: [comprehension_question_ooo_allinone, comp_feedback_ooo_verbose],
         loop_function: function (data) {
             len_data = data.values().length;
 
@@ -200,6 +250,7 @@
                     t_comprehension: Date.now() - t_start
                 };
                 let dataSaved = false;
+                jatos.appendResultData(data_comprehension, "comprehension-check.csv")
                 saveData(JSON.stringify(data_comprehension), "ooo_comprehension_check_" + session_id + "_" + participant_id + ".json", "ooo");
                 checkDataSaving();
 
@@ -224,7 +275,6 @@
     // practice trials ooo
     timeline.push({
         timeline: [trial_template_practice],
-        timeline_variables: triplet_images_practice,
         randomize_order: false
     });
 
@@ -237,23 +287,21 @@
     // proper trials
     timeline.push({
         timeline: [trial_template_proper],
-        timeline_variables: triplet_images_proper,
         randomize_order: false
     });
 
-
     var instructions_go_on = {
         type: jsPsychHtmlButtonResponse,
-        stimulus: '<div style="font-size:30px;"><br>Well done!<br>You have now finished the similarity rating task. Rest for a minute to take a deep breath and prepare for the questionnaires.<br>Click on "Next" to continue with the questionnaires.<br></div>',
+        stimulus: '<div style="font-size:30px;"><br>Well done!<br>You have now finished the similarity judgment task. Rest for a minute to take a deep breath and prepare for the questionnaires.<br>Click on "Next" to continue with the questionnaires.<br></div>',
         choices: ["Next"],
         on_finish: function () {
-            window.location.href = progress_url + "&session=" + session_id;
+            jatos.startComponent(67)
         }
     };
     timeline.push(instructions_go_on);
 
     jsPsych.run(timeline);
-
+    });
 
 </script>
 

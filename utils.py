@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+import seaborn as sns
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
@@ -1423,3 +1425,228 @@ def gini(x):
     n = len(x)
     index = np.arange(1, n + 1)
     return (np.sum((2 * index - n - 1) * x)) / (n * np.sum(x))
+
+
+def max_epoch(l_files):
+    '''extract the epoch saved last'''
+    the_number = []
+    for f in l_files:
+        # extract number and store
+        mtch = re.search(r"epoch(\d{4})\.txt$", f)
+        try:
+            the_number.append(mtch.groups()[0])
+        except:
+            the_number.append("0")
+    the_number_int = [int(n) for n in the_number]
+    max_value = max(the_number_int)
+    indices = [index for index, value in enumerate(
+        the_number_int) if value == max_value]
+    file_to_extract = l_files[indices[0]]
+    file_to_extract = file_to_extract.replace(".txt", ".tar")
+    file_to_extract = file_to_extract.replace("sparse_embed", "model")
+    return file_to_extract
+
+
+def extract_results_id(
+    lmbda, lmbda_hierarchical, rnd_seed, modelversion, l_n, l_sparse,
+    l_subjecttype, l_splithalf, modeltype="weightsonly_only_weights", l_temperature=[]
+):
+    '''load the results from the ID model from disk'''
+    all_dirs = []
+    l_all_results = []
+    l_all_models = []
+    l_sparsity = []
+    l_subject = []
+    for n in l_n:
+        for splithalf in l_splithalf:
+            for la in lmbda:
+                for la_h in lmbda_hierarchical:
+                    for sp in l_sparse:
+                        for st in l_subjecttype:
+                            if l_temperature == []:
+                                results_dir_ID = os.path.join(
+                                    "./results", modelversion, f"modeltype_{modeltype}", f"splithalf_{splithalf}",
+                                    f'{n}d', str(la), str(
+                                        la_h), sp, st, f'seed{rnd_seed}'
+                                )
+                                all_dirs.append(results_dir_ID)
+                                l_sparsity.append(sp)
+                                l_subject.append(st)
+                            else:
+                                for temp in l_temperature:
+                                    results_dir_ID = os.path.join(
+                                        "./results", modelversion, f"modeltype_{modeltype}", f"splithalf_{splithalf}", f"temperature_{temp}",
+                                        f'{n}d', str(la), str(
+                                            la_h), sp, st, f'seed{rnd_seed}'
+                                    )
+                                    all_dirs.append(results_dir_ID)
+                                    l_sparsity.append(sp)
+                                    l_subject.append(st)
+    for i, d in enumerate(all_dirs):
+        file_path = os.path.join(d, 'results.json')
+        if os.path.isfile(file_path):
+            with open(file_path, "r") as f:
+                l_results = json.load(f)
+                l_all_results.append(l_results)
+        else:
+            print(file_path + ": not found")
+        l_files = os.listdir(results_dir_ID)
+        latest_epoch = max_epoch(l_files)
+        p = os.path.join(d, "model", latest_epoch)
+        if os.path.isfile(p):
+            m = torch.load(p, weights_only=True,
+                           map_location=torch.device("cpu"))
+            m["sparsity"] = l_sparsity[i]
+            m["subject_type"] = l_subject[i]
+            l_all_models.append(m)
+        else:
+            print(f'{p} does not exist')
+    return l_all_models
+
+
+def model_detail_dict(ls, embedding_only):
+    '''extract model details as a df and append in a list'''
+    l_df = [
+        pd.DataFrame({
+            "modeltype": l["modeltype"],
+            "sparsity": l["sparsity"],
+            "subject_type": l["subject_type"],
+            "nr_epochs": l["epoch"],
+            "ndim": l["n_embed"],
+            "lambda": l["lambda"],
+            "lambda_hierarchical": l["lmbda_hierarchical"],
+            "train_acc_max": l["train_accs_max"],
+            "val_acc_max": l["val_accs_max"],
+            "train_acc_proba": l["train_accs_proba"],
+            "val_acc_proba": l["val_accs_proba"],
+        })
+        for l in ls
+    ]
+    if embedding_only:
+        for i, l in enumerate(l_df):
+            l["temperature"] = ls[i]["temperature"].detach().numpy()
+    return l_df
+
+
+def extract_split_half(
+    lmbda, lmbda_hierarchical, rnd_seed, modelversion, l_n, l_sparse,
+    l_subjecttype, l_splithalf, modeltype="weightsonly_only_weights", l_temperature=[]
+):
+    '''load models run on different data splits from disk'''
+    all_dirs = []
+    l_all_results = []
+    l_all_models = []
+    l_sparsity = []
+    l_subject = []
+    l_all_splithalf = []
+    for n in l_n:
+        for splithalf in l_splithalf:
+            for la in lmbda:
+                for la_h in lmbda_hierarchical:
+                    for sp in l_sparse:
+                        for st in l_subjecttype:
+                            if l_temperature == []:
+                                results_dir_ID = os.path.join(
+                                    "./results", modelversion, f"modeltype_{modeltype}", f"splithalf_{splithalf}",
+                                    f'{n}d', str(la), str(
+                                        la_h), sp, st, f'seed{rnd_seed}'
+                                )
+                            else:
+                                for temp in l_temperature:
+                                    results_dir_ID = os.path.join(
+                                        "./results", modelversion, f"modeltype_{modeltype}", f"splithalf_{splithalf}", f"temperature_{temp}",
+                                        f'{n}d', str(la), str(
+                                            la_h), sp, st, f'seed{rnd_seed}'
+                                    )
+                            all_dirs.append(results_dir_ID)
+                            l_sparsity.append(sp)
+                            l_subject.append(st)
+                            l_all_splithalf.append(splithalf)
+    for i, d in enumerate(all_dirs):
+        file_path = os.path.join(d, 'results.json')
+        l_files = os.listdir(results_dir_ID)
+        latest_epoch = ut.max_epoch(l_files)
+        p = os.path.join(d, "model", latest_epoch)
+        if os.path.isfile(p):
+            m = torch.load(p, weights_only=True,
+                           map_location=torch.device("cpu"))
+            if modeltype == "random_weights_free_scaling":
+                decision_weights = m["model_state_dict"]["model1.individual_slopes.weight"]
+                temperature_scalings = m["model_state_dict"]["model2.individual_temps.weight"]
+                dict_out = {"decision_weights": decision_weights,
+                            "temperature_scalings": temperature_scalings}
+            else:
+                decision_weights = m["model_state_dict"]["individual_slopes.weight"]
+                dict_out = {"decision_weights": decision_weights}
+            dict_out["modeltype"] = m["modeltype"]
+            dict_out["lmbda"] = m["lambda"]
+            dict_out["lmbda_hierarchical"] = m["lmbda_hierarchical"]
+            dict_out["n_embed"] = m["n_embed"]
+            dict_out["splithalf"] = l_all_splithalf[i]
+
+            l_all_models.append(dict_out)
+        else:
+            print(f'{p} does not exist')
+    return l_all_models
+
+
+def extract_decision_weights(l, tp):
+    '''extract decision weights from a model with by-participant softmax'''
+    df_sh = pd.DataFrame(
+        l["decision_weights"].detach().numpy()).reset_index(drop=False)
+    df_sh = pd.melt(
+        df_sh, id_vars=["index"], var_name='dimension', value_name='decision_weight')
+    df_sh["timepoint"] = tp
+    df_sh.rename(columns={"index": "id"}, inplace=True)
+    return df_sh
+
+
+def split_half_reliabilities(l_splithalf, idxs, ndims):
+    '''extract and plot split-half reliabilities'''
+
+    df_sh1 = extract_decision_weights(l_splithalf[idxs[0]], 1)
+    df_sh2 = extract_decision_weights(l_splithalf[idxs[1]], 2)
+    df_sh = pd.merge(df_sh1, df_sh2, how="left", on=[
+                     "id", "dimension"], suffixes=["_1", "_2"])
+    # Create a faceted scatterplot: one for each day
+
+    def scatter_with_corr(data, x, y, **kwargs):
+        r, _ = np.corrcoef(data[x], data[y])[0, 1], None
+        z_val = data["dimension"].iloc[0]  # safely grab the facet value
+        sns.scatterplot(data=data, x=x, y=y, **kwargs)
+        plt.title(f"dimension = {z_val}, r = {r:.2f}")
+        # Plot identity line
+        min_val = min(data[x].min(), data[y].min())
+        max_val = max(data[x].max(), data[y].max())
+        _ = plt.plot([min_val, max_val], [min_val, max_val],
+                     color="gray", linestyle="--", linewidth=1)
+
+    g = sns.FacetGrid(df_sh, col="dimension", col_wrap=5)
+    g.map_dataframe(scatter_with_corr, x="decision_weight_1",
+                    y="decision_weight_2")
+
+    df_corr = pd.DataFrame(
+        df_sh.groupby("dimension").apply(lambda g: g['decision_weight_1'].corr(
+            g['decision_weight_2'])).sort_values(ascending=False)
+    )
+    df_corr["ndims"] = ndims
+    df_corr.columns = ["r", "ndims"]
+
+    return df_sh, df_corr, g
+
+
+def extract_image(l_concepts_filtered, i):
+    '''load the relevant image from all images from disk'''
+
+    imagename = l_concepts_filtered[i]
+    path = os.path.join("data", "images", imagename)
+    all_dirs = os.listdir(path)
+
+    l_names = [re.match("^[a-z]", all_dirs[i])
+               for i in range(0, len(all_dirs))]
+    l_names_filter = [l_names[i] != None for i in range(0, len(l_names))]
+    l_names_filtered = [value for value, flag in zip(
+        all_dirs, l_names_filter) if flag]
+    just_first = l_names_filtered[0]
+    path_keep = os.path.join(path, just_first)
+    return path_keep

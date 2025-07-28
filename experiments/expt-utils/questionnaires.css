@@ -1,0 +1,319 @@
+/* Font from Google fonts */
+@import url("https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,900");
+/* Color palette */
+/* Basic styles */
+html, body {
+    height: 100%;
+    font-family: 'Source Sans Pro', sans-serif;
+    background-color: #efefef;
+    color: #303030;
+}
+
+.complete_screen {
+    display: block;
+    max-width: 610px;
+    margin: 200px auto;
+}
+
+/* Form Styles */
+.form {
+    max-width: 610px;
+    margin: 60px auto;
+}
+
+.submit_form {
+    max-width: 610px;
+    margin: 0 0 120px 0;
+}
+
+
+.form__header {
+    margin-bottom: 40px;
+    border-bottom: 1px dashed rgba(48, 48, 48, 0.15);
+    margin: auto;
+}
+
+.form__title {
+    font-size: 45px;
+    /* margin: 2px 0; */
+    text-align: center;
+}
+
+.form__instruction {
+    font-size: 22px;
+}
+
+.preamble {
+    font-size: 23px;
+}
+
+.form__options {
+    border: none;
+    padding: 0 0 50px 0;
+}
+
+.form__question {
+    font-size: 25px;
+}
+
+.questionDemo {
+    margin: 60px 0 0 0;
+    font-size: 25px;
+    line-height: 25px
+}
+
+.form__answer {
+    display: block;
+    /* -webkit-box-sizing: border-box;
+    box-sizing: border-box; */
+    width: 100%;
+    margin: 10px 0 10px 0;
+    height: 50px;
+    vertical-align: middle;
+    font-size: 22px;
+    text-align: center;
+    color: #0092ff;
+    padding: 10px 10px 10px 10px;
+}
+
+.textEntry {
+    display: block;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 20px 1% 20px 1%;
+    height: 100px;
+    vertical-align: middle;
+    font-size: 20px;
+    text-align: center;
+    color: #0092ff;
+}
+
+.mainInstructions {
+	font-family: 'Nunito Sans', 'Arial', sans-serif;
+	width: 50%;
+	margin: 20px auto;
+	/* background-color: #efefef; */
+	/*margin-top: 100px;*/
+	text-align: center;
+	font-size: 18px;
+	color: #303030;
+  }
+
+textarea {
+    font-size: 20px;
+    font-family: 'Source Sans Pro', sans-serif;
+    text-align: center;
+    vertical-align: middle;
+}
+
+label {
+    border: 1px solid rgba(48, 48, 48, 0.15);
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    display: block;
+    height: 100%;
+    width: 100%;
+    padding: 10px;
+    cursor: pointer;
+    vertical-align: middle;
+    opacity: 1;
+    -webkit-transition: all .5s ease;
+    transition: all .5s ease;
+    background-color: #f5f5f5;
+}
+label:hover, label:focus, label:active {
+    border: 1px solid rgba(48, 48, 48, 0.5);
+}
+
+.subjectID {
+    margin: 200px 0 200px 0;
+}
+
+.submitContainer {
+    margin: 0 0 150px 0;
+}
+
+.submit_button {
+    display: block;
+    height: 60px;
+    width: 150px;
+    border: none;
+    background-color: #005da9;
+    color: #f5f5f5;
+    text-transform: uppercase;
+    font-family: 'Source Sans Pro', sans-serif;
+    padding: 0 20px;
+    border-radius: 20px;
+    font-weight: 900;
+    cursor: pointer;
+    margin: auto;
+    -webkit-transition: all .25s ease-in-out;
+    transition: all .25s ease-in-out;
+    font-size: 22px;
+    outline: none;
+}
+.submit_button:hover, .submit:focus {
+    background-color: #008aff;
+    text-shadow: 1px 1px 1px rgba(255, 255, 255, 0.25);
+    outline: none;
+}
+
+.bold_text {
+    font-weight: bold;
+}
+
+.small_text {
+    font-size: 15px;
+}
+
+
+/* Input style */
+input[type="radio"] {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+input[type="radio"]:active ~ label {
+    opacity: 1;
+}
+
+input[type="radio"]:checked ~ label {
+    opacity: 1;
+    border: 1px solid #303030;
+}
+
+/* Footer Styles */
+footer {
+    background-color: #003459;
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    left: 0;
+    right: 0;
+    padding: 0;
+}
+
+.footer__paragraph, .footer__list, .copyright {
+    line-height: 1.5em;
+    font-size: 22px;
+}
+
+img {
+    display: block;
+    width: 100px;
+    margin-top: 0px;
+    margin-right: 0;
+    margin-left: auto;
+    margin-bottom: 0;
+}
+
+
+.slidecontainer {
+    display: flex;
+    height: 150px;
+    width: 100%; /* Width of the outside container */
+    margin: 40px 0 0 0;
+    box-shadow: none;
+}
+
+.sliderLabel {
+    /*display:inline-block;*/
+    flex-grow: 0.5;
+    height: 50px;
+    width: auto;
+    font-size:20px;
+    margin: 0;
+    text-align: center;
+    line-height: 50px;
+    border: none;
+    box-shadow: none;
+}
+
+/* The slider itself */
+.slider {
+    /*display:inline-block;*/
+    flex-grow: 1;
+    -webkit-appearance: none;  /* Override default CSS styles */
+    width: 50%; /* Full-width */
+    height: 50px; /* Specified height */
+    background: #efefef; /* Grey background */
+    outline: none; /* Remove outline */
+    opacity: 0.7; /* Set transparency (for mouse-over effects on hover) */
+    -webkit-transition: .2s; /* 0.2 seconds transition on hover */
+    transition: opacity .2s;
+    /*margin: 30px 0 0 0 ;*/
+    margin: 0;
+    box-shadow: none;
+}
+
+/* Mouse-over effects */
+.slider:hover {
+    opacity: 1; /* Fully shown on mouse-over */
+    box-shadow: none;
+}
+
+.slider::-webkit-slider-thumb {
+    box-shadow: none;
+    border: none;
+    height: 36px;
+    width: 5px;
+    border-radius: 0px;
+    background: #0063b9;
+    cursor: pointer;
+    -webkit-appearance: none;
+    margin-top: -14px;
+}
+
+.slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 8.4px;
+    cursor: pointer;
+    background: #cbcbcb;
+    border-radius: 1.3px;
+    border: none;
+    margin: auto;
+    box-shadow: none;
+}
+
+.slider::-moz-range-thumb {
+    width: 25px; /* Set a specific slider handle width */
+    height: 50px; /* Slider handle height */
+    background: #0063b9; /* Green background */
+    cursor: pointer; /* Cursor on hover */
+}
+
+.slider::-moz-range-track {
+    width: 100%;
+    height: 8.4px;
+    cursor: pointer;
+    box-shadow: none;
+    background: #3071a9;
+    border-radius: 1.3px;
+    border: none;
+}
+
+
+.output {
+    max-width: 50vw;
+    margin: 5vw auto;
+    white-space: pre-wrap;
+    font-size: 6vw;
+}
+
+.task {
+    max-width: 50vw;
+    margin: 5vw auto;
+}
+
+.task__header {
+    margin-bottom: 2vw;
+    border-bottom: 2px dashed rgba(48, 48, 48, 0.15);
+}
+
+.task__title {
+    font-size: 8vw;
+    margin: 2vw 0;
+}

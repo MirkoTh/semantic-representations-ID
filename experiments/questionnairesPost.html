@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <script src="jatos.js"></script>
+    <link rel="stylesheet" type="text/css" href="experiments/expt-utils/questionnaires.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Questionnaires</title>
+    <script>
+        jatos.onLoad(function() {
+        // Start here with your code that uses jatos.js' variables and functions
+
+var questionnaire_data
+var submitted = false
+var participant_id = jatos.studySessionData.valueOf()["participant_id"];
+var session_id = jatos.studySessionData.valueOf()["session_id"];
+console.log("session_id = ", session_id)
+console.log("participant_id = ", participant_id)
+
+
+// Get Firebase UID
+
+var uid = jatos.studySessionData.valueOf()["uid"];
+if (uid == undefined) {
+  uid = "zGT4IfDtT5MRkS7rAprmI8HgWVq2"
+}
+
+
+
+var attention
+var start
+var end
+var totalTime
+
+
+var studyID;
+var db;
+var docRef;
+
+// function saveData(filedata){
+//     var filename = "./data/" + subjectID + "data_3" + "_attention" + attention + ".txt";
+//     $.post("results_data.php", {postresult: filedata + "\n", postfile: filename })
+
+// }
+
+
+function getQueryVariable(variable)
+{
+    var query = window.location.search.substring(1);
+    var vars = query.split("&");
+    for (var i=0;i<vars.length;i++) {
+        var pair = vars[i].split("=");
+        if(pair[0] == variable){return pair[1];}
+    }
+    return(false);
+}
+
+function createQuestion(questionnaireName, questionData) {
+    // This function creates an individual item
+
+    var f = document.createElement("form");
+    f.setAttribute('method',"post");
+    f.setAttribute('action',"submit.php");
+    f.setAttribute('id', questionnaireName.concat('_' + questionData.qNumber.toString()));
+    f.setAttribute("name", "form_");
+
+    var fieldset = document.createElement("fieldset");
+    fieldset.setAttribute("class", "form__options");
+    fieldset.setAttribute('id', questionnaireName.concat('_' + questionData.qNumber.toString()));
+    fieldset.setAttribute("name", "fs_");
+
+    var legend = document.createElement("legend");
+    legend.setAttribute("class", "form__question");
+    legend.setAttribute("name", "legend");
+    legend.append(questionData.prompt);
+
+    fieldset.appendChild(legend);
+
+    var labels = [];
+
+    for (i = 0; i < questionData.labels.length; i++) {
+
+        var p = document.createElement("p");
+        p.setAttribute('class', 'form__answer');
+        var c = document.createElement("input");
+        c.type = "radio";
+        c.id = questionnaireName.concat(questionData.qNumber.toString()).concat("answer".concat(i.toString()));
+        c.name = "question";
+        c.value = i;
+
+        var l = document.createElement("label");
+        l.setAttribute('for', c.id);
+        l.setAttribute("style", "margin:-10px; padding: 18px 10px 50px 10px")
+        l.append(questionData.labels[i]);
+
+        p.appendChild(c);
+        p.appendChild(l);
+
+        labels.push(p);
+
+        fieldset.appendChild(p)
+
+    }
+
+    f.appendChild(fieldset);
+
+
+    return f;
+
+}
+
+function createQuestion_slider(questionnaireName, questionData) {
+
+var shockForm = document.createElement("form");
+shockForm.setAttribute('method',"post");
+shockForm.setAttribute('id', questionnaireName.concat('_' + questionData.qNumber.toString()));
+shockForm.setAttribute("name", "form_");
+shockForm.setAttribute('action',"submit.php");
+
+var shockFieldSet = document.createElement("fieldset");
+shockFieldSet.setAttribute("class", "form__options");
+shockFieldSet.setAttribute('id', questionnaireName.concat('_' + questionData.qNumber.toString()));
+shockFieldSet.setAttribute("name", "fs_");
+
+var legendShock = document.createElement("legend");
+legendShock.setAttribute("class", "questionDemo");
+legendShock.setAttribute("name", "legend");
+legendShock.innerHTML = questionData.prompt;
+
+shockFieldSet.appendChild(legendShock);
+
+var sliderBox = document.createElement("div");
+sliderBox.setAttribute("class", "slidecontainer");
+
+var slider = document.createElement("input");
+slider.setAttribute("type", "range");
+slider.setAttribute("min", "0");
+slider.setAttribute("max", "100");
+slider.setAttribute("class", "slider");
+slider.setAttribute("id", questionnaireName.concat('_' + questionData.qNumber.toString()));
+slider.name = 'question';
+
+var sliderLabelLeft = document.createElement("p");
+sliderLabelLeft.setAttribute("class", "sliderLabel");
+sliderLabelLeft.append(questionData.labels[0]);
+var sliderLabelRight = document.createElement("p");
+sliderLabelRight.setAttribute("class", "sliderLabel");
+sliderLabelRight.append(questionData.labels[1]);
+
+sliderBox.appendChild(sliderLabelLeft);
+sliderBox.appendChild(slider);
+sliderBox.appendChild(sliderLabelRight);
+
+shockFieldSet.appendChild(sliderBox);
+
+shockForm.appendChild(shockFieldSet);
+return shockForm
+}
+
+function createPreamble(preamble) {
+    // This is used to generate an introduction to the the questionnaire
+    var h = document.createElement("header");
+    h.setAttribute("class", "form__header");
+    h.setAttribute("name", "fs_");
+
+    var p = document.createElement("p");
+    p.setAttribute("class", "preamble");
+
+    var div = document.createElement("div");
+    div.innerHTML = preamble;
+
+    p.appendChild(div);
+    h.appendChild(p);
+
+    return h
+
+}
+
+
+function createQuestionnaire(questionnaire_data) {
+    // This function creates an entire questionnaire
+
+    // Start with the introduction
+    var preamble = createPreamble(questionnaire_data.preamble);
+    document.getElementById('questionnaires').appendChild(preamble);
+
+    // Loop through the items and add them
+    for (j = 0; j < questionnaire_data.questions.length; j++) {
+
+        questionnaire_data.questions[j].qNumber = j;
+
+        if (j < questionnaire_data.questions.length - 1) {
+            next = questionnaire_data.name.concat((j+1).toString());
+        }
+
+        document.getElementById('questionnaires').appendChild(createQuestion(questionnaire_data.name,
+            questionnaire_data.questions[j], next));
+
+    }
+
+}
+
+function createDemographics() {
+    // This creates demographics questions
+    // This isn't automatically generated from a JSON file - these are entered manually here
+
+    var preamble = createPreamble("First, we need some information about you");
+
+    document.getElementById('questionnaires').appendChild(preamble);
+
+
+    // Sex
+    qDataSex = {
+                qNumber: 0,
+                prompt: "What is your sex?",
+                labels: ['Male', 'Female', 'Other']
+            };
+        
+    sexQuestion = createQuestion('Sex', qDataSex);
+    document.getElementById('questionnaires').appendChild(sexQuestion);
+
+
+    // Age
+    var ageForm = document.createElement("form");
+    ageForm.setAttribute('method',"post");
+    ageForm.setAttribute('id', "age");
+    ageForm.setAttribute("name", "form_");
+
+    var ageFieldSet = document.createElement("fieldset");
+    ageFieldSet.setAttribute("class", "form__options");
+    ageFieldSet.setAttribute('id', "age");
+    ageFieldSet.setAttribute("name", "fs_");
+
+    var legendAge = document.createElement("legend");
+    legendAge.setAttribute("class", "questionDemo");
+    legendAge.append("How old are you?");
+    legendAge.setAttribute("name", "legend");
+    legendAge.name = 'question';
+
+    ageFieldSet.appendChild(legendAge);
+
+    var box = document.createElement("input");
+    box.setAttribute("class", "textEntry");
+    box.setAttribute("type", "number");
+    box.setAttribute("min", "0");             // optional: minimum age
+    box.setAttribute("max", "120");           // optional: maximum age
+    box.setAttribute("step", "1");            // optional: whole numbers only
+    box.setAttribute("id", "Age");
+    box.name = 'question';
+
+    ageFieldSet.appendChild(box);
+
+    ageForm.appendChild(ageFieldSet);
+    document.getElementById('questionnaires').appendChild(ageForm);
+
+    // years in education
+
+    var eduForm = document.createElement("form");
+    eduForm.setAttribute('method',"post");
+    eduForm.setAttribute('id', "edu");
+    eduForm.setAttribute("name", "form_");
+
+    var eduFieldSet = document.createElement("fieldset");
+    eduFieldSet.setAttribute("class", "form__options");
+    eduFieldSet.setAttribute('id', "edu");
+    eduFieldSet.setAttribute("name", "fs_");
+
+    var legendEdu = document.createElement("legend");
+    legendEdu.setAttribute("class", "questionDemo");
+    legendEdu.append("How many years did you spend in education? (primary school + highschool + university)");
+    legendEdu.setAttribute("name", "legend");
+    legendEdu.name = 'question';
+
+    eduFieldSet.appendChild(legendEdu);
+
+    var box = document.createElement("input");
+    box.setAttribute("class", "textEntry");
+    box.setAttribute("type", "number");
+    box.setAttribute("min", "0");             // optional: minimum age
+    box.setAttribute("max", "100");           // optional: maximum age
+    box.setAttribute("step", "1");            // optional: whole numbers only
+    box.setAttribute("id", "Edu");
+    box.name = 'question';
+
+    eduFieldSet.appendChild(box);
+
+    eduForm.appendChild(eduFieldSet);
+    document.getElementById('questionnaires').appendChild(eduForm);
+
+    // income
+
+    qDataIncome = {
+        qNumber: 0,
+        prompt: "What is your average monthly income before taxes?",
+        labels: ['<$500', '$500 - $1000', '$1000 - $1500', '$1500 - $2000', '$2000 - $2500', '$2500 - $3000', '$3500 - $4000', '$4000 - $4500', '$4500 - $5000', '> $5000']
+    };
+
+    incomeQuestion = createQuestion('income', qDataIncome);
+    document.getElementById('questionnaires').appendChild(incomeQuestion);
+
+
+    // How motivated were you to perform well on the task?
+
+    qDataMotiv = {
+                qNumber: 1,
+                prompt: "How motivated were you to perform well on the task?",
+                labels: ['Not motivated at all', 'Very motivated']
+            };
+        
+    motivQuestion = createQuestion_slider('motivation', qDataMotiv);
+    document.getElementById('questionnaires').appendChild(motivQuestion);
+
+    // How scared were you to find the kraken? (adapted from question about electric shocks)
+
+    qDataKraken = {
+                qNumber: 2,
+                prompt: "How scared were you to find the kraken?",
+                labels: ['Not scared at all', 'Very scared']
+            };
+
+    krakenQuestion = createQuestion_slider('kraken', qDataKraken);
+    document.getElementById('questionnaires').appendChild(krakenQuestion);
+
+
+    // Have you ever received a psychiatric diagnosis?
+
+    qDataDiagnosis = {
+                qNumber: 2,
+                prompt: "Have you ever received a psychiatric diagnosis?",
+                labels: ['Yes', 'No', 'Prefer not to answer.']
+            };
+        
+            DiagnosisQuestion = createQuestion('diagnosis', qDataDiagnosis);
+            document.getElementById('questionnaires').appendChild(DiagnosisQuestion);
+    
+
+    // Are you currently taking any psychiatric medication?
+    qDataMeds = {
+                qNumber: 3,
+                prompt: "Are you currently taking any psychiatric medication?",
+                labels: ['Yes', 'No', 'Prefer not to answer.']
+            };
+        
+            MedsQuestion = createQuestion('meds', qDataMeds);
+            document.getElementById('questionnaires').appendChild(MedsQuestion);
+
+
+}
+
+function createEndQuestions() {
+    // This creates demographics questions
+    // This isn't automatically generated from a JSON file - these are entered manually here
+
+    var preamble = createPreamble("Some final questions");
+
+    document.getElementById('questionnaires').appendChild(preamble);
+
+    // Do you have any feedback for us?
+
+    var feedbackForm = document.createElement("form");
+    feedbackForm.setAttribute('method',"post");
+    feedbackForm.setAttribute('id', "feedback");
+    feedbackForm.setAttribute("name", "form_");
+
+    var feedbackFieldSet = document.createElement("fieldset");
+    feedbackFieldSet.setAttribute("class", "form__options");
+    feedbackFieldSet.setAttribute('id', "feedback");
+    feedbackFieldSet.setAttribute("name", "fs_");
+
+    var legendFeedback = document.createElement("legend");
+    legendFeedback.setAttribute("class", "questionDemo");
+    legendFeedback.setAttribute("name", "legend");
+    legendFeedback.innerHTML = "Do you have any feedback for us?";
+    feedbackFieldSet.appendChild(legendFeedback);
+
+    var box = document.createElement("input");
+    box.setAttribute("class", "textEntry");
+    box.setAttribute("type", "text");
+    box.setAttribute("id", "Feedback");
+    box.name = 'question';
+
+    feedbackFieldSet.appendChild(box);
+    feedbackForm.appendChild(feedbackFieldSet);
+    document.getElementById('questionnaires').appendChild(feedbackForm);
+
+    // Do you think you performed in our study such that we should use your data? (Your answer does not influence your payment in any way.)
+
+    // qDataUseData = {
+    //             qNumber: 0,
+    //             prompt: "Do you think you performed in our study such that we should use your data? (Your answer does not influence your payment in any way.)",
+    //             labels: ['Yes', 'No']
+    //         };
+
+    // useDataQuestion = createQuestion('useData', qDataUseData);
+    // document.getElementById('questionnaires').appendChild(useDataQuestion);
+
+
+}
+
+function getValues() {
+    // This function gets the recorded values for every item
+    // As it goes through, it highlights any items that weren't answered in red
+    // And then scrolls to them on completion
+
+    // All items have an ID starting with fs_
+    submitted = true
+    var inputs = document.getElementsByName("fs_");
+
+    // Loop through the items nad get their values
+    values = {};
+    incomplete = [];
+
+    for (i = 0; i < inputs.length; i++) {
+
+        if (inputs[i].id.length > 0) {
+            
+            // Get responses to questionnaire items
+            id = inputs[i].id;
+            legend = inputs[i].querySelectorAll('[name="legend"]')[0];
+
+            checked = inputs[i].querySelector('input[name="question"]:checked');
+
+            if (checked != null) {
+                legend.style.color = "#000000";
+                value = checked.value;
+                values[id] = value;
+            }
+
+            // Get responses to text items
+            else if (inputs[i].querySelector('input[type="text"]')) {
+
+                value = inputs[i].querySelector('input[type="text"]').value;
+                if (value.length == 0) {
+
+                    legend.style.color = "#ff0000";
+                    incomplete.push(id);
+                }
+
+                else {
+                    legend.style.color = "#000000";
+                    values[id] = value;
+                }
+            }
+
+            // Get responses to slider items
+            else if (inputs[i].querySelector('input[type="range"]')) {
+                value = inputs[i].querySelector('input[type="range"]').value;
+                values[id] = value;
+
+            }
+
+            // Get responses to number items
+            else if (inputs[i].querySelector('input[type="number"]')) {
+                let rawValue = inputs[i].querySelector('input[type="number"]').value;
+                let digitsOnly = rawValue.match(/\d+/g)?.join('') || '';
+
+                if (digitsOnly.length == 0) {
+                    legend.style.color = "#ff0000";
+                    incomplete.push(id);
+                }
+
+                else {
+                    legend.style.color = "#000000";
+                    values[id] = digitsOnly;
+                }
+            }
+
+
+            else {
+                legend.style.color = "#ff0000";
+                incomplete.push(id);
+            }
+
+            values[id] = values[id];
+        }
+    }
+
+    // This checks for any items that were missed and scrolls to them
+    if (incomplete.length > 0) {
+
+        $('html, body').animate({ // go to first missed items
+                scrollTop: $(document.getElementById(incomplete[0])).offset().top - 100
+                }, 400);
+       
+
+        if(incomplete.length > 1){ // if you missed more than one item
+           
+            for (i = 0; i < incomplete.length -1; i++){ // loops through all missed questions and attaches an event listener to each of them
+            
+            $(document.getElementById(incomplete[i])).children().click(function (e) { 
+                var target = e.target.parentElement.parentElement.parentElement.id // name of the given question
+                var n = incomplete.indexOf(target)// I can't simply use i as the index as it is already done with the loop by the time one clicks
+                var nextMiss = document.getElementById(incomplete[n+1])
+                $('html, body').animate({ // go to next question
+                scrollTop: $(nextMiss).offset().top - 100
+                }, 400);
+            });
+           
+            }
+        }
+        // Generate function to scroll to next question if we're not on the last question
+        
+        
+       
+
+        
+      }
+         
+    
+
+    // If everything is complete, save the data
+    else {
+        // How long did they take?
+        end = Number(new Date());
+        totalTime = (end- start)/60000 // time in minutes
+        values["rt"] = totalTime;
+        // do attention check
+        attention = 0
+        if (values["PSWQ_8"] == "0"){
+            attention += 1
+        }
+        if (values["IUS_7"] == "4"){
+            attention += 1
+
+        }
+        values["attention_2"] = attention;
+
+
+
+        docRef.update({
+            questionnairesPost: values
+        }).then(
+            function() {
+                // If saving worked, show completion link
+                
+                $(document.getElementById("questionnaires")).hide()
+                $(document.getElementById("header")).hide()
+                //window.scrollTo(0.0)
+                var complete_url = 'https://app.prolific.com/submissions/complete?cc=CJ3O7M7V';    
+                document.getElementById('instruction').innerHTML = 'This is the end of this study. Thank you very much for your participation. <br/>Your data has been recorded.<br/>Please click' +
+                ' <a href="' + complete_url + '">here</a> to return to Prolific';
+            }
+
+        ).catch(function(error) {
+            // If writing failed, show the completion link but also throw an error
+            console.error("Error writing document: ", error);
+            $(document.getElementById("questionnaires")).hide()
+            $(document.getElementById("header")).hide()
+            var complete_url = 'https://app.prolific.com/submissions/complete?cc=CJ3O7M7V'; 
+            document.getElementById('instruction').innerHTML = 'This is the end of this study. Thank you very much for your participation. <br/>Your data has been recorded.<br/>Please click' +
+            ' <a href="' + complete_url + '">here</a> to return to Prolific';
+            // window.location.href = complete_url;
+            })
+    }
+
+}
+    
+
+
+// Load questionnaires
+$.getJSON('experiments/expt-utils/questionnaires.json', function (data) {
+    // THis function creates the whole questionnaire
+    start = Number(new Date());
+    questionnaire_data = data;
+
+    var fullurl = window.location.href;
+
+
+    // extract URL parameters (FROM: https://s3.amazonaws.com/mturk-public/externalHIT_v1.js)
+    function turkGetParam(name) {
+     var regexS = "[\?&]" + name + "=([^&#]*)";
+     var regex = new RegExp(regexS);
+     if (typeof fullurl == "undefined"){ // I added this part to the original code bc otherwise it would throw errors when running it locally
+        return Math.floor(Math.random() * 10000);
+
+     } else {
+        var tmpURL = fullurl;
+        var results = regex.exec(tmpURL);
+        if (results == null) {
+            return Math.floor(Math.random() * 10000);
+        } else {
+            return results[1];
+     }
+    }
+}
+    // Get Firebase
+
+    studyID = 'replication'
+    db = firebase.firestore();
+    docRef = db.collection("safe_exploration").doc(studyID).collection('subjects').doc(uid);
+
+
+
+    // This creates questions to ask about demographic information
+    createDemographics();
+
+    // THis creates every questionnaire of interest
+    // A smarter way to do this would be to shuffle the keys of the questionnaire_data object
+    // and then loop through them, rather than creating them all individually as I've done here
+    
+    // createQuestionnaire(questionnaire_data.IUS);
+    // createQuestionnaire(questionnaire_data.PID);
+    // createQuestionnaire(questionnaire_data.CAPE);
+    // createQuestionnaire(questionnaire_data.RRQ);
+    // createQuestionnaire(questionnaire_data.PSWQ);
+    createQuestionnaire(questionnaire_data.I_8);
+
+    createEndQuestions();
+
+    // This next section just deals with scrolling between items automatically (but not if we are scrolling through missed items)
+    
+    var forms = document.getElementsByName("fs_");
+    // for (i = 3; i < forms.length; i++) {
+    //     // Generate function to scroll to next question if we're not on the last question
+    //     if (i < forms.length - 1) {
+    //         forms[i].setAttribute("scrollPos", $(forms[i + 1]).offset().top - 100);
+    //         $(forms[i]).children().children().click(function () {
+    //             if (!submitted){ //if submit has been pressed, the other scroll on function in the getValues function does the job
+    //             $('html, body').animate({
+    //                 scrollTop: $(this).parent().parent().attr("scrollPos")
+    //             }, 400);
+    //         }
+    //         });
+    //     }
+    // }
+
+
+    // Create the submit button
+    var submit = document.createElement('button');
+    submit.setAttribute("class", "submit_button");
+    submit.setAttribute("type", "button");
+    submit.setAttribute("id", "submit");
+    submit.append("Submit");
+
+    var submit_form = document.createElement("form");
+    submit_form.setAttribute("class", "submitContainer");
+    submit_form.appendChild(submit);
+    document.getElementById('questionnaires').appendChild(submit_form);
+
+    // Function to call when the submit button is clicked
+    document.getElementById('submit').onclick = getValues;
+
+});
+
+
+
+      });
+     </script>
+
+</head>
+
+<body>
+    <script src="https://www.gstatic.com/firebasejs/8.6.4/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.4/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.4/firebase-firestore.js"></script>
+    <script>
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+        apiKey: "",
+        authDomain: "",
+        projectId: "",
+        storageBucket: "",
+        messagingSenderId: "",
+        appId: ""
+        };
+
+    //     // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+    //   </script>
+</body>
+
+<div class="form">
+    <div id="subjectID" class="subjectID">
+    </div>
+    <header class="form__header">
+        <h2 class="form__title" id="header">Some questions about you</h2>
+        <p class="form__instruction" id = "instruction">These questions ask you about things like personality traits and emotions</p>
+    </header>
+    <div id="questionnaires">
+    </div>
+</div>
+
