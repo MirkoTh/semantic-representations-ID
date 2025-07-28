@@ -311,18 +311,6 @@ function createDemographics() {
     motivQuestion = createQuestion_slider('motivation', qDataMotiv);
     document.getElementById('questionnaires').appendChild(motivQuestion);
 
-    // How scared were you to find the kraken? (adapted from question about electric shocks)
-
-    qDataKraken = {
-                qNumber: 2,
-                prompt: "How scared were you to find the kraken?",
-                labels: ['Not scared at all', 'Very scared']
-            };
-
-    krakenQuestion = createQuestion_slider('kraken', qDataKraken);
-    document.getElementById('questionnaires').appendChild(krakenQuestion);
-
-
     // Have you ever received a psychiatric diagnosis?
 
     qDataDiagnosis = {
@@ -604,7 +592,11 @@ $.getJSON('experiments/expt-utils/questionnaires.json', function (data) {
     // createQuestionnaire(questionnaire_data.CAPE);
     // createQuestionnaire(questionnaire_data.RRQ);
     // createQuestionnaire(questionnaire_data.PSWQ);
+    createQuestionnaire(questionnaire_data.BIG5_SF);
     createQuestionnaire(questionnaire_data.I_8);
+    createQuestionnaire(questionnaire_data.PID5_SF);
+
+    
 
     createEndQuestions();
 
