@@ -220,6 +220,43 @@
 
             }
 
+            function createFormSection({ id, questionText, inputType, inputAttributes = {} }) {
+
+                const form = document.createElement("form");
+                form.setAttribute("method", "post");
+                form.setAttribute("id", id);
+                form.setAttribute("name", "form_");
+
+                const fieldSet = document.createElement("fieldset");
+                fieldSet.setAttribute("class", "form__options");
+                fieldSet.setAttribute("id", id);
+                fieldSet.setAttribute("name", "fs_");
+
+                const legend = document.createElement("legend");
+                legend.setAttribute("class", "questionDemo");
+                legend.append(questionText);
+                legend.setAttribute("name", "legend");
+                legend.name = "question";
+
+                fieldSet.appendChild(legend);
+
+                const inputBox = document.createElement("input");
+                inputBox.setAttribute("class", "textEntry");
+                inputBox.setAttribute("type", inputType);
+                inputBox.setAttribute("id", id);
+                inputBox.name = "question";
+
+                // Add optional attributes like min, max, step
+                for (const [key, value] of Object.entries(inputAttributes)) {
+                    inputBox.setAttribute(key, value);
+                }
+
+                fieldSet.appendChild(inputBox);
+                form.appendChild(fieldSet);
+                document.getElementById("questionnaires").appendChild(form);
+            }
+
+
             function createDemographics() {
                 // This creates demographics questions
                 // This isn't automatically generated from a JSON file - these are entered manually here
@@ -274,38 +311,37 @@
                 document.getElementById('questionnaires').appendChild(ageForm);
 
                 // years in education
+                createFormSection({
+                    id: "edu",
+                    questionText: "How many years did you spend in education? (primary school + highschool + university)",
+                    inputType: "number",
+                    inputAttributes: { min: "0", max: "100", step: "1" }
+                });
+                // Work History
+                createFormSection({
+                    id: "workHistory",
+                    questionText: "Please list the job titles you have held, separated by commas (e.g., teacher, sales assistant, graphic designer). If you have not held a job yet, leave this field blank.",
+                    inputType: "text"
+                });
+                // General Interests #1
+                createFormSection({
+                    id: "interests1",
+                    questionText: "Please list the topics or activities you are most passionate about, separated by commas (e.g., local politics, interior design, sport results).",
+                    inputType: "text"
+                });
+                // General Interests #2
+                createFormSection({
+                    id: "interests2",
+                    questionText: "Please list the topics or activities you love doing in your free time, separated by commas (e.g., playing icehockey, knitting, reading popular science books).",
+                    inputType: "text"
+                });
+                // General Interests #3
+                createFormSection({
+                    id: "interests3",
+                    questionText: "Please list the subjects, which fascinate you and make you want to learn more, separated by commas (e.g., financial inequality, computer programming, philosophy).",
+                    inputType: "text"
+                });
 
-                var eduForm = document.createElement("form");
-                eduForm.setAttribute('method',"post");
-                eduForm.setAttribute('id', "edu");
-                eduForm.setAttribute("name", "form_");
-
-                var eduFieldSet = document.createElement("fieldset");
-                eduFieldSet.setAttribute("class", "form__options");
-                eduFieldSet.setAttribute('id', "edu");
-                eduFieldSet.setAttribute("name", "fs_");
-
-                var legendEdu = document.createElement("legend");
-                legendEdu.setAttribute("class", "questionDemo");
-                legendEdu.append("How many years did you spend in education? (primary school + highschool + university)");
-                legendEdu.setAttribute("name", "legend");
-                legendEdu.name = 'question';
-
-                eduFieldSet.appendChild(legendEdu);
-
-                var box = document.createElement("input");
-                box.setAttribute("class", "textEntry");
-                box.setAttribute("type", "number");
-                box.setAttribute("min", "0");             // optional: minimum age
-                box.setAttribute("max", "100");           // optional: maximum age
-                box.setAttribute("step", "1");            // optional: whole numbers only
-                box.setAttribute("id", "Edu");
-                box.name = 'question';
-
-                eduFieldSet.appendChild(box);
-
-                eduForm.appendChild(eduFieldSet);
-                document.getElementById('questionnaires').appendChild(eduForm);
 
                 // income
 
@@ -317,7 +353,6 @@
 
                 incomeQuestion = createQuestion('income', qDataIncome);
                 document.getElementById('questionnaires').appendChild(incomeQuestion);
-
 
                 // How motivated were you to perform well on the task?
 
