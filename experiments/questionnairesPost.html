@@ -553,6 +553,8 @@
 
                 // If everything is complete, save the data
                 else {
+                    values["participant_id"] = participant_id;
+                    values["session_id"] = session_id;
                     // How long did they take?
                     end = Number(new Date());
                     totalTime = (end- start)/60000 // time in minutes
@@ -649,11 +651,14 @@
                 // createQuestionnaire(questionnaire_data.CAPE);
                 // createQuestionnaire(questionnaire_data.RRQ);
                 // createQuestionnaire(questionnaire_data.PSWQ);
+                // big5 short form SF
                 createQuestionnaire(questionnaire_data.BIG5_SF);
-                // createQuestionnaire(questionnaire_data.I_8);
+                // impulsivity
+                createQuestionnaire(questionnaire_data.I_8);
+                // short form SF with 100 items (~15-20 mins)
                 // createQuestionnaire(questionnaire_data.PID5_SF);
-
-                
+                // brief form BF with 25 items (~5 mins)
+                createQuestionnaire(questionnaire_data.PID5_BF);
 
                 createEndQuestions();
 
