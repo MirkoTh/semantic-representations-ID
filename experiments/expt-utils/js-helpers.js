@@ -641,8 +641,16 @@ function direct_to_ooo() {
     var participant_id = Math.floor(Math.random() * 1000);
   }
 
-  // only one session anyway
-  var session_id = 1;
+  if (window.location.search.indexOf("SESSION_ID") > -1) {
+    var session_id = getQueryVariable("SESSION_ID");
+  }
+
+  else {
+    // only one session anyway
+    var session_id = 1;
+  }
+
+ 
 
   jatos.setStudySessionData({"participant_id": participant_id, "session_id":session_id})
 
@@ -668,7 +676,7 @@ var instructions0 = {
       prompt: `<div style="font-size:30px;"><b>IMPORTANT</b><br><br><br>
         Your data are used for scientific purposes.<br>
         We have invested a lot of time to develop this study.<br>
-        <u>Please do not use external aids in any task; otherwise, we cannot use your data at all!</u><br>
+        <u>Please answer to the best of your knowledge and belief; otherwise, we cannot use your data at all!</u><br>
         Please commit to being honest.`,
       options: ["I commit to being honest"],
 
@@ -677,5 +685,5 @@ var instructions0 = {
     },
   ],
   preamble:
-    "<div style='font-size:40px;color:red'><u>DO NOT USE EXTERNAL AIDS!</u><br><br></div>",
+    "<div style='font-size:40px;color:red'><u>ANSWER TO THE BEST OF YOUR KNOWLEDGE AND BELIEF!</u><br><br></div>",
 };

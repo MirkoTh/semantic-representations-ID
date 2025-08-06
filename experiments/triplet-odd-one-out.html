@@ -43,11 +43,37 @@
     })
     jatos.onLoad(function() {
       // Start here with your code that uses jatos.js' variables and functions
-    var participant_id = jatos.studySessionData.valueOf()["participant_id"];
-    var session_id = jatos.studySessionData.valueOf()["session_id"];
 
-    console.log("participant_id = ", participant_id)
-    console.log("session_id = ", session_id)
+    // var participant_id = jatos.studySessionData.valueOf()["participant_id"];
+    // var session_id = jatos.studySessionData.valueOf()["session_id"];
+
+    // console.log("participant_id = ", participant_id)
+    // console.log("session_id = ", session_id)
+
+    let sessionData = jatos.studySessionData.valueOf();
+    
+    // Check if participant_id exists
+    if (!sessionData["participant_id"]) {
+        // Generate dummy ID (e.g., random 6-character string)
+        let dummyId = Math.random().toString(36).substring(2, 8);
+        let dummySessionId = 1;
+        
+        
+        // Store it in studySessionData so it's available later
+        jatos.studySessionData["participant_id"] = dummyId;
+        jatos.studySessionData["session_id"] = dummySessionId;
+        
+        console.log("Generated dummy participant_id:", dummyId);
+        console.log("Generated dummy session_id:", dummySessionId);
+        
+    } else {
+        console.log("Found existing participant_id:", sessionData["participant_id"]);
+        console.log("Found existing session_id:", sessionData["session_id"]);
+    }
+
+    // Now you can safely use:
+    let participant_id = jatos.studySessionData.valueOf()["participant_id"];
+    let session_id = jatos.studySessionData.valueOf()["session_id"];
 
     // still to do
     // save data on server
@@ -90,7 +116,7 @@
 
     
 
-    var n_trials_proper = 5//properIdsTriplets.length // number of trials2 // 440//
+    var n_trials_proper = properIdsTriplets.length // number of trials2 // 440//
     var n_trials_practice = practiceIdsTriplets.length //5 // 1 //1//
 
     var totalTrials = n_trials_practice + n_trials_proper; //total number of trials in the entire task (practice + main task)
@@ -167,6 +193,8 @@
         });
     }
 
+    
+    var data_store_ooo = [];
     // practice trials
     var trial_template_practice = {
 
@@ -190,7 +218,13 @@
                 </div>`
                 );
             },
-            prompt: "<p>Select the image the least similar to the other two.</p>",
+            prompt: function() {
+                if(is_practice == 1){
+                    return `<p id='trial-text'>Select the image least similar to the other two.<br>Trial ${n} of ${n_trials_practice} practice trials</p>`;
+                } else if (is_practice == 0){
+                    return `<p id='trial-text'>Select the image least similar to the other two.<br>Trial ${n-n_trials_practice} of ${n_trials_proper} study trials</p>`;
+                }
+            },
             on_finish: function(data) {
                 // This runs after the participant clicks a button
                 console.log("participant_id: ", participant_id)
@@ -211,9 +245,11 @@
                     response: data.response,
                     rt: data.rt
                 };
+                data_store_ooo.push(data_ooo)
 
                 // You can call any custom function here
-                jatos.appendResultData(data_ooo, "odd-one-out.csv")
+                jatos.appendResultData(data_ooo, "odd-one-out.json")
+                jatos.uploadResultFile(data_store_ooo, "odd-one-out.json")
                 console.log("n = ", n)
                 console.log("n / totalTrials = ", n / totalTrials)
                 jsPsych.setProgressBar(n / totalTrials);
@@ -250,7 +286,8 @@
                     t_comprehension: Date.now() - t_start
                 };
                 let dataSaved = false;
-                jatos.appendResultData(data_comprehension, "comprehension-check.csv")
+                jatos.appendResultData(data_comprehension, "comprehension-check.json")
+                jatos.uploadResultFile(data_comprehension, "comprehension-check.json")
                 saveData(JSON.stringify(data_comprehension), "ooo_comprehension_check_" + session_id + "_" + participant_id + ".json", "ooo");
                 checkDataSaving();
 

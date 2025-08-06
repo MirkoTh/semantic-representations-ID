@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.metrics.pairwise import cosine_similarity
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
@@ -1565,19 +1567,23 @@ def extract_split_half(
     for i, d in enumerate(all_dirs):
         file_path = os.path.join(d, 'results.json')
         l_files = os.listdir(results_dir_ID)
-        latest_epoch = ut.max_epoch(l_files)
+        latest_epoch = max_epoch(l_files)
         p = os.path.join(d, "model", latest_epoch)
         if os.path.isfile(p):
             m = torch.load(p, weights_only=True,
                            map_location=torch.device("cpu"))
             if modeltype == "random_weights_free_scaling":
+                item_embeddings = m["model_state_dict"]["model1.fc.weight"]
                 decision_weights = m["model_state_dict"]["model1.individual_slopes.weight"]
                 temperature_scalings = m["model_state_dict"]["model2.individual_temps.weight"]
-                dict_out = {"decision_weights": decision_weights,
+                dict_out = {"item_embeddings": item_embeddings,
+                            "decision_weights": decision_weights,
                             "temperature_scalings": temperature_scalings}
             else:
+                item_embeddings = m["model_state_dict"]["fc.weight"]
                 decision_weights = m["model_state_dict"]["individual_slopes.weight"]
-                dict_out = {"decision_weights": decision_weights}
+                dict_out = {"item_embeddings": item_embeddings,
+                            "decision_weights": decision_weights}
             dict_out["modeltype"] = m["modeltype"]
             dict_out["lmbda"] = m["lambda"]
             dict_out["lmbda_hierarchical"] = m["lmbda_hierarchical"]
@@ -1650,3 +1656,85 @@ def extract_image(l_concepts_filtered, i):
     just_first = l_names_filtered[0]
     path_keep = os.path.join(path, just_first)
     return path_keep
+
+
+def index_ndim_split(l, ndim, splitnr):
+    """
+    Find the index of the dictionary in the list `l` that matches the given
+    embedding dimensionality (`ndim`) and split identifier (`splitnr`).
+
+    Parameters:
+        l (list of dict): A list containing split metadata dictionaries.
+        ndim (int): The embedding dimensionality to match.
+        splitnr (str): The split identifier to match, e.g. "1" or "2".
+
+    Returns:
+        int: Index of the matching split in the list.
+    """
+    for i, l in enumerate(l):
+        filt_embed = l["n_embed"] == ndim
+        filt_split = l["splithalf"] == splitnr
+        if (filt_embed & filt_split):
+            return i
+
+
+def iterate_similarity(embed1, embed2, ndim):
+    """
+    Compute cosine similarity between every pair of dimensions from two embedding matrices.
+
+    Parameters:
+        embed1 (ndarray): Embedding matrix from split 1 (shape: [n_items, ndim]).
+        embed2 (ndarray): Embedding matrix from split 2 (shape: [n_items, ndim]).
+        ndim (int): Number of embedding dimensions.
+
+    Returns:
+        ndarray: A (ndim x ndim) matrix of cosine similarities.
+    """
+    similarities = np.zeros((ndim, ndim))
+    for i in range(ndim):
+        for j in range(ndim):
+            similarities[i, j] = cosine_similarity(
+                [embed1[:, i]], [embed2[:, j]])[0, 0]
+    return similarities
+
+
+def dimensional_similarities(l, ndim):
+    """
+    Calculate the cosine similarity matrix of embedding dimensions
+    between two splits for the specified dimensionality.
+
+    Parameters:
+        l (list of dict): A list containing metadata and embeddings for each split.
+        ndim (int): The dimensionality of embeddings to compare.
+
+    Returns:
+        tuple:
+            - similarities (ndarray): Cosine similarity matrix.
+            - idx1 (int): Index of split "1".
+            - idx2 (int): Index of split "2".
+    """
+    idx1 = index_ndim_split(l, ndim, "1")
+    idx2 = index_ndim_split(l, ndim, "2")
+    embed1 = l[idx1]["item_embeddings"].t().numpy()
+    embed2 = l[idx2]["item_embeddings"].t().numpy()
+    similarities = iterate_similarity(embed1, embed2, ndim)
+    return similarities, idx1, idx2
+
+
+def reorder_dimensions(l, ndim):
+    """
+    Reorder the embedding dimensions in split "2" so they best match the ordering
+    of split "1", based on maximum cosine similarity.
+
+    Parameters:
+        l (list of dict): A list containing metadata and embeddings for each split.
+        ndim (int): The number of embedding dimensions to reorder.
+
+    Returns:
+        ndarray: Index mapping from split "2" dimensions to split "1" dimensions.
+    """
+    sims_dimensionality, idx1, idx2 = dimensional_similarities(l, ndim)
+    max_sims = np.argmax(sims_dimensionality, axis=1)
+    l[idx2]["item_embeddings"] = l[idx2]["item_embeddings"][:, max_sims]
+    l[idx2]["decision_weights"] = l[idx2]["decision_weights"][:, max_sims]
+    return max_sims
