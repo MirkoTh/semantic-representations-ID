@@ -193,7 +193,7 @@
         });
     }
 
-
+    
     var data_store_ooo = [];
     // practice trials
     var trial_template_practice = {
@@ -218,7 +218,13 @@
                 </div>`
                 );
             },
-            prompt: "<p>Select the image the least similar to the other two.</p>",
+            prompt: function() {
+                if(is_practice == 1){
+                    return `<p id='trial-text'>Select the image least similar to the other two.<br>Trial ${n} of ${n_trials_practice} practice trials</p>`;
+                } else if (is_practice == 0){
+                    return `<p id='trial-text'>Select the image least similar to the other two.<br>Trial ${n-n_trials_practice} of ${n_trials_proper} study trials</p>`;
+                }
+            },
             on_finish: function(data) {
                 // This runs after the participant clicks a button
                 console.log("participant_id: ", participant_id)
