@@ -1531,7 +1531,7 @@ def model_detail_dict(ls, embedding_only):
 
 
 def extract_split_half(
-    lmbda, lmbda_hierarchical, rnd_seed, modelversion, l_n, l_sparse,
+    lmbda, lmbda_hierarchical, l_rnd_seed, modelversion, l_n, l_sparse,
     l_subjecttype, l_splithalf, modeltype="weightsonly_only_weights", l_temperature=[]
 ):
     '''load models run on different data splits from disk'''
@@ -1541,29 +1541,32 @@ def extract_split_half(
     l_sparsity = []
     l_subject = []
     l_all_splithalf = []
-    for n in l_n:
-        for splithalf in l_splithalf:
-            for la in lmbda:
-                for la_h in lmbda_hierarchical:
-                    for sp in l_sparse:
-                        for st in l_subjecttype:
-                            if l_temperature == []:
-                                results_dir_ID = os.path.join(
-                                    "./results", modelversion, f"modeltype_{modeltype}", f"splithalf_{splithalf}",
-                                    f'{n}d', str(la), str(
-                                        la_h), sp, st, f'seed{rnd_seed}'
-                                )
-                            else:
-                                for temp in l_temperature:
+    l_all_rnd_seed = []
+    for rnd_seed in l_rnd_seed:
+        for n in l_n:
+            for splithalf in l_splithalf:
+                for la in lmbda:
+                    for la_h in lmbda_hierarchical:
+                        for sp in l_sparse:
+                            for st in l_subjecttype:
+                                if l_temperature == []:
                                     results_dir_ID = os.path.join(
-                                        "./results", modelversion, f"modeltype_{modeltype}", f"splithalf_{splithalf}", f"temperature_{temp}",
+                                        "./results", modelversion, f"modeltype_{modeltype}", f"splithalf_{splithalf}",
                                         f'{n}d', str(la), str(
                                             la_h), sp, st, f'seed{rnd_seed}'
                                     )
-                            all_dirs.append(results_dir_ID)
-                            l_sparsity.append(sp)
-                            l_subject.append(st)
-                            l_all_splithalf.append(splithalf)
+                                else:
+                                    for temp in l_temperature:
+                                        results_dir_ID = os.path.join(
+                                            "./results", modelversion, f"modeltype_{modeltype}", f"splithalf_{splithalf}", f"temperature_{temp}",
+                                            f'{n}d', str(la), str(
+                                                la_h), sp, st, f'seed{rnd_seed}'
+                                        )
+                                all_dirs.append(results_dir_ID)
+                                l_sparsity.append(sp)
+                                l_subject.append(st)
+                                l_all_rnd_seed.append(rnd_seed)
+                                l_all_splithalf.append(splithalf)
     for i, d in enumerate(all_dirs):
         file_path = os.path.join(d, 'results.json')
         l_files = os.listdir(results_dir_ID)
@@ -1572,7 +1575,7 @@ def extract_split_half(
         if os.path.isfile(p):
             m = torch.load(p, weights_only=True,
                            map_location=torch.device("cpu"))
-            if modeltype == "random_weights_free_scaling":
+            if modeltype in ("random_weights_free_scaling", "random_weights_random_scaling"):
                 item_embeddings = m["model_state_dict"]["model1.fc.weight"]
                 decision_weights = m["model_state_dict"]["model1.individual_slopes.weight"]
                 temperature_scalings = m["model_state_dict"]["model2.individual_temps.weight"]
@@ -1589,6 +1592,7 @@ def extract_split_half(
             dict_out["lmbda_hierarchical"] = m["lmbda_hierarchical"]
             dict_out["n_embed"] = m["n_embed"]
             dict_out["splithalf"] = l_all_splithalf[i]
+            dict_out["rnd_seed"] = l_all_rnd_seed[i]
 
             l_all_models.append(dict_out)
         else:
@@ -1671,11 +1675,13 @@ def index_ndim_split(l, ndim, splitnr):
     Returns:
         int: Index of the matching split in the list.
     """
+    l_idxs = []
     for i, l in enumerate(l):
         filt_embed = l["n_embed"] == ndim
         filt_split = l["splithalf"] == splitnr
         if (filt_embed & filt_split):
-            return i
+            l_idxs.append(i)
+    return l_idxs
 
 
 def iterate_similarity(embed1, embed2, ndim):
@@ -1713,12 +1719,15 @@ def dimensional_similarities(l, ndim):
             - idx1 (int): Index of split "1".
             - idx2 (int): Index of split "2".
     """
-    idx1 = index_ndim_split(l, ndim, "1")
-    idx2 = index_ndim_split(l, ndim, "2")
-    embed1 = l[idx1]["item_embeddings"].t().numpy()
-    embed2 = l[idx2]["item_embeddings"].t().numpy()
-    similarities = iterate_similarity(embed1, embed2, ndim)
-    return similarities, idx1, idx2
+    l_similarities = []
+    l_idx1 = index_ndim_split(l, ndim, "1")
+    l_idx2 = index_ndim_split(l, ndim, "2")
+    for idx1, idx2 in zip(l_idx1, l_idx2):
+        embed1 = l[idx1]["item_embeddings"].t().numpy()
+        embed2 = l[idx2]["item_embeddings"].t().numpy()
+        similarities = iterate_similarity(embed1, embed2, ndim)
+        l_similarities.append(similarities)
+    return l_similarities, l_idx1, l_idx2
 
 
 def reorder_dimensions(l, ndim):
@@ -1733,8 +1742,92 @@ def reorder_dimensions(l, ndim):
     Returns:
         ndarray: Index mapping from split "2" dimensions to split "1" dimensions.
     """
-    sims_dimensionality, idx1, idx2 = dimensional_similarities(l, ndim)
-    max_sims = np.argmax(sims_dimensionality, axis=1)
-    l[idx2]["item_embeddings"] = l[idx2]["item_embeddings"][:, max_sims]
-    l[idx2]["decision_weights"] = l[idx2]["decision_weights"][:, max_sims]
-    return max_sims
+    l_max_sims = []
+    l_sims_dimensionality, l_idx1, l_idx2 = dimensional_similarities(l, ndim)
+    for sims_dimensionality, idx1, idx2 in zip(l_sims_dimensionality, l_idx1, l_idx2):
+        max_sims = np.argmax(sims_dimensionality, axis=1)
+        l[idx2]["item_embeddings"] = l[idx2]["item_embeddings"][:, max_sims]
+        l[idx2]["decision_weights"] = l[idx2]["decision_weights"][:, max_sims]
+        l_max_sims.append(max_sims)
+    return l_max_sims, l_idx1, l_idx2
+
+
+def max_sim_dimensions_per_ndim(l_max_sims, range_dims):
+    """
+    Identifies the index of the simulation result for each dimensionality in `range_dims`
+    where the number of unique values equals the number of dimensions.
+    I.e., outputs None when there is at least one dimension in the second half
+    that is maximally similar to at least two dimensions in the first half
+
+    Parameters:
+        l_max_sims (list): A list of simulation result tuples. Each tuple contains:
+                           - [0]: list of arrays with shape (ndim, ...)
+        range_dims (iterable): A sequence of dimensionalities to evaluate (e.g., range(2, 11)).
+
+    Returns:
+        dict: A dictionary mapping each dimensionality in `range_dims` to the index of the
+              simulation that satisfies the uniqueness condition. If no match is found,
+              the value is None.
+    """
+
+    dict_idxs_use = {i: None for i in range_dims}
+    for idx_outer, max_sims in enumerate(l_max_sims):
+        for idx_inner, ms in enumerate(max_sims[0]):
+            ndim = ms.shape[0]
+            n_unique = len(np.unique_values(ms))
+            if ndim == n_unique:
+                dict_idxs_use[idx_outer + 2] = idx_inner
+                break
+    return dict_idxs_use
+
+
+def max_sim_results_per_ndim(dict_idxs_use, l_max_sims, range_dims):
+    """
+    Returns indexes for the list of simulation results where each dimension
+    in the second half is maximally correlated with a unique dimension in the first half.
+
+    Parameters:
+        dict_idxs_use (dict): A dictionary mapping dimensionality to the index of the simulation to use.
+        l_max_sims (list): A list of simulation result tuples. Each tuple contains:
+                           - [1]: first half results
+                           - [2]: second half results
+        range_dims (iterable): A sequence of dimensionalities to include in the output.
+
+    Returns:
+        dict: A dictionary mapping each dimensionality in `range_dims` to a list of two arrays:
+              one from the first half and one from the second half of the simulation data.
+              If no index is specified for a dimensionality, the list will be empty.
+    """
+    dict_idxs_list_use = {i: [] for i in range_dims}
+    for ndim, idx in dict_idxs_use.items():
+        if idx is not None:
+            dict_idxs_list_use[ndim].append(
+                l_max_sims[ndim-2][1][idx])  # idxs first half
+            dict_idxs_list_use[ndim].append(
+                l_max_sims[ndim-2][2][idx])  # idxs second half
+    return dict_idxs_list_use
+
+
+def max_cors(range_dims, dict_idxs_use, l_cors):
+    """
+    Computes the maximum correlation values across simulations for each dimensionality.
+
+    Parameters:
+        range_dims (iterable): A sequence of dimensionalities to evaluate (e.g., range(2, 11)).
+        dict_idxs_use (dict): A dictionary mapping dimensionality to the index of the simulation to use.
+        l_cors (list): A list of correlation result tuples. Each tuple contains:
+                       - [0]: list of correlation matrices for each simulation.
+
+    Returns:
+        pd.DataFrame: A DataFrame where each column represents a dimensionality in `range_dims`,
+                      and each row contains the maximum correlation values for the selected simulation.
+                      If no index is specified for a dimensionality, the column will contain NaNs.
+    """
+    dict_cors = {i: None for i in range(2, 11)}
+    for k, v in dict_idxs_use.items():
+        if v is not None:
+            tmp = l_cors[k-list(dict_cors.keys())[0]][0][v]
+            dict_cors[k] = tmp.max(axis=0)
+    df_cors = pd.DataFrame(dict([(k, pd.Series(v))
+                           for k, v in dict_cors.items()]))
+    return df_cors
