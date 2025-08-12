@@ -1,1 +1,1 @@
-const practiceIdsTriplets = [208, 1368, 299, 802, 1378];
+const practiceIdsTriplets = [1368, 208, 862, 299, 1378];
