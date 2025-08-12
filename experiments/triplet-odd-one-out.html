@@ -222,13 +222,6 @@
                 }
             },
             on_finish: function(data) {
-                // This runs after the participant clicks a button
-                console.log("participant_id: ", participant_id)
-                console.log("trial_id: ", n)
-                console.log("triplet_id: ", data.triplet_id)
-                console.log("stimulus_ids: ", data.stimulus_ids)
-                console.log("Choice made:", data.response);
-                console.log("Reaction time:", data.rt);
 
                 // save for our purposes
                 var data_ooo = {
@@ -246,8 +239,6 @@
                 // You can call any custom function here
                 jatos.appendResultData(data_ooo, "odd-one-out.json")
                 jatos.uploadResultFile(data_store_ooo, "odd-one-out.json")
-                console.log("n = ", n)
-                console.log("n / totalTrials = ", n / totalTrials)
                 jsPsych.setProgressBar(n / totalTrials);
                 n += 1
                 // move on to the next trial

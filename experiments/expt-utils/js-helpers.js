@@ -631,30 +631,15 @@ inside of the Max Planck Society and affiliated research institutes, or at partn
 
 function direct_to_ooo() {
 
+// Get Prolific PID or generate a random one for testing
+let participant_id = jatos.urlQueryParameters.PROLIFIC_PID || Math.floor(Math.random() * 1000);
 
-  if (window.location.search.indexOf("PROLIFIC_PID") > -1) {
-    var participant_id = getQueryVariable("PROLIFIC_PID");
-  }
+// Get SESSION_ID or default to 1
+let session_id = jatos.urlQueryParameters.SESSION_ID || 1;
 
-  // If no ID is present, generate one using random numbers - this is useful for testing
-  else {
-    var participant_id = Math.floor(Math.random() * 1000);
-  }
+jatos.setStudySessionData({"participant_id": participant_id, "session_id":session_id})
 
-  if (window.location.search.indexOf("SESSION_ID") > -1) {
-    var session_id = getQueryVariable("SESSION_ID");
-  }
-
-  else {
-    // only one session anyway
-    var session_id = 1;
-  }
-
- 
-
-  jatos.setStudySessionData({"participant_id": participant_id, "session_id":session_id})
-
-  jatos.startNextComponent();
+jatos.startNextComponent();
 }
 
 function direct_to_qs() {
