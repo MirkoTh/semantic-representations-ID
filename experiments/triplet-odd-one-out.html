@@ -151,9 +151,15 @@
     };
     var instructions_proper = {
         type: jsPsychHtmlButtonResponse,
-        stimulus: '<div style="font-size:30px;">These were the five practice trials.<br><br>The main part of the similarity judgment task is going to start now.<br><br></div>',
+        stimulus: '<div style="font-size:30px;">These were the five practice trials.<br><br>Please answer the comprehension questions on the next page.<br><br></div>',
+        choices: ["Answer Questions"]
+    };
+    var start_proper = {
+        type: jsPsychHtmlButtonResponse,
+        stimulus: '<div style="font-size:30px;">The main part of the similarity judgment task is going to start now.<br><br></div>',
         choices: ["Start Main Part"]
     };
+    
 
     const iti = 500; // ms
 
@@ -302,11 +308,14 @@
         randomize_order: false
     });
 
-    // start with proper trials
+    // finish practice, go on to comprehension questions
     timeline.push(instructions_proper)
 
     // comprehension check ooo
     timeline.push(comp_check_ooo_loop);
+
+    // msg to start proper now
+    timeline.push(start_proper);
 
     // proper trials
     timeline.push({
