@@ -1,18 +1,33 @@
+rm(list = ls())
+
 library(tidyverse)
 library(jsonlite)
+
+# home-grown
+l_load <- c("utils.R")
+walk(l_load, source)
+
+# recode reversely coded questionnaire items
+# create scales on questionnaire responses
+
+
+# first, list all result files available in the respective folders
+
+# Set the base directory containing study data
+base_dir <- "data/study1-2025-08/jatos_results_files_20250812143628/"
+l_paths_sep <- file_paths_separate(base_dir)
+
 
 
 
 # Load Data ---------------------------------------------------------------
 
 ## comprehensions questions
-tbl_comprehension <- jsonlite::fromJSON("data/study1-2025-08/comprehension-check.json") %>%
-  as_tibble()
-
-
+tbl_comprehension <- map(l_paths_sep$cc, function(x) as_tibble(fromJSON(x))) %>% reduce(rbind)
 ## odd-one-out
-tbl_ooo <- jsonlite::fromJSON("data/study1-2025-08/odd-one-out.json") %>%
-  as_tibble()
+tbl_ooo <- map(l_paths_sep$ooo, function(x) as_tibble(fromJSON(x))) %>% reduce(rbind)
+
+
 
 # format for modeling: anchor pos neg ID
 # saved as .txt
@@ -41,6 +56,11 @@ tbl_ooo_ID_save <- tbl_ooo_ids %>%
     negative = as.integer(negative),
     odd = as.integer(odd)
   )
+tbl_ooo_ID_save$participant_id <- factor(
+  tbl_ooo_ID_save$participant_id, 
+  labels = 1:length(unique(tbl_ooo_ID_save$participant_id))
+  )
+
 write_delim(
   tbl_ooo_ID_save, 
   file = "data/study1-2025-08/ooo-data-modeling.txt", 
@@ -49,14 +69,17 @@ write_delim(
 
 ## questionnaires
 cols_separate <- c("workHistory", "interests1", "interests2", "interests3", "feedback")
-qs_prep <- jsonlite::fromJSON("data/study1-2025-08/questionnaires.json") %>% 
-  as_tibble()
+
+tbl_qs_prep <- map(l_paths_sep$qs, function(x) as_tibble(fromJSON(x))) %>% reduce(rbind)
+
+
+
 
 # numeric responses from questionnaires
-tbl_qs_num <- qs_prep %>%
+tbl_qs_num <- tbl_qs_prep %>%
   select(-all_of(cols_separate))
 # control data types
-cols_character <- "participant_id"
+cols_character <- c("session_id", "participant_id")
 cols_numeric <- colnames(tbl_qs_num)[!colnames(tbl_qs_num) %in% cols_character]
 tbl_qs_num[, cols_numeric] <- map(tbl_qs_num[, cols_numeric], as.numeric)
 tbl_qs_num %>% pivot_longer(cols=-participant_id)
