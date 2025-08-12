@@ -332,7 +332,7 @@
         stimulus: '<div style="font-size:30px;"><br>Well done!<br>You have now finished the similarity judgment task. Rest for a minute to take a deep breath and prepare for the questionnaires.<br>Click on "Next" to continue with the questionnaires.<br></div>',
         choices: ["Next"],
         on_finish: function () {
-            jatos.startComponent(67)
+            jatos.startNextComponent();
         }
     };
     timeline.push(instructions_go_on);

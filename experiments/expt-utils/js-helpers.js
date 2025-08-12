@@ -654,7 +654,7 @@ function direct_to_ooo() {
 
   jatos.setStudySessionData({"participant_id": participant_id, "session_id":session_id})
 
-  jatos.startComponent(66)
+  jatos.startNextComponent();
 }
 
 function direct_to_qs() {
