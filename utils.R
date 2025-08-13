@@ -7,13 +7,14 @@
 #' @return Character vector. Full paths to all files within the specified component directories.
 #'
 iterate_files <- function(study_dir, comp_dir) {
-  file_dir_1 <- str_c(base_dir, study_dir, "/", comp_dir[[1]], "/files/")
-  file_dir_2 <- str_c(base_dir, study_dir, "/", comp_dir[[2]], "/files/")
   
-  return(c(
-    str_c(list.dirs(file_dir_1), dir(file_dir_1)),
-    str_c(list.dirs(file_dir_2), dir(file_dir_2))
-  ))
+  file_folders <- imap(comp_dir, function(cd, idx) {
+    str_c(base_dir, study_dir, "/", cd, "/files/")
+  })
+  
+  file_paths <- map(file_folders, function(x) str_c(list.dirs(x), dir(x)))
+  
+  return(file_paths)
 }
 
 #' Extract and categorize file paths from study directory
@@ -32,7 +33,7 @@ file_paths_separate <- function(base_dir) {
   comp_dirs <- map(str_c(base_dir, study_dirs), dir)  # List of component subdirectories per study
   l_file_paths <- map2(study_dirs, comp_dirs, iterate_files)  # List of file paths per study
   
-  v_file_paths <- reduce(l_file_paths, c)  # Flatten into a single vector
+  v_file_paths <- reduce(l_file_paths, c) %>% reduce(c)  # Flatten into a single vector
   mask_cc <- str_detect(v_file_paths, "comprehension-check")
   mask_ooo <- str_detect(v_file_paths, "odd-one-out")
   mask_qs <- str_detect(v_file_paths, "questionnaires")

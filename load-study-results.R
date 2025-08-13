@@ -14,7 +14,7 @@ walk(l_load, source)
 # first, list all result files available in the respective folders
 
 # Set the base directory containing study data
-base_dir <- "data/study1-2025-08/jatos_results_files_20250812143628/"
+base_dir <- "data/study1-2025-08/jatos_results_files_20250813071123/"
 l_paths_sep <- file_paths_separate(base_dir)
 
 
