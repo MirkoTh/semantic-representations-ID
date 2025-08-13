@@ -26,6 +26,8 @@ pids_study1 <- tibble(participant_pid = unique(tbl_ooo_study1$X4))
 # save the updated participant ids to easily extract data after model fitting
 write_csv(pids_study1, "data/study1-2025-08/new-participant-ids-in-joint-modeling.csv")
 
+
+# full data set
 tbl_full <- rbind(tbl_train_things, tbl_eval_things, tbl_ooo_study1)
 
 write_delim(
@@ -34,3 +36,13 @@ write_delim(
   col_names = FALSE
 )
 
+# small data set for testing
+
+set.seed(10)
+tbl_testcase <- tbl_full[tbl_full$X4 %in% sample(unique(tbl_full$X4), 10), ]
+
+write_delim(
+  tbl_testcase, 
+  file = "data/study1-2025-08/ooo_data_modeling_old_and_new_testcase.txt", 
+  col_names = FALSE
+) 
