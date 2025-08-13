@@ -7,7 +7,7 @@ library(tidyverse)
 library(jsonlite)
 
 # home-grown
-l_load <- c("utils.R")
+l_load <- c("R/utils.R")
 walk(l_load, source)
 
 # recode reversely coded questionnaire items
@@ -92,15 +92,6 @@ list2env(l_tbl_hashed, rlang::current_env())
 write_csv(tbl_lookup, file = "data/study1-2025-08/tbl_lookup.csv")
 write_csv(tbl_lookup %>% select(participant_id_new), file = "data/study1-2025-08/tbl_participants.csv")
 
-idx_remove <- which(names(l_tbl_hashed) == "tbl_ooo_ID_save")
-l_tbl_hashed <- l_tbl_hashed[-idx_remove]
 # data for analysis
 pths <- str_c("data/study1-2025-08/", names(l_tbl_hashed), ".csv")
 walk2(l_tbl_hashed, pths, write_csv)
-
-# ooo file for comp modeling without colnames
-write_delim(
-  tbl_ooo_ID_save, 
-  file = "data/study1-2025-08/ooo-data-modeling.txt", 
-  col_names = FALSE
-)

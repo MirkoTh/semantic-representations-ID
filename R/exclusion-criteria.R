@@ -14,6 +14,7 @@ walk(v_files, source)
 
 tbl_cc <- read_csv("data/study1-2025-08/tbl_comprehension.csv")
 tbl_ooo <- read_csv("data/study1-2025-08/tbl_ooo_ids.csv")
+tbl_ooo_ID_save <- read_csv("data/study1-2025-08/tbl_ooo_ID_save.csv")
 tbl_qs_num_long <- read_csv("data/study1-2025-08/tbl_qs_num_long.csv")
 tbl_qs_txt <- read_csv("data/study1-2025-08/tbl_qs_txt.csv")
 tbl_pids <- read_csv("data/study1-2025-08/tbl_participants.csv")
@@ -84,13 +85,28 @@ tbl_include <- tbl_exclude %>%
   filter(exclude_eventually == 0) %>%
   select(participant_id)
 
+write_csv(tbl_exclude, "data/study1-2025-08/tbl_exclude.csv")
+
 cat(str_c("excluded: ", nrow(tbl_exclude) - nrow(tbl_include), " from ", nrow(tbl_exclude)))
 
 tbl_ooo <- tbl_include %>% inner_join(tbl_ooo, by = "participant_id")
+tbl_ooo_ID_save <- tbl_include %>% inner_join(tbl_ooo_ID_save, by = "participant_id")
 tbl_qs_num_long <- tbl_include %>% inner_join(tbl_qs_num_long, by = "participant_id")
 tbl_qs_txt <- tbl_include %>% inner_join(tbl_qs_txt, by = "participant_id")
 
 
+# for further analysis
 write_csv(tbl_ooo, "data/study1-2025-08/tbl_ooo_ids_excluded.csv")
 write_csv(tbl_qs_num_long, "data/study1-2025-08/tbl_qs_num_long_excluded.csv")
 write_csv(tbl_qs_txt, "data/study1-2025-08/tbl_qs_txt_excluded.csv")
+
+# ooo file for pytorch model in python without colnames
+tbl_ooo_ID_save <- tbl_ooo_ID_save %>%
+  select(-session_id) %>%
+  relocate(participant_id, .after = odd)
+
+write_delim(
+  tbl_ooo_ID_save, 
+  file = "data/study1-2025-08/ooo_data_modeling_excluded.txt", 
+  col_names = FALSE
+)

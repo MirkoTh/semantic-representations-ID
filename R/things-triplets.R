@@ -122,7 +122,7 @@ write_delim(
 )
 
 
-# randomly sample subjects providing a substantial number of respo --------
+# randomly sample subjects providing a substantial number of responses --------
 
 
 # with added column denoting subject id
