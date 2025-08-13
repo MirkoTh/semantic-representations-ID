@@ -1,3 +1,6 @@
+# load study results into data containers
+# hash prolific ids and save lookup table locally
+
 rm(list = ls())
 
 library(tidyverse)
@@ -19,72 +22,84 @@ l_paths_sep <- file_paths_separate(base_dir)
 
 
 
-
 # Load Data ---------------------------------------------------------------
 
 ## comprehensions questions
 tbl_comprehension <- map(l_paths_sep$cc, function(x) as_tibble(fromJSON(x))) %>% reduce(rbind)
+# runthrough time is time after questions have been answered correctly - time when first ooo page was displayed in ms
+tbl_comprehension <- tbl_comprehension %>%
+  mutate(t_comprehension_min = t_comprehension / 1000 / 60)
+
+
 ## odd-one-out
 tbl_ooo <- map(l_paths_sep$ooo, function(x) as_tibble(fromJSON(x))) %>% reduce(rbind)
+l_ooo <- ooo_modeling_format(tbl_ooo)
+tbl_ooo_ID_save <- l_ooo$tbl_ooo_ID_save
+tbl_ooo_ids <- l_ooo$tbl_ooo_ids
+
+## questionnaires
+cols_txt <- c("workHistory", "interests1", "interests2", "interests3", "feedback")
+cols_id <- c("session_id", "participant_id")
+
+tbl_qs_prep <- map(l_paths_sep$qs, function(x) as_tibble(fromJSON(x))) %>% reduce(rbind)
+
+
+# numeric responses from questionnaires
+tbl_qs_num <- tbl_qs_prep %>%
+  select(-all_of(c(cols_txt)))
+# control data types
+cols_numeric <- colnames(tbl_qs_num)[!colnames(tbl_qs_num) %in% cols_id]
+tbl_qs_num[, cols_numeric] <- map(tbl_qs_num[, cols_numeric], as.numeric)
+tbl_qs_num_long <- tbl_qs_num %>% pivot_longer(cols=-all_of(cols_id))
+
+# text responses from questionnaires
+tbl_qs_txt <- tbl_qs_prep %>%
+  select(all_of(c(cols_id, cols_txt)))
 
 
 
-# format for modeling: anchor pos neg ID
-# saved as .txt
-tbl_ooo_ids <- tbl_ooo %>% unnest(stimulus_ids) %>%
-  mutate(stimulus_loc = rep(c("ID1", "ID2", "ID3"), nrow(.)/3)) %>%
-  pivot_wider(names_from = stimulus_loc, values_from = stimulus_ids)
-tbl_ooo_ids <- tbl_ooo_ids %>% rowwise() %>% mutate(
-  idx_odd = which(1:3 == response + 1),
-  which_not_odd = list(c(1, 2, 3)[-idx_odd])
-) %>% unnest(which_not_odd) %>%
-  mutate(idx_not_odd = rep(c("idx_positive", "idx_negative"), nrow(.)/2)) %>%
-  pivot_wider(names_from = idx_not_odd, values_from = which_not_odd) %>%
-  relocate(idx_positive, .before = idx_odd) %>%
-  relocate(idx_negative, .before = idx_odd)
+# Hash IDs ----------------------------------------------------------------
 
-tbl_ooo_ID_save <- tbl_ooo_ids %>% 
-  rowwise() %>%
-  mutate(
-    positive = c(ID1, ID2, ID3)[idx_positive],
-    negative = c(ID1, ID2, ID3)[idx_negative],
-    odd = c(ID1, ID2, ID3)[idx_odd]
-  ) %>%
-  select(positive, negative, odd, participant_id) %>%
-  mutate(
-    positive = as.integer(positive),
-    negative = as.integer(negative),
-    odd = as.integer(odd)
-  )
-tbl_ooo_ID_save$participant_id <- factor(
-  tbl_ooo_ID_save$participant_id, 
-  labels = 1:length(unique(tbl_ooo_ID_save$participant_id))
-  )
+# files to hash and save:
+l_tbl_to_hash <- list(
+  tbl_comprehension = tbl_comprehension, 
+  tbl_ooo_ids = tbl_ooo_ids, 
+  tbl_ooo_ID_save = tbl_ooo_ID_save, 
+  tbl_qs_num_long = tbl_qs_num_long, 
+  tbl_qs_txt = tbl_qs_txt
+)
 
+tbl_lookup <- tibble(
+  prolific_pid = unique(c(
+    tbl_comprehension$participant_id,
+    tbl_ooo_ids$participant_id,
+    tbl_qs_num_long$participant_id,
+    tbl_qs_txt$participant_id
+  )),
+  participant_id_new = 1:length(prolific_pid)
+)
+
+l_tbl_hashed <- map(l_tbl_to_hash, hash_tbl, tbl_lookup = tbl_lookup)
+
+
+list2env(l_tbl_hashed, rlang::current_env())
+
+
+# Save Files ---------------------------------------------------------
+
+
+# lookup table
+write_csv(tbl_lookup, file = "data/study1-2025-08/tbl_lookup.csv")
+
+idx_remove <- which(names(l_tbl_hashed) == "tbl_ooo_ID_save")
+l_tbl_hashed <- l_tbl_hashed[-idx_remove]
+# data for analysis
+pths <- str_c("data/study1-2025-08/", names(l_tbl_hashed), ".csv")
+walk2(l_tbl_hashed, pths, write_csv)
+
+# ooo file for comp modeling without colnames
 write_delim(
   tbl_ooo_ID_save, 
   file = "data/study1-2025-08/ooo-data-modeling.txt", 
   col_names = FALSE
 )
-
-## questionnaires
-cols_separate <- c("workHistory", "interests1", "interests2", "interests3", "feedback")
-
-tbl_qs_prep <- map(l_paths_sep$qs, function(x) as_tibble(fromJSON(x))) %>% reduce(rbind)
-
-
-
-
-# numeric responses from questionnaires
-tbl_qs_num <- tbl_qs_prep %>%
-  select(-all_of(cols_separate))
-# control data types
-cols_character <- c("session_id", "participant_id")
-cols_numeric <- colnames(tbl_qs_num)[!colnames(tbl_qs_num) %in% cols_character]
-tbl_qs_num[, cols_numeric] <- map(tbl_qs_num[, cols_numeric], as.numeric)
-tbl_qs_num %>% pivot_longer(cols=-participant_id)
-
-# text responses from questionnaires
-tbl_qs_txt <- qs_prep %>%
-  select(all_of(c("participant_id", cols_separate)))
-
