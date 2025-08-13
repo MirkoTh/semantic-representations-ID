@@ -90,6 +90,7 @@ list2env(l_tbl_hashed, rlang::current_env())
 
 # lookup table
 write_csv(tbl_lookup, file = "data/study1-2025-08/tbl_lookup.csv")
+write_csv(tbl_lookup %>% select(participant_id_new), file = "data/study1-2025-08/tbl_participants.csv")
 
 idx_remove <- which(names(l_tbl_hashed) == "tbl_ooo_ID_save")
 l_tbl_hashed <- l_tbl_hashed[-idx_remove]

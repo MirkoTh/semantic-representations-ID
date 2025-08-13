@@ -142,3 +142,39 @@ ooo_modeling_format <- function(tbl_ooo) {
   
   return(list(tbl_ooo_ids = tbl_ooo_ids, tbl_ooo_ID_save = tbl_ooo_ID_save))
 }
+
+
+#' Cumulative sum with reset on sentinel value
+#'
+#' Computes a cumulative sum over a numeric vector, resetting the sum to zero
+#' whenever a specified sentinel value (`reset_val`) is encountered.
+#'
+#' @param x A numeric vector. The input sequence over which to compute the cumulative sum.
+#' @param reset_val A numeric value. When this value appears in `x`, the cumulative sum resets to zero.
+#'   Defaults to `0`.
+#'
+#' @return A numeric vector of the same length as `x`, containing the cumulative sums with resets applied.
+#'
+#' @examples
+#' x <- c(1, 2, 3, 0, 4, 5, 0, 6)
+#' cumsum_reset(x)
+#' # Returns: 1 3 6 0 4 9 0 6
+#'
+#' # Using a different reset value
+#' x <- c(1, 2, 99, 3, 4, 99, 5)
+#' cumsum_reset(x, reset_val = 99)
+#' # Returns: 1 3 0 3 7 0 5
+#'
+cumsum_reset <- function(x, reset_val = 0) {
+  out <- numeric(length(x))
+  total <- 0
+  for (i in seq_along(x)) {
+    if (x[i] == reset_val) {
+      total <- 0
+    } else {
+      total <- total + x[i]
+    }
+    out[i] <- total
+  }
+  return(out)
+}
