@@ -6,7 +6,10 @@ library(jsonlite)
 external_study_url <- "https://kyblab.tuebingen.mpg.de/mex/wm-tasks/experiments/symmetry_span_task.html?PROLIFIC_PID={{%PROLIFIC_PID%}}"
 # 🔐 Your API token
 # 2 is "alte workspace", 1 is new hcai workspace
-
+api_token <- c(
+  "0rUBH2QkM3Rlsy93xZL5TrjSHOOdQHt1CPmOUrFVcr0h1gaTS2PpOyThoWWUw1tdgQ4QxRqzk8ICollWWuEwoi5fW_sccUzlAWuNxcoA0oZTiOcgLG6ZC9Ia",
+  "PWFL6k7QR8KLtJUN6F91npIQ5IYP9tliB4GXtlruBwa2pBuwpegUk9kv-pu-SOe15b8_6LzaeS-uMHJUTI_up_mgQl-AnOkR6alhVXFayxtgPInXBkCzJQyN"
+)[2]
 base_url <- "https://api.prolific.com/api/v1"
 
 workspace_response <- httr::GET(
