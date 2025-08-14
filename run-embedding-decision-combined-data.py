@@ -86,16 +86,6 @@ def parseargs():
         help="learning rate to be used in optimizer",
     )
     aa(
-        "--lmbda",
-        type=float,
-        help="lambda value determines weight of l1-regularization",
-    )
-    aa(
-        "--lmbda_hierarchical",
-        type=float,
-        help="value determining weight of gaussian regularization on individual weights",
-    )
-    aa(
         "--temperature",
         type=float,
         default=1.0,
@@ -192,12 +182,6 @@ def parseargs():
         default=20,
         help="number of threads used by PyTorch multiprocessing",
     )
-    aa(
-        "--sparsity",
-        type=str,
-        choices=["both", "items", "items_and_random_ids"],
-        help="sparsity constraint setting",
-    )
     args = parser.parse_args()
     return args
 
@@ -240,8 +224,6 @@ def run(
     epochs: int,
     window_size: int,
     sampling_method: str,
-    lmbda: float,
-    lmbda_hierarchical: float,
     lr: float,
     steps: int,
     early_stopping: str = "No",
@@ -250,18 +232,14 @@ def run(
     show_progress: bool = True,
     distance_metric: str = "dot",
     temperature: float = 1.0,
-    sparsity: str = "both",
 ):
     # initialise logger and start logging events
     logger = setup_logging(
         file="embeddings-decision-combined-data.log",
-        dir=f"./log_files/{modeltype}/ndim_{embed_dim}/lr_{lr}/lmbda_{lmbda}/lmbda_hierarchical_{lmbda_hierarchical}/sparsity_{sparsity}",
+        dir=f"./log_files/{modeltype}/ndim_{embed_dim}/lr_{lr}",
         loggername=loggername,
     )
     logger.info("modeltype = ", f"{modeltype}")
-
-    # todos
-    # write initialization script
 
     # load triplets into memory
     train_triplets_ID = ut.load_data_combined(
@@ -318,9 +296,6 @@ def run(
             "embeddings-decision-combined-data",
             f"modeltype_{modeltype}",
             f"{embed_dim}d",
-            str(lmbda),
-            str(lmbda_hierarchical),
-            sparsity,
             f"seed{rnd_seed}",
         )
     if not os.path.exists(results_dir):
@@ -332,9 +307,6 @@ def run(
             "embeddings-decision-combined-data",
             f"modeltype_{modeltype}",
             f"{embed_dim}d",
-            str(lmbda),
-            str(lmbda_hierarchical),
-            sparsity,
             f"seed{rnd_seed}",
         )
     if not os.path.exists(plots_dir):
@@ -408,7 +380,8 @@ def run(
     ################################################
     ################## Training ####################
     ################################################
-
+    lmbda = 0.0005
+    lmbda_hierarchical = 0.01
     iter = 0
     results = {}
     logger.info(
@@ -437,9 +410,6 @@ def run(
                 device
             )  # L1-norm to enforce sparsity (many 0s)
             # mostly agreement with item reps, but few dimensions may be downweighted
-            l1_pen_ID = md.l1_regularization(model, "individual_", agreement="most").to(
-                device
-            )  # L1-norm to enforce sparsity (many 0s)
             W = model.model1.fc.weight
             Bs = model.model1.individual_slopes.weight
             temperature = model.model2(id[::3])
@@ -546,7 +516,6 @@ def run(
                     "model_state_dict": model.state_dict(),
                     "optim_state_dict": optim.state_dict(),
                     "modeltype": modeltype,
-                    "sparsity": sparsity,
                     "subject_type": "actual",
                     "n_embed": embed_dim,
                     "lambda": lmbda,
@@ -632,8 +601,6 @@ if __name__ == "__main__":
         epochs=args.epochs,
         window_size=args.window_size,
         sampling_method=args.sampling_method,
-        lmbda=args.lmbda,
-        lmbda_hierarchical=args.lmbda_hierarchical,
         lr=args.learning_rate,
         steps=args.steps,
         resume=args.resume,
@@ -641,5 +608,4 @@ if __name__ == "__main__":
         distance_metric=args.distance_metric,
         temperature=args.temperature,
         early_stopping=args.early_stopping,
-        sparsity=args.sparsity,
     )

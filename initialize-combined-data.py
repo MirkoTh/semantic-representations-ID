@@ -18,11 +18,13 @@ base_dict = {
     "device": "cpu",  # "cuda:0" #
 }
 
-# combined model always uses random by-participant decision weights
-lmbda_list = [0.0005]
-lmbda_hierarchical_list = [0.01]
+# combined model always uses
+# random by-participant decision weights
+# lmbda = 0.0005
+# lmbda_hierarchical = 0.01
+# fix coded in run-embedding-decision-combined-data.py
+
 embed_dim_list = [7]  # 15
-sparsity_list = ["items_and_random_ids"]
 learning_rate_list = [0.0005]  # 0.0005
 modeltype_list = ["random_weights_random_scaling"]
 python_file = ["run-embedding-decision-combined-data.py"]
@@ -30,11 +32,8 @@ python_file = ["run-embedding-decision-combined-data.py"]
 # Generate all combinations
 combinations = list(
     itertools.product(
-        lmbda_list,
-        lmbda_hierarchical_list,
         learning_rate_list,
         embed_dim_list,
-        sparsity_list,
         modeltype_list,
         python_file,
     )
@@ -44,22 +43,16 @@ combinations = list(
 arg_combinations = []
 #  in combinations:
 for (
-    lmbda,
-    lmbda_hierarchical,
     learning_rate,
     embed_dim,
-    sparsity,
     modeltype,
     python_file,
 ) in combinations:  # , agreement
     temp_dict = base_dict.copy()
     temp_dict.update(
         {
-            "lmbda": lmbda,
-            "lmbda_hierarchical": lmbda_hierarchical,
             "learning_rate": learning_rate,
             "embed_dim": embed_dim,
-            "sparsity": sparsity,
             "modeltype": modeltype,
             "python_file": python_file,
         }
@@ -75,9 +68,6 @@ def run_command(args):
         --triplets_dir {args['triplets_dir']} \
         --task {args['task']} \
         --learning_rate {args['learning_rate']} \
-        --lmbda {args['lmbda']} \
-        --lmbda_hierarchical {args['lmbda_hierarchical']} \
-        --sparsity {args['sparsity']} \
         --modeltype {args['modeltype']} \
         --epochs {args['epochs']} \
         --embed_dim {args['embed_dim']} \
