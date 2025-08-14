@@ -32,7 +32,8 @@ tbl_comprehension <- tbl_comprehension %>%
 
 
 ## odd-one-out
-tbl_ooo <- map(l_paths_sep$ooo, function(x) as_tibble(fromJSON(x))) %>% reduce(rbind)
+tbl_ooo <- map(l_paths_sep$ooo, function(x) as_tibble(fromJSON(x))) %>% 
+  reduce(rbind) %>% filter(is_practice == 0)
 l_ooo <- ooo_modeling_format(tbl_ooo)
 tbl_ooo_ID_save <- l_ooo$tbl_ooo_ID_save
 tbl_ooo_ids <- l_ooo$tbl_ooo_ids

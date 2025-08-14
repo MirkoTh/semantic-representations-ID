@@ -27,7 +27,12 @@ tbl_train_things %>% count(X4) %>% left_join(
 tbl_ooo_study1 <- read_delim(
   "data/study1-2025-08/ooo_data_modeling_excluded.txt",
   col_names = FALSE
-)
+) %>% arrange(X4)
+participant_ids_new <- unique(tbl_ooo_study1$X4)
+tbl_ooo_study1 <- tbl_ooo_study1 %>% rebase_subject_ids() %>%
+  mutate(X4 = X4 + 1)
+participant_ids_modeling_minus_old_ids <- unique(tbl_ooo_study1$X4)
+
 
 max_id_things_train <- max(tbl_train_things$X4)
 max_id_things_eval <- max(tbl_eval_things$X4)
@@ -51,7 +56,8 @@ pids_study1 <- tibble(
   # ids used in modeling
   participant_id_model = unique(tbl_ooo_study1$X4),
   # ids only used for new study participants
-  participant_id_new = 1:length(unique(participant_id_model))) 
+  participant_id_new = participant_ids_new
+  ) 
 
 # save the updated participant ids to easily extract data after model fitting
 write_csv(pids_study1, "data/study1-2025-08/new-participant-ids-in-joint-modeling.csv")
@@ -84,7 +90,7 @@ pids_study1_testcase <- tibble(
   # ids used in modeling
   participant_id_model = unique_test_pids[which(unique_test_pids >= n_samples_old)],
   # ids only used for new study participants
-  participant_id_new = 1:length(unique(participant_id_model))
+  participant_id_new = participant_ids_new
 )
 
 # save the updated participant ids to easily extract data after model fitting
@@ -115,11 +121,13 @@ tbl_second_half <- l_reordered[[2]] %>% select(-c(trial_id, first_half))
 
 
 # save the updated participant ids to easily extract data after model fitting
-write_csv(
+write_delim(
   tbl_first_half, 
-  "data/study1-2025-08/ooo_data_modeling_old_and_new_h1.txt"
+  "data/study1-2025-08/ooo_data_modeling_old_and_new_h1.txt",
+  col_names = FALSE
 )
-write_csv(
+write_delim(
   tbl_second_half, 
-  "data/study1-2025-08/ooo_data_modeling_old_and_new_h2.txt"
+  "data/study1-2025-08/ooo_data_modeling_old_and_new_h2.txt",
+  col_names = FALSE
 )

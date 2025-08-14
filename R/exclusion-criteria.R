@@ -21,7 +21,7 @@ tbl_pids <- read_csv("data/study1-2025-08/tbl_participants.csv")
 
 
 # exclusion criteria
-thx_n_ooo_required <- 445
+thx_n_ooo_required <- 440
 thx_n_ooo_streak_exclude <- 10 # same responses in a row
 thx_ooo_rt_min_1 <- 800 #ms and prop responses below that thx
 thx_prop_fast_1 <- .25
