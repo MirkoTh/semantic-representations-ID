@@ -27,15 +27,13 @@ base_dict = {
 embed_dim_list = [7]  # 15
 learning_rate_list = [0.0005]  # 0.0005
 modeltype_list = ["random_weights_random_scaling"]
-python_file = ["run-embedding-decision-combined-data.py"]
+l_python_file = ["run-embedding-decision-combined-data.py"]
+l_data_subset = [["full", "testcase", "first_half", "second_half"][1]]
 
 # Generate all combinations
 combinations = list(
     itertools.product(
-        learning_rate_list,
-        embed_dim_list,
-        modeltype_list,
-        python_file,
+        learning_rate_list, embed_dim_list, modeltype_list, l_python_file, l_data_subset
     )
 )
 
@@ -47,6 +45,7 @@ for (
     embed_dim,
     modeltype,
     python_file,
+    data_subset,
 ) in combinations:  # , agreement
     temp_dict = base_dict.copy()
     temp_dict.update(
@@ -55,6 +54,7 @@ for (
             "embed_dim": embed_dim,
             "modeltype": modeltype,
             "python_file": python_file,
+            "data_subset": data_subset,
         }
     )
     arg_combinations.append(temp_dict)
@@ -71,6 +71,7 @@ def run_command(args):
         --modeltype {args['modeltype']} \
         --epochs {args['epochs']} \
         --embed_dim {args['embed_dim']} \
+        --data_subset {args['data_subset']} \
         --steps {args['steps']} \
         --device {args['device']}"
     subprocess.run(command, shell=True)

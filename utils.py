@@ -474,10 +474,10 @@ def load_data_ID(
 
 
 def load_data_combined(
-    device: torch.device, triplets_dir: str, testcase: bool = False
+    device: torch.device, triplets_dir: str, dataset: str = "testcase"
 ) -> Tuple[torch.Tensor]:
     """load train and test triplet datasets with associated participant ID into memory"""
-    if testcase:
+    if dataset == "testcase":
         train_triplets = (
             torch.from_numpy(
                 np.loadtxt(
@@ -487,10 +487,26 @@ def load_data_combined(
             .to(device)
             .type(torch.LongTensor)
         )
-    elif testcase == False:
+    elif dataset == "full":
         train_triplets = (
             torch.from_numpy(
                 np.loadtxt(pjoin(triplets_dir, "ooo_data_modeling_old_and_new.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+    elif dataset == "first_half":
+        train_triplets = (
+            torch.from_numpy(
+                np.loadtxt(pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h1.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+    elif dataset == "second_half":
+        train_triplets = (
+            torch.from_numpy(
+                np.loadtxt(pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h2.txt"))
             )
             .to(device)
             .type(torch.LongTensor)

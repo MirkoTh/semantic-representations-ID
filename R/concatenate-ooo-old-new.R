@@ -92,3 +92,34 @@ write_csv(
   pids_study1_testcase, 
   "data/study1-2025-08/new-participant-ids-in-joint-modeling-testcase.csv"
 )
+
+
+# Create and Save Half-Split Data Set ------------------------------------
+
+
+tbl_reorder <- tbl_full %>%
+  mutate(idx = 1:nrow(.)) %>%
+  group_by(X4) %>%
+  mutate(
+    trial_id = row_number(idx),
+    trial_id_random = sample(max(trial_id), replace=FALSE),
+    first_half = trial_id_random <= max(trial_id) / 2
+  ) %>% ungroup() %>%
+  select(-c(idx, trial_id)) %>%
+  rename(trial_id = trial_id_random) %>%
+  arrange(X4, trial_id)
+
+l_reordered <- tbl_reorder %>% split(.$first_half)
+tbl_first_half <- l_reordered[[1]] %>% select(-c(trial_id, first_half))
+tbl_second_half <- l_reordered[[2]] %>% select(-c(trial_id, first_half))
+
+
+# save the updated participant ids to easily extract data after model fitting
+write_csv(
+  tbl_first_half, 
+  "data/study1-2025-08/ooo_data_modeling_old_and_new_h1.txt"
+)
+write_csv(
+  tbl_second_half, 
+  "data/study1-2025-08/ooo_data_modeling_old_and_new_h2.txt"
+)

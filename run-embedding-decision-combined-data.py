@@ -54,6 +54,12 @@ def parseargs():
         choices=["odd_one_out", "similarity_task"],
     )
     aa(
+        "--data_subset",
+        type=str,
+        default="testcase",
+        choices=["testcase", "full", "first_half", "second_half"],
+    )
+    aa(
         "--loggername",
         type=str,
         default="avg-ID-joint-logger",
@@ -232,11 +238,12 @@ def run(
     show_progress: bool = True,
     distance_metric: str = "dot",
     temperature: float = 1.0,
+    data_subset: str = "testcase",
 ):
     # initialise logger and start logging events
     logger = setup_logging(
         file="embeddings-decision-combined-data.log",
-        dir=f"./log_files/{modeltype}/ndim_{embed_dim}/lr_{lr}",
+        dir=f"./log_files/{modeltype}/ndim_{embed_dim}/lr_{lr}/data_subset_{data_subset}",
         loggername=loggername,
     )
     logger.info("modeltype = ", f"{modeltype}")
@@ -245,7 +252,7 @@ def run(
     train_triplets_ID = ut.load_data_combined(
         device=device,
         triplets_dir=triplets_dir,
-        testcase=True,
+        dataset=data_subset,
     )
     n_items_ID = ut.get_nitems(train_triplets_ID)
     logger.info("n_items = " + str(n_items_ID))
@@ -297,6 +304,7 @@ def run(
             f"modeltype_{modeltype}",
             f"{embed_dim}d",
             f"seed{rnd_seed}",
+            f"data_subset_{data_subset}",
         )
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
@@ -308,6 +316,7 @@ def run(
             f"modeltype_{modeltype}",
             f"{embed_dim}d",
             f"seed{rnd_seed}",
+            f"data_subset_{data_subset}",
         )
     if not os.path.exists(plots_dir):
         os.makedirs(plots_dir)
@@ -521,6 +530,7 @@ def run(
                     "lambda": lmbda,
                     "lmbda_hierarchical": lmbda_hierarchical,
                     "scaling": scaling,
+                    "data_subset": data_subset,
                     "loss": loss,
                     "train_losses": train_losses,
                     "train_accs_max": train_accs_max,
@@ -608,4 +618,5 @@ if __name__ == "__main__":
         distance_metric=args.distance_metric,
         temperature=args.temperature,
         early_stopping=args.early_stopping,
+        data_subset=args.data_subset,
     )
