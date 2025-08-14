@@ -4,6 +4,14 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics.pairwise import cosine_similarity
 
+from transformers import (
+    AutoTokenizer,
+    AutoModel,
+    AutoModelForMaskedLM,
+    BertTokenizer,
+    BertModel,
+)
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
@@ -2596,3 +2604,144 @@ def scales_and_facets(df_qs_num):
     df_qs_num = scales_and_facets_big5(df_qs_num)
     df_qs_num = scales_and_facets_pid5(df_qs_num)
     return df_qs_num
+
+
+def keep_scales_only(df_qs_num):
+    """
+    Filters a DataFrame to retain only scale-level columns by removing item-level and facet-level scores.
+
+    Parameters:
+    -----------
+    df_qs_num : pandas.DataFrame
+        A DataFrame containing quantitative scores, including item-level, facet-level, and scale-level columns.
+
+    Returns:
+    --------
+    pandas.DataFrame
+        A filtered DataFrame containing only the columns that do not start with predefined item or facet prefixes.
+
+    Notes:
+    ------
+    The function excludes columns that start with any of the following prefixes:
+    - "BIG5_SF_", "PID5_BF_", "I_8_"
+    - Specific facet names such as 'Sociability', 'Assertiveness', 'Energy_Level', etc.
+
+    This is useful for isolating higher-order scale scores from detailed questionnaire data.
+    """
+    col_starts = (
+        "BIG5_SF_",
+        "PID5_BF_",
+        "I_8_",
+        "Sociability",
+        "Assertiveness",
+        "Energy_Level",
+        "Compassion",
+        "Respectfulness",
+        "Trust",
+        "Organization",
+        "Productiveness",
+        "Responsibility",
+        "Anxiety",
+        "Depression",
+        "Emotional_Volatility",
+        "Aesthetic_Sensitivity",
+        "Intellectual_Curiosity",
+        "Creative_Imagination",
+    )
+    all_cols = df_qs_num.columns
+    idxs_keep = [not c.startswith(col_starts) for c in all_cols]
+    df_qs_num = df_qs_num[all_cols[idxs_keep]]
+
+    return df_qs_num
+
+
+def load_model(model_id):
+    """
+    Loads a pretrained transformer model and tokenizer from Hugging Face.
+
+    Automatically selects GPU if available, otherwise defaults to CPU.
+
+    Parameters:
+        model_id (str): The identifier of the pretrained model to load (e.g., "bert-base-uncased").
+
+    Returns:
+        tuple:
+            - model (torch.nn.Module): The loaded transformer model.
+            - tokenizer (transformers.PreTrainedTokenizer): The corresponding tokenizer.
+    """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    model = AutoModel.from_pretrained(model_id).to(device)
+    return model, tokenizer, device
+
+
+def add_prefixes_and_concatenate_cols(df_qs_txt):
+    """
+    Adds predefined textual prefixes to a questionnaire DataFrame and concatenates selected columns into a single text string.
+
+    This function:
+    - Adds five prefix columns describing life, work history, and interests.
+    - Concatenates these prefixes with user-provided text fields into a new column 'txt_concat'.
+
+    Parameters:
+        df_qs_txt (pd.DataFrame): A DataFrame containing text fields such as 'workHistory', 'interests1', 'interests2', and 'interests3'.
+
+    Returns:
+        pd.DataFrame: The input DataFrame with added prefix columns and a new 'txt_concat' column containing the full concatenated text.
+    """
+    # add prefix cols
+    prefix = "Here are some details about my life: "
+    work_history_prefix = "I have worked as "
+    interests1_prefix = ". The topics or activities I am most passionate about are: "
+    interests2_prefix = ". The topics or activities I love doing in my free time are: "
+    interests3_prefix = (
+        ". The subjects, which fascinate me and make me want to learn more are: "
+    )
+    df_qs_txt["prefix"] = prefix
+    df_qs_txt["work_history_prefix"] = work_history_prefix
+    df_qs_txt["interests1_prefix"] = interests1_prefix
+    df_qs_txt["interests2_prefix"] = interests2_prefix
+    df_qs_txt["interests3_prefix"] = interests3_prefix
+
+    # concatenate text cols
+    df_qs_txt["txt_concat"] = df_qs_txt[
+        [
+            "prefix",
+            "work_history_prefix",
+            "workHistory",
+            "interests1_prefix",
+            "interests1",
+            "interests2_prefix",
+            "interests2",
+            "interests1_prefix",
+            "interests3",
+        ]
+    ].agg("".join, axis=1)
+
+    return df_qs_txt
+
+
+def tokenize_col(txt, prefix1, prefix2, tokenizer, model, device):
+    """
+    Tokenizes a concatenated text string using a Hugging Face tokenizer and extracts the embedding of the [CLS] token.
+
+    Parameters:
+        txt (str): The main text content to be tokenized.
+        prefix1 (str): A prefix string to prepend to the text.
+        prefix2 (str): A second prefix string to prepend after prefix1.
+        tokenizer (transformers.PreTrainedTokenizer): A Hugging Face tokenizer instance.
+
+    Returns:
+        np.ndarray: A NumPy array representing the embedding of the [CLS] token from the model's output.
+
+    Notes:
+        - Assumes a global variable `model` is already loaded and accessible.
+        - Assumes a global variable `device` is defined for model execution.
+    """
+    all_together = prefix1 + prefix2 + txt
+    tokenized_input = tokenizer.encode(all_together, return_tensors="pt").to(device)
+    with torch.no_grad():
+        output = model(tokenized_input)
+    e = output.last_hidden_state[:, 0, :].numpy()
+
+    return e
