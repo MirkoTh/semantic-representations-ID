@@ -6,10 +6,7 @@ library(jsonlite)
 external_study_url <- "https://kyblab.tuebingen.mpg.de/mex/wm-tasks/experiments/symmetry_span_task.html?PROLIFIC_PID={{%PROLIFIC_PID%}}"
 # 🔐 Your API token
 # 2 is "alte workspace", 1 is new hcai workspace
-api_token <- c(
-  "0rUBH2QkM3Rlsy93xZL5TrjSHOOdQHt1CPmOUrFVcr0h1gaTS2PpOyThoWWUw1tdgQ4QxRqzk8ICollWWuEwoi5fW_sccUzlAWuNxcoA0oZTiOcgLG6ZC9Ia",
-  "PWFL6k7QR8KLtJUN6F91npIQ5IYP9tliB4GXtlruBwa2pBuwpegUk9kv-pu-SOe15b8_6LzaeS-uMHJUTI_up_mgQl-AnOkR6alhVXFayxtgPInXBkCzJQyN"
-)[2]
+api_token <- c()[2]
 base_url <- "https://api.prolific.com/api/v1"
 
 workspace_response <- httr::GET(
@@ -22,7 +19,7 @@ workspace_response <- httr::GET(
 
 workspace_id <- c(1, 2)[1] # 1 is "alte workspace", 2 is hcai new workspace
 workspace_data <- httr::content(workspace_response, as = "parsed")
-workspace_id <- workspace_data$results[[workspace_id]]$id  # Adjust if you have multiple workspaces
+workspace_id <- workspace_data$results[[workspace_id]]$id # Adjust if you have multiple workspaces
 
 headers <- add_headers(
   Authorization = paste("Token", api_token),
@@ -51,12 +48,12 @@ study_payload <- jsonlite::toJSON(list(
   external_study_url = "https://jatos.mindprobe.eu/publix/qyztgWgW2R4?&PROLIFIC_PID={{%PROLIFIC_PID%}}&STUDY_ID={{%STUDY_ID%}}&SESSION_ID={{%SESSION_ID%}}",
   prolific_id_option = "url_parameters",
   completion_option = "url",
-  completion_code = "UEIONKBASDOGK837955K8395",  # simplified
+  completion_code = "UEIONKBASDOGK837955K8395", # simplified
   total_available_places = 4,
   estimated_completion_time = 75,
   maximum_allowed_time = 164,
   max_concurrent_submissions = 4,
-  reward = 1000,  # in pence
+  reward = 1000, # in pence
   device_compatibility = list("desktop"),
   workspace_id = workspace_id
 ), auto_unbox = TRUE)
@@ -98,11 +95,11 @@ filter_payload <- list(
         "group_2" = list(
           selected_range = list(lower = 22, upper = 30),
           weighting = 1
-        ), 
+        ),
         "group_3" = list(
           selected_range = list(lower = 31, upper = 59),
           weighting = 1
-        ), 
+        ),
         "group_4" = list(
           selected_range = list(lower = 60, upper = 70),
           weighting = 1
