@@ -2,6 +2,8 @@ import copy
 
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pingouin as pg
+
 from sklearn.metrics.pairwise import cosine_similarity
 
 from transformers import (
@@ -2314,11 +2316,9 @@ def max_cors(range_dims, dict_idxs_use, l_cors):
 
 
 def load_ID_lowdim(
-    l_lmbda,
-    l_lmbda_hierarchical,
+    l_data_subset,
     l_rnd_seed,
     l_embed_dim,
-    l_sparse,
     modelversion,
     modeltype="random_weights_random_scaling",
 ):
@@ -2331,11 +2331,9 @@ def load_ID_lowdim(
     parameters and weights.
 
     Parameters:
-        l_lmbda (list[float]): List of regularization strengths (λ).
-        l_lmbda_hierarchical (list[float]): List of hierarchical regularization strengths (λ_h).
+        l_data_subset (list[str]): List of data subsets used in the model.
         l_rnd_seed (list[int]): List of random seeds used during training.
         l_embed_dim (list[int]): List of embedding dimensions (e.g., 10, 50, 100).
-        l_sparse (list[str]): List of sparsity configuration names (e.g., "sparse", "dense").
         modelversion (str): Version identifier for the model (used in directory structure).
         modeltype (str, optional): Type of model architecture or training scheme.
             Defaults to "random_weights_random_scaling".
@@ -2346,8 +2344,6 @@ def load_ID_lowdim(
             - decision_weights (Tensor): Individual slope weights.
             - temperature_scalings (Tensor): Individual temperature scaling weights.
             - modeltype (str): Model type used during training.
-            - lmbda (float): Regularization strength used.
-            - lmbda_hierarchical (float): Hierarchical regularization strength used.
             - n_embed (int): Embedding dimension used.
             - rnd_seed (int): Random seed used.
 
@@ -2357,26 +2353,20 @@ def load_ID_lowdim(
     """
     l_dirs = []
     l_models = []
-    l_sparsity = []
     l_rnd_seeds_flat = []
 
     for rnd_seed in l_rnd_seed:
         for n in l_embed_dim:
-            for lmbda in l_lmbda:
-                for lmbda_h in l_lmbda_hierarchical:
-                    for sp in l_sparse:
+            for data_subset in l_data_subset:
                         results_dir_ID = os.path.join(
                             "./results",
                             modelversion,
                             f"modeltype_{modeltype}",
                             f"{n}d",
-                            str(lmbda),
-                            str(lmbda_h),
-                            sp,
                             f"seed{rnd_seed}",
+                            f"data_subset_{data_subset}"
                         )
                         l_dirs.append(results_dir_ID)
-                        l_sparsity.append(sp)
                         l_rnd_seeds_flat.append(rnd_seed)
 
     for i, d in enumerate(l_dirs):
@@ -2397,8 +2387,6 @@ def load_ID_lowdim(
                     "model2.individual_temps.weight"
                 ],
                 "modeltype": m["modeltype"],
-                "lmbda": m["lambda"],
-                "lmbda_hierarchical": m["lmbda_hierarchical"],
                 "n_embed": m["n_embed"],
                 "rnd_seed": l_rnd_seeds_flat[i],
             }
@@ -2761,3 +2749,98 @@ def tokenize_col(txt, prefix1, prefix2, tokenizer, model, device):
     e = output.last_hidden_state[:, 0, :].numpy()
 
     return e
+
+
+def extract_dim_weight_results(l_results, l_idx, n_embed, l_pids_model, l_pids_new): 
+    """
+    Extracts dimensional decision weights for participants from a new study.
+
+    Parameters:
+    - l_results: list of modeling results
+    - l_idx (int): Index to select the appropriate result set from `l_results`.
+    - n_embed (int): Number of embedding dimensions used in the model.
+    - l_pids_model (list[int]): List of participant indices from the model's dataset.
+    - l_pids_new (list[int]): List of participant IDs corresponding to the new study.
+
+    Returns:
+    - pd.DataFrame: A DataFrame containing dimensional weights, participant IDs from the new study,
+      and an average weight feature. The participant ID column is placed first.
+    """
+    # extract dimensional weights only for participants from new study
+    df_dim_weights = pd.DataFrame(l_results[l_idx]["decision_weights"].detach().numpy()[l_pids_model, :])
+    # add participant_id_new used in the new study (i.e., l_pids_new)
+    # participant_id_new can then be joined with other results from the new study
+    df_dim_weights["participant_id_new"] = l_pids_new
+    # Move participant_id column to the first position
+    col = "participant_id_new"
+    new_order = [col] + [c for c in df_dim_weights.columns if c != col]
+    df_dim_weights = df_dim_weights[new_order]
+    # create average weight feature
+    df_dim_weights["avg_weight"] = df_dim_weights[0:(n_embed-1)].mean(axis=0)
+    return df_dim_weights
+
+def rename_dim_weight_cols(df, n_embed):
+    """
+    Renames unnamed numerical columns in a DataFrame to 'dim1', 'dim2', ..., 'dimN' 
+    based on the number of embedding dimensions.
+
+    Parameters:
+    - df (pd.DataFrame): DataFrame containing dimensional weight columns with integer names.
+    - n_embed (int): Number of embedding dimensions to rename.
+
+    Returns:
+    - Tuple[pd.DataFrame, list[str]]: 
+        - The updated DataFrame with renamed columns.
+        - A list of new column names used for the dimensions.
+    """
+    colnames_dim_weights = []
+    for dim in range(0, n_embed):
+        colname_current = f"""dim{dim+1}"""
+        df.rename(columns={dim:colname_current}, inplace=True)
+        colnames_dim_weights.append(colname_current)
+    return df, colnames_dim_weights
+
+def gini_of_halves(df_both_halves, ginis, colnames_dim_weights):
+    """
+    Computes Gini coefficients for decision weights across two halves of a study and evaluates their consistency.
+
+    This function:
+    - Reshapes the input DataFrame from wide to long format for both halves.
+    - Calculates Gini coefficients for each participant in each half.
+    - Computes the difference in Gini values between halves.
+    - Assesses reliability of the Gini coefficients between halves using intraclass correlation (ICC).
+    - Merges the half-wise Gini results with the Gini results from the full data set.
+
+    Parameters:
+    - df_both_halves (pd.DataFrame): A DataFrame containing decision weights for two halves of a study.
+      Expected to have columns like 'dim1_h1', 'dim1_h2', ..., and a 'pid' column.
+    - ginis (pd.DataFrame): A DataFrame containing precomputed Gini coefficients per participant.
+      Must include a 'pid' column for merging.
+    - colnames_dim_weights (list[str]): List of base dimension column names (e.g., ['dim1', 'dim2', ...]).
+
+    Returns:
+    - Tuple[pd.DataFrame, pd.DataFrame]:
+        - `df_gini_all`: A DataFrame with participant IDs, original Gini values, Gini coefficients for each half, and their delta.
+        - `icc_ginis`: A DataFrame containing intraclass correlation results for Gini reliability across halves.
+    """
+
+    # long format in both halves
+    df_h1_long = df_both_halves[["pid"] + [f"""{cn}_h1""" for cn in colnames_dim_weights]].melt(id_vars="pid", value_name="weight", var_name="dimension")
+    df_h1_long["dimension"] = df_h1_long["dimension"].str.replace(r"_h1$", "", regex=True)
+    df_h1_long["half"] = 1
+    df_h2_long = df_both_halves[["pid"] + [f"""{cn}_h2""" for cn in colnames_dim_weights]].melt(id_vars="pid", value_name="weight", var_name="dimension")
+    df_h2_long["dimension"] = df_h2_long["dimension"].str.replace(r"_h2$", "", regex=True)
+    df_h2_long["half"] = 2
+
+    # then, calculate the ginis in each half
+    df_halves_long = pd.concat([df_h1_long, df_h2_long], ignore_index=True)
+    df_gini_halves = df_halves_long.groupby(["pid", "half"])[["weight"]].agg(gini).reset_index()
+    df_gini_halves = df_gini_halves.pivot(index="pid", columns="half", values="weight").reset_index()
+    df_gini_halves.columns = ["pid", "gini_first_half", "gini_second_half"]
+    df_gini_halves["gini_delta"] = df_gini_halves["gini_second_half"] - df_gini_halves["gini_first_half"]
+
+    # icc of ginis
+    icc_ginis = pg.intraclass_corr(data=df_gini_halves.drop("gini_delta", axis=1).melt(id_vars="pid"), targets='pid', raters='variable', ratings='value')
+    df_gini_all = pd.merge(ginis, df_gini_halves, how="left", on="pid")
+    
+    return df_gini_all, icc_ginis
