@@ -17,15 +17,27 @@ walk(l_load, source)
 # first, list all result files available in the respective folders
 
 # Set the base directory containing study data
-base_dir <- "data/study1-2025-08/jatos_results_files_20250813071123/"
+base_dir <- "data/study1-2025-08/jatos_results_files_20250820165020/"
 l_paths_sep <- file_paths_separate(base_dir)
 
 
+# some participants had to start a component later (e.g., because of closing their browser window)
+# they got a second link to do the missing component(-s)
+# the mapping between ids, if necessary, is done manually within merge_partial_participations()
+tbl_partial_ids <- merge_partial_participations()
 
 # Load Data ---------------------------------------------------------------
 
 ## comprehensions questions
 tbl_comprehension <- map(l_paths_sep$cc, function(x) as_tibble(fromJSON(x))) %>% reduce(rbind)
+tbl_comprehension <- merge_separate_ids(tbl_comprehension, tbl_partial_ids)
+
+
+# for comprehension questions, we leave in every time a participant has started the study
+# in the case that they have started several times
+# e.g., whether they needed three times the first/second/... time they started the study does not matter
+# if any of these numbers is > thx, we throw that participant out
+
 # runthrough time is time after questions have been answered correctly - time when first ooo page was displayed in ms
 tbl_comprehension <- tbl_comprehension %>%
   mutate(t_comprehension_min = t_comprehension / 1000 / 60)
@@ -34,16 +46,35 @@ tbl_comprehension <- tbl_comprehension %>%
 ## odd-one-out
 tbl_ooo <- map(l_paths_sep$ooo, function(x) as_tibble(fromJSON(x))) %>% 
   reduce(rbind) %>% filter(is_practice == 0)
+tbl_ooo <- merge_separate_ids(tbl_ooo, tbl_partial_ids)
+
+# for ooo trials, we simply keep the first datapoint a participant has contributed
+# for a given trial
+# i.e., if they have completed trial_id 1 three times, we only keep the first time
+# and delete the second and third times
+
+tbl_ooo <- keep_first_encounters_only(tbl_ooo)
+n_trials <- tbl_ooo %>% count(participant_id) %>% select(n)
+if (!assertthat::assert_that(all(n_trials$n <= 440))){
+  stop()
+}
 l_ooo <- ooo_modeling_format(tbl_ooo)
 tbl_ooo_ID_save <- l_ooo$tbl_ooo_ID_save
 tbl_ooo_ids <- l_ooo$tbl_ooo_ids
+
 
 ## questionnaires
 cols_txt <- c("workHistory", "interests1", "interests2", "interests3", "feedback")
 cols_id <- c("session_id", "participant_id")
 
 tbl_qs_prep <- map(l_paths_sep$qs, function(x) as_tibble(fromJSON(x))) %>% reduce(rbind)
-
+tbl_qs_prep <- merge_separate_ids(tbl_qs_prep, tbl_partial_ids)
+# keep first encounters only
+tbl_qs_prep$idx <- 1:nrow(tbl_qs_prep)
+tbl_qs_prep <- tbl_qs_prep %>%
+  group_by(participant_id) %>%
+  mutate(rwn = row_number(idx)) %>%
+  filter(rwn == 1) %>% ungroup()
 
 # numeric responses from questionnaires
 tbl_qs_num <- tbl_qs_prep %>%

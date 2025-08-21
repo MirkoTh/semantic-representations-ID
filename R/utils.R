@@ -178,3 +178,94 @@ cumsum_reset <- function(x, reset_val = 0) {
   }
   return(out)
 }
+
+
+#' Filter to Keep Only First Trial Encounters for High-Entry Participants
+#'
+#' This function processes a dataset of participant trial entries and filters it to retain:
+#' - All entries for participants with 440 or fewer entries.
+#' - Only the first encounter per trial for participants with more than 440 entries.
+#'
+#' @param tbl_ooo A data frame containing trial data. Must include at least:
+#' \describe{
+#'   \item{participant_id}{Unique identifier for each participant.}
+#'   \item{trial_id}{Identifier for each trial or encounter.}
+#' }
+#'
+#' @return A data frame with filtered entries:
+#' \itemize{
+#'   \item All entries for participants with ≤440 entries.
+#'   \item First encounter per trial for participants with >440 entries.
+#' }
+#'
+#' @examples
+#' cleaned_data <- keep_first_encounters_only(raw_data)
+#'
+#' @export
+keep_first_encounters_only <- function(tbl_ooo) {
+  tbl_multiple_ooo <- tbl_ooo %>% 
+    group_by(participant_id) %>% 
+    summarize(n_entries = n()) %>%
+    filter(n_entries > 440) %>% 
+    ungroup()
+  
+  tbl_ooo_repeated <- tbl_multiple_ooo %>% left_join(tbl_ooo, by = "participant_id")
+  tbl_ooo_repeated$idx <- 1:nrow(tbl_ooo_repeated)
+  
+  tbl_ooo_unique <- tbl_ooo %>% filter(!(participant_id %in% tbl_multiple_ooo$participant_id))
+  tbl_ooo_first_trial <- tbl_ooo_repeated %>% 
+    group_by(participant_id, trial_id) %>% 
+    mutate(rwn = row_number(idx)) %>%
+    filter(rwn == 1) %>% 
+    select(-c(idx, rwn, n_entries)) %>% ungroup()
+  
+  tbl_ooo <- rbind(tbl_ooo_unique, tbl_ooo_first_trial)
+  
+  return(tbl_ooo)
+}
+
+merge_partial_participations <- function() {
+  # function manually maps ids from the separate parts
+  tbl_merge_separate <- tibble(
+    participant_id = "600a97750a20c621b3d6d358",
+    separate_id = "zukmii"
+  )
+  return(tbl_merge_separate)
+}
+
+#' Merge Separate Participant IDs with Prolific IDs
+#'
+#' Replaces temporary or separate participant IDs in a dataset with their corresponding
+#' Prolific IDs using a lookup table. This ensures consistent participant identification
+#' across datasets.
+#'
+#' @param tbl_df A data frame containing participant data. Must include a column named
+#' `participant_id` which may contain separate or temporary IDs.
+#' @param tbl_partial_ids A lookup data frame containing two columns: `separate_id` and
+#' the corresponding Prolific `participant_id`. Used to resolve and unify IDs.
+#'
+#' @details The function performs a left join between `tbl_df` and `tbl_partial_ids`,
+#' matching `participant_id` in `tbl_df` to `separate_id` in `tbl_partial_ids`. If a match
+#' is found, the `participant_id` is replaced with the corresponding Prolific ID. The helper
+#' column `participant_id_separate` is removed before returning the updated data frame.
+#'
+#' @return A data frame with unified `participant_id` values.
+#'
+#' @examples
+#' # Example usage:
+#' tbl_df <- data.frame(participant_id = c("abc123", "temp456"))
+#' tbl_partial_ids <- data.frame(separate_id = c("temp456"), participant_id = c("xyz789"))
+#' merged_df <- merge_separate_ids(tbl_df, tbl_partial_ids)
+#'
+#' @export
+merge_separate_ids <- function(tbl_df, tbl_partial_ids) {
+  tbl_df <- tbl_df %>% 
+    left_join(tbl_partial_ids, by = c("participant_id" = "separate_id"), suffix = c("", "_separate"))
+  
+  tbl_df$participant_id[!is.na(tbl_df$participant_id_separate)] <- 
+    tbl_df$participant_id_separate[!is.na(tbl_df$participant_id_separate)]
+  
+  tbl_df <- tbl_df %>% select(-participant_id_separate)
+  
+  return(tbl_df)
+}
