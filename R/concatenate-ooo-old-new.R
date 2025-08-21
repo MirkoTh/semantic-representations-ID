@@ -102,7 +102,7 @@ write_csv(
 
 # Create and Save Half-Split Data Set ------------------------------------
 
-
+set.seed(10)
 tbl_reorder <- tbl_full %>%
   mutate(idx = 1:nrow(.)) %>%
   group_by(X4) %>%
