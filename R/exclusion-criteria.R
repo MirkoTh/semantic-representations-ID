@@ -37,7 +37,9 @@ tbl_exclude <- tbl_exclude %>%
 # exclude people with large number of comprehension check attempts
 # reduce 10 to 2 again, just not to exclude people with 3 attempts
 thx_attempts <- mean(tbl_cc$n_attempts) + 10 * sd(tbl_cc$n_attempts)
-tbl_exclude$exclude_attempts <- tbl_exclude$n_attempts > thx_attempts
+tbl_exclude$exclude_attempts <- (
+  tbl_exclude$n_attempts > thx_attempts | is.na(tbl_exclude$n_attempts)
+)
 
 tbl_exclude <- tbl_exclude %>% left_join(
   tbl_ooo %>% count(participant_id, name = "n_ooo") %>%
@@ -82,6 +84,7 @@ tbl_exclude <- tbl_exclude %>%
   mutate(
     exclude_ooo_fast = prop_lo1 > thx_prop_fast_1 | prop_lo2 > thx_prop_fast_2
   )
+
 
 tbl_include <- tbl_exclude %>%
   select(c(participant_id, starts_with("exclude"))) %>%
