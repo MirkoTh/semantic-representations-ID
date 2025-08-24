@@ -2233,7 +2233,7 @@ def reorder_dimensions(l, ndim):
     return l_max_sims, l_idx1, l_idx2
 
 
-def max_sim_dimensions_per_ndim(l_max_sims, range_dims):
+def max_sim_dimensions_per_ndim(l_max_sims, range_dims, plus_val=2):
     """
     Identifies the index of the simulation result for each dimensionality in `range_dims`
     where the number of unique values equals the number of dimensions.
@@ -2255,24 +2255,25 @@ def max_sim_dimensions_per_ndim(l_max_sims, range_dims):
     for idx_outer, max_sims in enumerate(l_max_sims):
         for idx_inner, ms in enumerate(max_sims[0]):
             ndim = ms.shape[0]
-            n_unique = len(np.unique_values(ms))
+            n_unique = len(np.unique(ms))
             if ndim == n_unique:
-                dict_idxs_use[idx_outer + 2] = idx_inner
+                dict_idxs_use[idx_outer + plus_val] = idx_inner
                 break
     return dict_idxs_use
 
 
-def max_sim_results_per_ndim(dict_idxs_use, l_max_sims, range_dims):
+def max_sim_results_per_ndim(dict_idxs_use, l_max_sims, range_dims, min_val=2):
     """
     Returns indexes for the list of simulation results where each dimension
     in the second half is maximally correlated with a unique dimension in the first half.
 
     Parameters:
         dict_idxs_use (dict): A dictionary mapping dimensionality to the index of the simulation to use.
-        l_max_sims (list): A list of simulation result tuples. Each tuple contains:
+        l_max_sims (list): A list indexing the position, in which the respective results are stored:
                            - [1]: first half results
                            - [2]: second half results
         range_dims (iterable): A sequence of dimensionalities to include in the output.
+        min_val (int): integer to subtract from the list indices
 
     Returns:
         dict: A dictionary mapping each dimensionality in `range_dims` to a list of two arrays:
@@ -2283,10 +2284,10 @@ def max_sim_results_per_ndim(dict_idxs_use, l_max_sims, range_dims):
     for ndim, idx in dict_idxs_use.items():
         if idx is not None:
             dict_idxs_list_use[ndim].append(
-                l_max_sims[ndim - 2][1][idx]
+                l_max_sims[ndim - min_val][1][idx]
             )  # idxs first half
             dict_idxs_list_use[ndim].append(
-                l_max_sims[ndim - 2][2][idx]
+                l_max_sims[ndim - min_val][2][idx]
             )  # idxs second half
     return dict_idxs_list_use
 
@@ -2354,25 +2355,37 @@ def load_ID_lowdim(
     l_dirs = []
     l_models = []
     l_rnd_seeds_flat = []
+    l_subs = []
 
     for rnd_seed in l_rnd_seed:
         for n in l_embed_dim:
             for data_subset in l_data_subset:
-                        results_dir_ID = os.path.join(
-                            "./results",
-                            modelversion,
-                            f"modeltype_{modeltype}",
-                            f"{n}d",
-                            f"seed{rnd_seed}",
-                            f"data_subset_{data_subset}"
-                        )
-                        l_dirs.append(results_dir_ID)
-                        l_rnd_seeds_flat.append(rnd_seed)
+                results_dir_ID = os.path.join(
+                    "./results",
+                    modelversion,
+                    f"modeltype_{modeltype}",
+                    f"{n}d",
+                    f"seed{rnd_seed}",
+                    f"data_subset_{data_subset}",
+                )
+                l_dirs.append(results_dir_ID)
+                l_rnd_seeds_flat.append(rnd_seed)
+                l_subs.append(data_subset)
 
     for i, d in enumerate(l_dirs):
         l_files = os.listdir(d)
         latest_epoch = max_epoch(l_files)
         model_path = os.path.join(d, "model", latest_epoch)
+
+        match l_subs[i]:
+            case "first_half":
+                splithalf = "1"
+            case "second_half":
+                splithalf = "2"
+            case "full":
+                splithalf = "no_split"
+            case "testcase":
+                splithalf = "testcase"
 
         if os.path.isfile(model_path):
             m = torch.load(
@@ -2389,6 +2402,8 @@ def load_ID_lowdim(
                 "modeltype": m["modeltype"],
                 "n_embed": m["n_embed"],
                 "rnd_seed": l_rnd_seeds_flat[i],
+                "data_subset": m["data_subset"],
+                "splithalf": splithalf,
             }
             l_models.append(dict_out)
         else:
@@ -2591,6 +2606,23 @@ def scales_and_facets_pid5(df_qs_num):
     return df_qs_num
 
 
+def scale_i8(df_qs_num):
+    """
+    Computes the scale score for the impulsive behavior short scale (I-8) questionnaire.
+
+    Parameters:
+    df_qs_num (pd.DataFrame): A DataFrame containing numeric responses to I-8 items.
+                                Columns must be named 'I_8_{i}' where i is the item index (0-based).
+
+    Returns:
+        pd.DataFrame: The input DataFrame with one additional column for the I-8 trait score.
+
+    """
+    i_8_cols = [c.startswith("I_8_") for c in df_qs_num.columns]
+    df_qs_num["Impulsivity"] = df_qs_num.loc[:, i_8_cols].mean(axis=1)
+    return df_qs_num
+
+
 def scales_and_facets(df_qs_num):
     """
     Computes scale and facet scores for both the Big Five Short Form and PID-5 Brief Form questionnaires.
@@ -2598,6 +2630,7 @@ def scales_and_facets(df_qs_num):
     This function applies:
     - `scales_and_facets_big5()` to compute Big Five traits and facets.
     - `scales_and_facets_pid5()` to compute PID-5 maladaptive trait scores.
+    - `scale_i8()` to compute I-8 impulsivity score.
 
     Parameters:
         df_qs_num (pd.DataFrame): A DataFrame containing numeric responses to both BIG5-SF and PID5-BF items.
@@ -2607,6 +2640,7 @@ def scales_and_facets(df_qs_num):
     """
     df_qs_num = scales_and_facets_big5(df_qs_num)
     df_qs_num = scales_and_facets_pid5(df_qs_num)
+    df_qs_num = scale_i8(df_qs_num)
     return df_qs_num
 
 
@@ -2751,7 +2785,7 @@ def tokenize_col(txt, prefix1, prefix2, tokenizer, model, device):
     return e
 
 
-def extract_dim_weight_results(l_results, l_idx, n_embed, l_pids_model, l_pids_new): 
+def extract_dim_weight_results(l_results, l_idx, n_embed, l_pids_model, l_pids_new):
     """
     Extracts dimensional decision weights for participants from a new study.
 
@@ -2767,7 +2801,9 @@ def extract_dim_weight_results(l_results, l_idx, n_embed, l_pids_model, l_pids_n
       and an average weight feature. The participant ID column is placed first.
     """
     # extract dimensional weights only for participants from new study
-    df_dim_weights = pd.DataFrame(l_results[l_idx]["decision_weights"].detach().numpy()[l_pids_model, :])
+    df_dim_weights = pd.DataFrame(
+        l_results[l_idx]["decision_weights"].detach().numpy()[l_pids_model, :]
+    )
     # add participant_id_new used in the new study (i.e., l_pids_new)
     # participant_id_new can then be joined with other results from the new study
     df_dim_weights["participant_id_new"] = l_pids_new
@@ -2776,12 +2812,13 @@ def extract_dim_weight_results(l_results, l_idx, n_embed, l_pids_model, l_pids_n
     new_order = [col] + [c for c in df_dim_weights.columns if c != col]
     df_dim_weights = df_dim_weights[new_order]
     # create average weight feature
-    df_dim_weights["avg_weight"] = df_dim_weights[0:(n_embed-1)].mean(axis=0)
+    df_dim_weights["avg_weight"] = df_dim_weights.loc[:, 0 : (n_embed - 1)].mean(axis=1)
     return df_dim_weights
+
 
 def rename_dim_weight_cols(df, n_embed):
     """
-    Renames unnamed numerical columns in a DataFrame to 'dim1', 'dim2', ..., 'dimN' 
+    Renames unnamed numerical columns in a DataFrame to 'dim1', 'dim2', ..., 'dimN'
     based on the number of embedding dimensions.
 
     Parameters:
@@ -2789,16 +2826,17 @@ def rename_dim_weight_cols(df, n_embed):
     - n_embed (int): Number of embedding dimensions to rename.
 
     Returns:
-    - Tuple[pd.DataFrame, list[str]]: 
+    - Tuple[pd.DataFrame, list[str]]:
         - The updated DataFrame with renamed columns.
         - A list of new column names used for the dimensions.
     """
     colnames_dim_weights = []
     for dim in range(0, n_embed):
         colname_current = f"""dim{dim+1}"""
-        df.rename(columns={dim:colname_current}, inplace=True)
+        df.rename(columns={dim: colname_current}, inplace=True)
         colnames_dim_weights.append(colname_current)
     return df, colnames_dim_weights
+
 
 def gini_of_halves(df_both_halves, ginis, colnames_dim_weights):
     """
@@ -2825,22 +2863,41 @@ def gini_of_halves(df_both_halves, ginis, colnames_dim_weights):
     """
 
     # long format in both halves
-    df_h1_long = df_both_halves[["pid"] + [f"""{cn}_h1""" for cn in colnames_dim_weights]].melt(id_vars="pid", value_name="weight", var_name="dimension")
-    df_h1_long["dimension"] = df_h1_long["dimension"].str.replace(r"_h1$", "", regex=True)
+    df_h1_long = df_both_halves[
+        ["pid"] + [f"""{cn}_h1""" for cn in colnames_dim_weights]
+    ].melt(id_vars="pid", value_name="weight", var_name="dimension")
+    df_h1_long["dimension"] = df_h1_long["dimension"].str.replace(
+        r"_h1$", "", regex=True
+    )
     df_h1_long["half"] = 1
-    df_h2_long = df_both_halves[["pid"] + [f"""{cn}_h2""" for cn in colnames_dim_weights]].melt(id_vars="pid", value_name="weight", var_name="dimension")
-    df_h2_long["dimension"] = df_h2_long["dimension"].str.replace(r"_h2$", "", regex=True)
+    df_h2_long = df_both_halves[
+        ["pid"] + [f"""{cn}_h2""" for cn in colnames_dim_weights]
+    ].melt(id_vars="pid", value_name="weight", var_name="dimension")
+    df_h2_long["dimension"] = df_h2_long["dimension"].str.replace(
+        r"_h2$", "", regex=True
+    )
     df_h2_long["half"] = 2
 
     # then, calculate the ginis in each half
     df_halves_long = pd.concat([df_h1_long, df_h2_long], ignore_index=True)
-    df_gini_halves = df_halves_long.groupby(["pid", "half"])[["weight"]].agg(gini).reset_index()
-    df_gini_halves = df_gini_halves.pivot(index="pid", columns="half", values="weight").reset_index()
+    df_gini_halves = (
+        df_halves_long.groupby(["pid", "half"])[["weight"]].agg(gini).reset_index()
+    )
+    df_gini_halves = df_gini_halves.pivot(
+        index="pid", columns="half", values="weight"
+    ).reset_index()
     df_gini_halves.columns = ["pid", "gini_first_half", "gini_second_half"]
-    df_gini_halves["gini_delta"] = df_gini_halves["gini_second_half"] - df_gini_halves["gini_first_half"]
+    df_gini_halves["gini_delta"] = (
+        df_gini_halves["gini_second_half"] - df_gini_halves["gini_first_half"]
+    )
 
     # icc of ginis
-    icc_ginis = pg.intraclass_corr(data=df_gini_halves.drop("gini_delta", axis=1).melt(id_vars="pid"), targets='pid', raters='variable', ratings='value')
+    icc_ginis = pg.intraclass_corr(
+        data=df_gini_halves.drop("gini_delta", axis=1).melt(id_vars="pid"),
+        targets="pid",
+        raters="variable",
+        ratings="value",
+    )
     df_gini_all = pd.merge(ginis, df_gini_halves, how="left", on="pid")
-    
+
     return df_gini_all, icc_ginis
