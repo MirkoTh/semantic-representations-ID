@@ -224,15 +224,6 @@ keep_first_encounters_only <- function(tbl_ooo) {
   return(tbl_ooo)
 }
 
-merge_partial_participations <- function() {
-  # function manually maps ids from the separate parts
-  tbl_merge_separate <- tibble(
-    participant_id = "600a97750a20c621b3d6d358",
-    separate_id = "zukmii"
-  )
-  return(tbl_merge_separate)
-}
-
 #' Merge Separate Participant IDs with Prolific IDs
 #'
 #' Replaces temporary or separate participant IDs in a dataset with their corresponding

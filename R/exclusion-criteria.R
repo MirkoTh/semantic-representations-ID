@@ -19,9 +19,8 @@ tbl_qs_txt <- read_csv("data/study1-2025-08/tbl_qs_txt.csv")
 tbl_pids <- read_csv("data/study1-2025-08/tbl_participants.csv")
 
 
-# exclusion criteria
+# fixed exclusion criteria
 thx_n_ooo_required <- 440
-thx_n_ooo_streak_exclude <- 10 # same responses in a row
 thx_ooo_rt_min_1 <- 800 # ms and prop responses below that thx
 thx_prop_fast_1 <- .25
 thx_ooo_rt_min_2 <- 1100 # ms
@@ -57,6 +56,10 @@ tbl_ooo_streak <- tbl_ooo %>%
   mutate(streak = cumsum_reset(r_rep) + 1) %>%
   summarize(max_response_streak = max(streak)) %>%
   ungroup()
+
+# exclusion criterion given data
+thx_n_ooo_streak_exclude <- mean(tbl_ooo_streak$max_response_streak) + 
+  2 * sd(tbl_ooo_streak$max_response_streak)
 
 tbl_exclude <- tbl_exclude %>%
   left_join(
