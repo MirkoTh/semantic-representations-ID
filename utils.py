@@ -2281,7 +2281,7 @@ def reorder_dimensions(l, ndim):
     return l_max_sims, l_idx1, l_idx2
 
 
-def max_sim_dimensions_per_ndim(l_max_sims, range_dims, plus_val=2):
+def max_sim_dimensions_per_ndim(l_max_sims, range_dims):
     """
     Identifies the index of the simulation result for each dimensionality in `range_dims`
     where the number of unique values equals the number of dimensions.
@@ -2305,23 +2305,22 @@ def max_sim_dimensions_per_ndim(l_max_sims, range_dims, plus_val=2):
             ndim = ms.shape[0]
             n_unique = len(np.unique(ms))
             if ndim == n_unique:
-                dict_idxs_use[idx_outer + plus_val] = idx_inner
+                dict_idxs_use[ndim] = idx_inner
                 break
     return dict_idxs_use
 
 
-def max_sim_results_per_ndim(dict_idxs_use, l_max_sims, range_dims, min_val=2):
+def max_sim_results_per_ndim(dict_idxs_use, dict_max_sims, range_dims):
     """
     Returns indexes for the list of simulation results where each dimension
     in the second half is maximally correlated with a unique dimension in the first half.
 
     Parameters:
         dict_idxs_use (dict): A dictionary mapping dimensionality to the index of the simulation to use.
-        l_max_sims (list): A list indexing the position, in which the respective results are stored:
+        dict_max_sims (dict): A dict indexing the position, in which the respective results are stored:
                            - [1]: first half results
                            - [2]: second half results
         range_dims (iterable): A sequence of dimensionalities to include in the output.
-        min_val (int): integer to subtract from the list indices
 
     Returns:
         dict: A dictionary mapping each dimensionality in `range_dims` to a list of two arrays:
@@ -2332,10 +2331,10 @@ def max_sim_results_per_ndim(dict_idxs_use, l_max_sims, range_dims, min_val=2):
     for ndim, idx in dict_idxs_use.items():
         if idx is not None:
             dict_idxs_list_use[ndim].append(
-                l_max_sims[ndim - min_val][1][idx]
+                dict_max_sims[ndim][1][idx]
             )  # idxs first half
             dict_idxs_list_use[ndim].append(
-                l_max_sims[ndim - min_val][2][idx]
+                dict_max_sims[ndim][2][idx]
             )  # idxs second half
     return dict_idxs_list_use
 
@@ -2355,7 +2354,7 @@ def max_cors(range_dims, dict_idxs_use, l_cors):
                       and each row contains the maximum correlation values for the selected simulation.
                       If no index is specified for a dimensionality, the column will contain NaNs.
     """
-    dict_cors = {i: None for i in range(2, 11)}
+    dict_cors = {i: None for i in range_dims}
     for k, v in dict_idxs_use.items():
         if v is not None:
             tmp = l_cors[k - list(dict_cors.keys())[0]][0][v]

@@ -70,7 +70,8 @@ def parseargs():
         "--modeltype",
         type=str,
         default="random_weights_free_scaling",
-        choices=["random_weights_free_scaling", "random_weights_random_scaling"],
+        choices=["random_weights_free_scaling",
+                 "random_weights_random_scaling", "free_weights_no_scaling"],
         help="freely or randomly varying varying temperatures (by participant)",
     )
     aa(
@@ -269,7 +270,8 @@ def run(
         p=p,
         method="ids",
     )
-    logger.info(f"\nNumber of train batches in current process: {len(train_batches)}\n")
+    logger.info(
+        f"\nNumber of train batches in current process: {len(train_batches)}\n")
 
     ###############################
     ########## settings ###########
@@ -284,6 +286,14 @@ def run(
             num_participants=n_participants,
             init_weights=True,
             scaling=scaling,
+        )
+    elif modeltype == "free_weights_no_scaling":
+        scaling = "fixed"
+        model = md.CombinedModel_weights_only(
+            in_size=n_items_ID,
+            out_size=embed_dim,
+            num_participants=n_participants,
+            init_weights=True,
         )
     else:
         # so far, only random weights and free scaling implemented
@@ -330,7 +340,8 @@ def run(
     if resume:
         if os.path.exists(model_dir):
             models = sorted(
-                [m.name for m in os.scandir(model_dir) if m.name.endswith(".tar")]
+                [m.name for m in os.scandir(
+                    model_dir) if m.name.endswith(".tar")]
             )
             if len(models) > 0:
                 try:
@@ -364,9 +375,11 @@ def run(
                     loglikelihoods, complexity_losses = [], []
                     nneg_d_over_time = []
             else:
-                raise Exception("No checkpoints found. Cannot resume training.")
+                raise Exception(
+                    "No checkpoints found. Cannot resume training.")
         else:
-            raise Exception("Model directory does not exist. Cannot resume training.")
+            raise Exception(
+                "Model directory does not exist. Cannot resume training.")
     else:
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
@@ -412,7 +425,8 @@ def run(
             optim.zero_grad()  # zero out gradients
             b = batch[0].to(device)
             id = batch[1].to(device)
-            c_entropy, anchor, positive, negative = model(b, id, distance_metric)
+            c_entropy, anchor, positive, negative = model(
+                b, id, task, temperature, distance_metric)
 
             # few-dimensional representations of the items
             l1_pen_avg = md.l1_regularization(model, "fc.weight", agreement="few").to(
@@ -421,7 +435,7 @@ def run(
             # mostly agreement with item reps, but few dimensions may be downweighted
             W = model.model1.fc.weight
             Bs = model.model1.individual_slopes.weight
-            temperature = model.model2(id[::3])
+            # temperature = model.model2(id[::3])
             # positivity constraint to enforce non-negative values in embedding matrix
             # pos_pen = torch.sum(F.relu(-W))
             pos_pen = torch.sum(F.relu(-W)) + torch.sum(F.relu(-Bs))
@@ -429,19 +443,18 @@ def run(
 
             # Gaussian loss on individual differences for each dimension
             # is only computed by random model
-            gaussian_pen = model.model1.hierarchical_loss(
-                id
-            ) + model.model2.hierarchical_loss(id)
-            gaussian_loss = gaussian_pen * lmbda_hierarchical
-            loss = c_entropy + 0.01 * pos_pen + complexity_loss_avg + gaussian_loss
+            # gaussian_pen = model.model1.hierarchical_loss(
+            #     id
+            # ) + model.model2.hierarchical_loss(id)
+            # gaussian_loss = gaussian_pen * lmbda_hierarchical
+            loss = c_entropy + 0.01 * pos_pen + complexity_loss_avg  # + gaussian_loss
 
             loss.backward()
             optim.step()
             batch_losses_train[i] += loss.item()
             batch_llikelihoods[i] += c_entropy.item()
-            batch_glosses[i] += gaussian_loss.item()
-            batch_closses[i] += complexity_loss_avg.item()
-            batch_glosses[i] += gaussian_loss.item()
+            batch_glosses[i] += 0  # gaussian_loss.item()
+            batch_closses[i] += 0  # complexity_loss_avg.item()
             accs_train_proba, accs_train_max = ut.choice_accuracy(
                 anchor,
                 positive,
@@ -498,24 +511,28 @@ def run(
         if (epoch + 1) % steps == 0:
             W = model.model1.fc.weight
             id_slopes = model.model1.individual_slopes.weight
-            id_decision_scaling = model.model2.individual_temps.weight
+            id_decision_scaling = temperature  # model.model2.individual_temps.weight
             np.savetxt(
-                os.path.join(results_dir, f"sparse_embed_epoch{epoch+1:04d}.txt"),
+                os.path.join(
+                    results_dir, f"sparse_embed_epoch{epoch+1:04d}.txt"),
                 W.detach().cpu().numpy(),
             )
             logger.info(f"Saving model weights at epoch {epoch+1}")
             np.savetxt(
-                os.path.join(results_dir, f"individual_slopes{epoch+1:04d}.txt"),
+                os.path.join(
+                    results_dir, f"individual_slopes{epoch+1:04d}.txt"),
                 id_slopes.detach().cpu().numpy(),
             )
-            logger.info(f"Saving individual decision weights at epoch {epoch+1}")
-            np.savetxt(
-                os.path.join(results_dir, f"individual_scalings{epoch+1:04d}.txt"),
-                id_decision_scaling.detach().cpu().numpy(),
-            )
             logger.info(
-                f"Saving individual decision scaling factors at epoch {epoch+1}"
-            )
+                f"Saving individual decision weights at epoch {epoch+1}")
+            # np.savetxt(
+            #     os.path.join(
+            #         results_dir, f"individual_scalings{epoch+1:04d}.txt"),
+            #     id_decision_scaling.detach().cpu().numpy(),
+            # )
+            # logger.info(
+            #     f"Saving individual decision scaling factors at epoch {epoch+1}"
+            # )
 
             # save model and optim parameters for inference or to resume training
             # PyTorch convention is to save checkpoints as .tar files
@@ -552,12 +569,14 @@ def run(
         "train_acc_max": train_accs_max[-1],
         "train_acc_proba": train_accs_proba[-1],
     }
-    logger.info(f"\nOptimization finished after {epoch+1} epochs for lambda: {lmbda}\n")
+    logger.info(
+        f"\nOptimization finished after {epoch+1} epochs for lambda: {lmbda}\n")
 
     logger.info(
         f"\nPlotting number of non-negative dimensions as a function of time for lambda: {lmbda}\n"
     )
-    pl.plot_nneg_dims_over_time(plots_dir=plots_dir, nneg_d_over_time=nneg_d_over_time)
+    pl.plot_nneg_dims_over_time(
+        plots_dir=plots_dir, nneg_d_over_time=nneg_d_over_time)
 
     logger.info(f"\nPlotting model performances over time for lambda: {lmbda}")
     # plot train and validation performance alongside each other to examine a potential overfit to the training data

@@ -234,6 +234,7 @@ class CombinedModel(nn.Module):
         self.num_participants = num_participants
         self.init_weights = init_weights
         # embedding model with random by-participant dimension weights
+
         self.model1 = SPoSE_ID_Random(
             in_size=self.in_size,
             out_size=self.out_size,
@@ -272,6 +273,37 @@ class CombinedModel(nn.Module):
         return loss, anchor, positive, negative
 
 
+class CombinedModel_weights_only(nn.Module):
+    def __init__(
+        self,
+        in_size: int,
+        out_size: int,
+        num_participants: int,
+        init_weights=True,
+    ):
+        super(CombinedModel_weights_only, self).__init__()
+        self.in_size = in_size
+        self.out_size = out_size
+        self.num_participants = num_participants
+        self.init_weights = init_weights
+        # embedding model with random by-participant dimension weights
+
+        self.model1 = SPoSE_ID(
+            in_size=self.in_size,
+            out_size=self.out_size,
+            num_participants=self.num_participants,
+            init_weights=self.init_weights,
+        )
+
+    def forward(self, x, id, task, temperature, distance_metric):
+        logits = self.model1(x, id)
+        anchor, positive, negative = torch.unbind(
+            torch.reshape(logits, (-1, 3, self.out_size)), dim=1)
+        c_entropy = ut.trinomial_loss(
+            anchor, positive, negative, task, temperature, distance_metric)
+        return c_entropy, anchor, positive, negative
+
+
 class SPoSE_ID_IC(nn.Module):
     def __init__(
         self,
@@ -286,7 +318,8 @@ class SPoSE_ID_IC(nn.Module):
         self.out_size = out_size
         self.fc = nn.Linear(self.in_size, self.out_size, bias=False)
         self.individual_slopes = nn.Embedding(num_participants, self.out_size)
-        self.individual_intercepts = nn.Embedding(num_participants, self.out_size)
+        self.individual_intercepts = nn.Embedding(
+            num_participants, self.out_size)
         if init_weights:
             self._initialize_weights()
 
@@ -315,7 +348,8 @@ class Weighted_Embedding(nn.Module):
         super(Weighted_Embedding, self).__init__()
         self.embed_size = embed_size
         self.num_participants = num_participants
-        self.individual_slopes = nn.Embedding(num_participants, self.embed_size)
+        self.individual_slopes = nn.Embedding(
+            num_participants, self.embed_size)
         if init_weights:
             self._initialize_weights()
 

@@ -26,7 +26,8 @@ base_dict = {
 
 embed_dim_list = [7]  # 15
 learning_rate_list = [0.0005]  # 0.0005
-modeltype_list = ["random_weights_random_scaling"]
+# , "random_weights_random_scaling"
+modeltype_list = ["free_weights_no_scaling"]
 l_python_file = ["run-embedding-decision-combined-data.py"]
 l_data_subset = [["full", "testcase", "first_half", "second_half"][1]]
 
