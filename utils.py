@@ -2693,7 +2693,7 @@ def keep_scales_only(df_qs_num):
     return df_qs_num
 
 
-def load_model(model_id):
+def load_ll_model(model_id):
     """
     Loads a pretrained transformer model and tokenizer from Hugging Face.
 
@@ -2769,6 +2769,7 @@ def tokenize_col(txt, prefix1, prefix2, tokenizer, model, device):
         prefix2 (str): A second prefix string to prepend after prefix1.
         tokenizer (transformers.PreTrainedTokenizer): A Hugging Face tokenizer instance.
 
+
     Returns:
         np.ndarray: A NumPy array representing the embedding of the [CLS] token from the model's output.
 
@@ -2785,13 +2786,36 @@ def tokenize_col(txt, prefix1, prefix2, tokenizer, model, device):
     return e
 
 
-def extract_dim_weight_results(l_results, l_idx, n_embed, l_pids_model, l_pids_new):
+def embed_qwen(txt, prefix1, prefix2, model):
+    """
+    Tokenizes a concatenated text string using qwen3 8b
+    Parameters:
+        txt (str): The main text content to be tokenized.
+        prefix1 (str): A prefix string to prepend to the text.
+        prefix2 (str): A second prefix string to prepend after prefix1.
+        model SentenceTransformer: qwen3 loaded as sentence transformer model
+
+
+    Returns:
+        np.ndarray: A NumPy array representing the embedding of the [CLS] token from the model's output.
+
+    Notes:
+        - Assumes a global variable `model` is already loaded and accessible.
+        - Assumes a global variable `device` is defined for model execution.
+    """
+    all_together = prefix1 + prefix2 + txt
+    with torch.no_grad():
+        e = model.encode(all_together)
+    return e
+
+
+def extract_dim_weight_results(l_results, idx, n_embed, l_pids_model, l_pids_new):
     """
     Extracts dimensional decision weights for participants from a new study.
 
     Parameters:
     - l_results: list of modeling results
-    - l_idx (int): Index to select the appropriate result set from `l_results`.
+    - idx (int): Index to select the appropriate result set from `l_results`.
     - n_embed (int): Number of embedding dimensions used in the model.
     - l_pids_model (list[int]): List of participant indices from the model's dataset.
     - l_pids_new (list[int]): List of participant IDs corresponding to the new study.
@@ -2802,14 +2826,16 @@ def extract_dim_weight_results(l_results, l_idx, n_embed, l_pids_model, l_pids_n
     """
     # extract dimensional weights only for participants from new study
     df_dim_weights = pd.DataFrame(
-        l_results[l_idx]["decision_weights"].detach().numpy()[l_pids_model, :]
+        l_results[idx]["decision_weights"].detach().numpy()[l_pids_model, :]
     )
     # add participant_id_new used in the new study (i.e., l_pids_new)
     # participant_id_new can then be joined with other results from the new study
     df_dim_weights["participant_id_new"] = l_pids_new
+    df_dim_weights["participant_id_model"] = l_pids_model
+
     # Move participant_id column to the first position
-    col = "participant_id_new"
-    new_order = [col] + [c for c in df_dim_weights.columns if c != col]
+    col = ["participant_id_new", "participant_id_model"]
+    new_order = col + [c for c in df_dim_weights.columns if c not in col]
     df_dim_weights = df_dim_weights[new_order]
     # create average weight feature
     df_dim_weights["avg_weight"] = df_dim_weights.loc[:, 0 : (n_embed - 1)].mean(axis=1)
