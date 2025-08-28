@@ -2439,14 +2439,16 @@ def load_ID_lowdim(
             m = torch.load(
                 model_path, weights_only=True, map_location=torch.device("cpu")
             )
+            if modeltype == "random_weights_free_scaling" or modeltype == "random_weights_random_scaling":
+                ts = m["model_state_dict"]["model2.individual_temps.weight"]
+            elif modeltype == "free_weights_no_scaling":
+                ts = 1.0
             dict_out = {
                 "item_embeddings": m["model_state_dict"]["model1.fc.weight"],
                 "decision_weights": m["model_state_dict"][
                     "model1.individual_slopes.weight"
                 ],
-                "temperature_scalings": m["model_state_dict"][
-                    "model2.individual_temps.weight"
-                ],
+                "temperature_scalings": ts,
                 "modeltype": m["modeltype"],
                 "n_embed": m["n_embed"],
                 "rnd_seed": l_rnd_seeds_flat[i],
