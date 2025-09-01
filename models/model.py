@@ -86,18 +86,26 @@ class SPoSE_ID(nn.Module):
         out_size: int,
         num_participants: int,
         init_weights: bool = True,
+        individual_slopes_type: str = "separate",
     ):
 
         super(SPoSE_ID, self).__init__()
         self.in_size = in_size
         self.out_size = out_size
         self.fc = nn.Linear(self.in_size, self.out_size, bias=False)
-        self.individual_slopes = nn.Embedding(num_participants, self.out_size)
+        if individual_slopes_type == "separate":
+            self.individual_slopes = nn.Embedding(
+                num_participants, self.out_size)
+        elif individual_slopes_type == "shared":
+            self.individual_slopes = nn.Embedding(num_participants, 1)
         if init_weights:
             self._initialize_weights()
 
     def forward(self, x: torch.Tensor, id: torch.Tensor) -> torch.Tensor:
         w_i = self.individual_slopes(id)
+        if self.individual_slopes == "shared":
+            # Repeat the scalar across out_size dimensions
+            w_i = w_i.repeat(1, self.out_size)  # shape: [batch_size, out_size]
         return w_i * self.fc(x)
 
     def _initialize_weights(self) -> None:
@@ -117,12 +125,17 @@ class SPoSE_ID_Random(nn.Module):
         out_size: int,
         num_participants: int,
         init_weights: bool = True,
+        individual_slopes_type: str = "separate",
     ):
         super().__init__()
         self.in_size = in_size
         self.out_size = out_size
         self.fc = nn.Linear(in_size, out_size, bias=False)
-        self.individual_slopes = nn.Embedding(num_participants, out_size)
+        if individual_slopes_type == "separate":
+            self.individual_slopes = nn.Embedding(
+                num_participants, self.out_size)
+        elif individual_slopes_type == "shared":
+            self.individual_slopes = nn.Embedding(num_participants, 1)
 
         # Define learnable global mean & std
         self.global_mean = nn.Parameter(torch.ones(out_size))
@@ -140,6 +153,9 @@ class SPoSE_ID_Random(nn.Module):
 
     def forward(self, x: torch.Tensor, id: torch.Tensor):
         w_i = self.individual_slopes(id)
+        if self.individual_slopes == "shared":
+            # Repeat the scalar across out_size dimensions
+            w_i = w_i.repeat(1, self.out_size)  # shape: [batch_size, out_size]
         return w_i * self.fc(x)
 
     def _initialize_weights(self) -> None:
@@ -227,12 +243,14 @@ class CombinedModel(nn.Module):
         num_participants: int,
         scaling: str = "free",
         init_weights=True,
+        individual_slopes_type: str = "separate",
     ):
         super(CombinedModel, self).__init__()
         self.in_size = in_size
         self.out_size = out_size
         self.num_participants = num_participants
         self.init_weights = init_weights
+        self.individual_slopes_type = individual_slopes_type
         # embedding model with random by-participant dimension weights
 
         self.model1 = SPoSE_ID_Random(
@@ -240,6 +258,7 @@ class CombinedModel(nn.Module):
             out_size=self.out_size,
             num_participants=self.num_participants,
             init_weights=self.init_weights,
+            individual_slopes_type=self.individual_slopes_type,
         )
         if scaling == "free":
             # freely-varying by-participant softmax temperatures
@@ -280,12 +299,14 @@ class CombinedModel_weights_only(nn.Module):
         out_size: int,
         num_participants: int,
         init_weights=True,
+        individual_slopes_type: str = "separate",
     ):
         super(CombinedModel_weights_only, self).__init__()
         self.in_size = in_size
         self.out_size = out_size
         self.num_participants = num_participants
         self.init_weights = init_weights
+        self.individual_slopes_type = individual_slopes_type
         # embedding model with random by-participant dimension weights
 
         self.model1 = SPoSE_ID(
@@ -293,6 +314,8 @@ class CombinedModel_weights_only(nn.Module):
             out_size=self.out_size,
             num_participants=self.num_participants,
             init_weights=self.init_weights,
+            individual_slopes_type=self.individual_slopes_type,
+
         )
 
     def forward(self, x, id, task, temperature, distance_metric):

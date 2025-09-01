@@ -2339,7 +2339,7 @@ def max_sim_results_per_ndim(dict_idxs_use, dict_max_sims, range_dims):
     return dict_idxs_list_use
 
 
-def max_cors(range_dims, dict_idxs_use, l_cors):
+def max_cors(range_dims, dict_idxs_use, d_cors):
     """
     Computes the maximum correlation values across simulations for each dimensionality.
 
@@ -2357,7 +2357,7 @@ def max_cors(range_dims, dict_idxs_use, l_cors):
     dict_cors = {i: None for i in range_dims}
     for k, v in dict_idxs_use.items():
         if v is not None:
-            tmp = l_cors[k - list(dict_cors.keys())[0]][0][v]
+            tmp = d_cors[k][0][v]
             dict_cors[k] = tmp.max(axis=0)
     df_cors = pd.DataFrame(dict([(k, pd.Series(v))
                            for k, v in dict_cors.items()]))

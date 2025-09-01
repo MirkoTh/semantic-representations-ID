@@ -189,6 +189,13 @@ def parseargs():
         default=20,
         help="number of threads used by PyTorch multiprocessing",
     )
+    aa(
+        "--individual_slopes_type",
+        type=str,
+        default="separate",
+        choices=["separate", "shared"],
+        help="whether individual slopes are separate per dimension or shared (one scalar) across dimensions",
+    )
     args = parser.parse_args()
     return args
 
@@ -240,6 +247,7 @@ def run(
     distance_metric: str = "dot",
     temperature: float = 1.0,
     data_subset: str = "testcase",
+    individual_slopes_type: str = "separate",
 ):
     # initialise logger and start logging events
     logger = setup_logging(
@@ -278,6 +286,7 @@ def run(
     ###############################
 
     temperature = torch.tensor(temperature).clone().detach()
+
     if modeltype == "random_weights_random_scaling":
         scaling = "random"
         model = md.CombinedModel(
@@ -286,6 +295,7 @@ def run(
             num_participants=n_participants,
             init_weights=True,
             scaling=scaling,
+            individual_slopes_type=individual_slopes_type
         )
     elif modeltype == "free_weights_no_scaling":
         scaling = "fixed"
@@ -294,6 +304,7 @@ def run(
             out_size=embed_dim,
             num_participants=n_participants,
             init_weights=True,
+            individual_slopes_type=individual_slopes_type
         )
     else:
         # so far, only random weights and free scaling implemented
@@ -313,6 +324,7 @@ def run(
             "embeddings-decision-combined-data",
             f"modeltype_{modeltype}",
             f"{embed_dim}d",
+            f"{individual_slopes_type}",
             f"seed{rnd_seed}",
             f"data_subset_{data_subset}",
         )
@@ -325,6 +337,7 @@ def run(
             "embeddings-decision-combined-data",
             f"modeltype_{modeltype}",
             f"{embed_dim}d",
+            f"{individual_slopes_type}",
             f"seed{rnd_seed}",
             f"data_subset_{data_subset}",
         )
@@ -638,4 +651,5 @@ if __name__ == "__main__":
         temperature=args.temperature,
         early_stopping=args.early_stopping,
         data_subset=args.data_subset,
+        individual_slopes_type=args.individual_slopes_type
     )
