@@ -258,7 +258,7 @@ def run(
     logger.info("modeltype = ", f"{modeltype}")
 
     # load triplets into memory
-    train_triplets_ID = ut.load_data_combined(
+    train_triplets_ID, test_triplets_ID = ut.load_data_combined(
         device=device,
         triplets_dir=triplets_dir,
         dataset=data_subset,
@@ -268,9 +268,9 @@ def run(
 
     # load train and test mini-batches
     n_participants = len(np.unique(train_triplets_ID.numpy()[:, 3]))
-    train_batches, _ = ut.load_batches(
+    train_batches, test_batches = ut.load_batches(
         train_triplets=train_triplets_ID,
-        test_triplets=train_triplets_ID,
+        test_triplets=test_triplets_ID,
         n_items=n_items_ID,
         batch_size=batch_size,
         sampling_method=sampling_method,
@@ -398,6 +398,7 @@ def run(
             os.makedirs(model_dir)
         start = 0
         train_accs_max, train_accs_proba = [], []
+        test_accs_max, test_accs_proba = [], []
         train_losses = []
         (
             loglikelihoods,
@@ -434,6 +435,10 @@ def run(
         batch_losses_train = torch.zeros(len(train_batches))
         batch_accs_max_train = torch.zeros(len(train_batches))
         batch_accs_proba_train = torch.zeros(len(train_batches))
+
+        batch_accs_max_test = torch.zeros(len(test_batches))
+        batch_accs_proba_test = torch.zeros(len(test_batches))
+
         for i, batch in enumerate(train_batches):
             optim.zero_grad()  # zero out gradients
             b = batch[0].to(device)
@@ -480,12 +485,32 @@ def run(
             batch_accs_max_train[i] += accs_train_max
             iter += 1
 
+        for i, batch in enumerate(test_batches):
+            optim.zero_grad()  # zero out gradients
+            b = batch[0].to(device)
+            id = batch[1].to(device)
+            c_entropy, anchor, positive, negative = model(
+                b, id, task, temperature, distance_metric)
+            
+            accs_test_proba, accs_test_max = ut.choice_accuracy(
+                anchor,
+                positive,
+                negative,
+                task,
+                distance_metric,
+                scalingfactors=temperature,
+            )
+            batch_accs_proba_test[i] += accs_test_proba
+            batch_accs_max_test[i] += accs_test_max
+
         avg_llikelihood = torch.mean(batch_llikelihoods).item()
         avg_closs = torch.mean(batch_closses).item()
         avg_gloss = torch.mean(batch_glosses).item()
         avg_train_loss = torch.mean(batch_losses_train).item()
         avg_train_acc_max = torch.mean(batch_accs_max_train).item()
         avg_train_acc_proba = torch.mean(batch_accs_proba_train).item()
+        avg_test_acc_max = torch.mean(batch_accs_max_test).item()
+        avg_test_acc_proba = torch.mean(batch_accs_proba_test).item()
 
         loglikelihoods.append(avg_llikelihood)
         complexity_losses_avg.append(avg_closs)
@@ -493,6 +518,8 @@ def run(
         train_losses.append(avg_train_loss)
         train_accs_max.append(avg_train_acc_max)
         train_accs_proba.append(avg_train_acc_proba)
+        test_accs_max.append(avg_test_acc_max)
+        test_accs_proba.append(avg_test_acc_proba)
 
         logger.info(f"Epoch: {epoch+1}/{epochs}")
         logger.info(f"Train acc max: {avg_train_acc_max:.5f}")
@@ -581,6 +608,8 @@ def run(
         "epoch": len(train_accs_max),
         "train_acc_max": train_accs_max[-1],
         "train_acc_proba": train_accs_proba[-1],
+        "test_acc_max": test_accs_max[-1],
+        "test_acc_proba": test_accs_proba[-1],
     }
     logger.info(
         f"\nOptimization finished after {epoch+1} epochs for lambda: {lmbda}\n")

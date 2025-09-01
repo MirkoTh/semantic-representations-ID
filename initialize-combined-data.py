@@ -13,8 +13,8 @@ base_dict = {
     "rnd_seed": 7640,
     "triplets_dir": "./data/study1-2025-08",
     "task": "odd_one_out",
-    "epochs": 10,
-    "steps": 5,
+    "epochs": 100,
+    "steps": 25,
     "device": "cpu",  # "cuda:0" #
 }
 
@@ -24,12 +24,12 @@ base_dict = {
 # lmbda_hierarchical = 0.01
 # fix coded in run-embedding-decision-combined-data.py
 
-embed_dim_list = [5, 15]  # 15
+embed_dim_list = [5]  # 15, 15
 learning_rate_list = [0.0005]  # 0.0005
 # , "random_weights_random_scaling"
 modeltype_list = ["free_weights_no_scaling"]
 l_python_file = ["run-embedding-decision-combined-data.py"]
-l_data_subset = ["testcase"]  # "full", , "first_half", "second_half"
+l_data_subset = ["testcase"]  # ,"full" , "first_half", "second_half"
 l_individual_slopes_type = ["separate", "shared"]  #
 
 # Generate all combinations

@@ -500,8 +500,25 @@ def load_data_combined(
             .to(device)
             .type(torch.LongTensor)
         )
+        test_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_testcase.txt")
+                )
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
     elif dataset == "full":
         train_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+        test_triplets = (
             torch.from_numpy(
                 np.loadtxt(
                     pjoin(triplets_dir, "ooo_data_modeling_old_and_new.txt"))
@@ -518,6 +535,14 @@ def load_data_combined(
             .to(device)
             .type(torch.LongTensor)
         )
+        test_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h2.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
     elif dataset == "second_half":
         train_triplets = (
             torch.from_numpy(
@@ -527,8 +552,16 @@ def load_data_combined(
             .to(device)
             .type(torch.LongTensor)
         )
+        test_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h1.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
 
-    return train_triplets
+    return train_triplets, test_triplets
 
 
 def get_nitems(train_triplets: torch.Tensor) -> int:
