@@ -2495,6 +2495,107 @@ def load_ID_lowdim(
     return l_models
 
 
+def load_ID_lowdim_id_weights(
+    l_data_subset,
+    l_rnd_seed,
+    l_embed_dim,
+    modelversion,
+    modeltype="random_weights_random_scaling",
+    l_id_weights_type=["separate"],
+):
+    """
+    same as above, but 
+
+    Parameters:
+        l_data_subset (list[str]): List of data subsets used in the model.
+        l_rnd_seed (list[int]): List of random seeds used during training.
+        l_embed_dim (list[int]): List of embedding dimensions (e.g., 10, 50, 100).
+        modelversion (str): Version identifier for the model (used in directory structure).
+        modeltype (str, optional): Type of model architecture or training scheme.
+            Defaults to "random_weights_random_scaling".
+
+    Returns:
+        list[dict]: A list of dictionaries, each containing:
+            - item_embeddings (Tensor): Learned item embedding weights.
+            - decision_weights (Tensor): Individual slope weights.
+            - temperature_scalings (Tensor): Individual temperature scaling weights.
+            - modeltype (str): Model type used during training.
+            - n_embed (int): Embedding dimension used.
+            - rnd_seed (int): Random seed used.
+
+    Notes:
+        - If a model checkpoint is missing, a warning is printed and that run is skipped.
+        - Assumes model files are stored in a structured directory under "./results".
+    """
+    l_dirs = []
+    l_models = []
+    l_rnd_seeds_flat = []
+    l_subs = []
+    l_results = []
+
+    for rnd_seed in l_rnd_seed:
+        for n in l_embed_dim:
+            for data_subset in l_data_subset:
+                for id_weights_type in l_id_weights_type:
+                    results_dir_ID = os.path.join(
+                        "./results",
+                        modelversion,
+                        f"modeltype_{modeltype}",
+                        f"{n}d",
+                        f"{id_weights_type}",
+                        f"seed{rnd_seed}",
+                        f"data_subset_{data_subset}",
+                    )
+                    l_dirs.append(results_dir_ID)
+                    l_rnd_seeds_flat.append(rnd_seed)
+                    l_subs.append(data_subset)
+
+    for i, d in enumerate(l_dirs):
+        l_files = os.listdir(d)
+        latest_epoch = max_epoch(l_files)
+        model_path = os.path.join(d, "model", latest_epoch)
+
+        results = json.load(open(os.path.join(d, "results.json")))
+
+        match l_subs[i]:
+            case "first_half":
+                splithalf = "1"
+            case "second_half":
+                splithalf = "2"
+            case "full":
+                splithalf = "no_split"
+            case "testcase":
+                splithalf = "testcase"
+
+        if os.path.isfile(model_path):
+            m = torch.load(
+                model_path, weights_only=True, map_location=torch.device("cpu")
+            )
+            if modeltype == "random_weights_free_scaling" or modeltype == "random_weights_random_scaling":
+                ts = m["model_state_dict"]["model2.individual_temps.weight"]
+            elif modeltype == "free_weights_no_scaling":
+                ts = 1.0
+            dict_out = {
+                "item_embeddings": m["model_state_dict"]["model1.fc.weight"],
+                "decision_weights": m["model_state_dict"][
+                    "model1.individual_slopes.weight"
+                ],
+                "temperature_scalings": ts,
+                "modeltype": m["modeltype"],
+                "n_embed": m["n_embed"],
+                "rnd_seed": l_rnd_seeds_flat[i],
+                "data_subset": m["data_subset"],
+                "splithalf": splithalf,
+            }
+            l_models.append(dict_out)
+        else:
+            print(f"{model_path} does not exist")
+
+        l_results.append(results)
+
+    return l_models, l_results
+
+
 def reverse_code_big5(df_qs_num):
     """
     Reverse-codes specific items from the Big Five Short Form questionnaire.
