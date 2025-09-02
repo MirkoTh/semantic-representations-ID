@@ -121,23 +121,23 @@ ooo_modeling_format <- function(tbl_ooo) {
       which_not_odd = list(c(1, 2, 3)[-idx_odd])
     ) %>% 
     unnest(which_not_odd) %>%
-    mutate(idx_not_odd = rep(c("idx_positive", "idx_negative"), nrow(.) / 2)) %>%
+    mutate(idx_not_odd = rep(c("idx_anchor", "idx_positive"), nrow(.) / 2)) %>%
     pivot_wider(names_from = idx_not_odd, values_from = which_not_odd) %>%
-    relocate(idx_positive, .before = idx_odd) %>%
-    relocate(idx_negative, .before = idx_odd)
+    relocate(idx_anchor, .before = idx_odd) %>%
+    relocate(idx_positive, .before = idx_odd)
   
   tbl_ooo_ID_save <- tbl_ooo_ids %>% 
     rowwise() %>%
     mutate(
+      anchor = c(ID1, ID2, ID3)[idx_anchor],
       positive = c(ID1, ID2, ID3)[idx_positive],
-      negative = c(ID1, ID2, ID3)[idx_negative],
-      odd = c(ID1, ID2, ID3)[idx_odd]
+      negative = c(ID1, ID2, ID3)[idx_odd]
     ) %>%
-    select(positive, negative, odd, participant_id) %>%
+    select(anchor, positive, negative, participant_id) %>%
     mutate(
+      anchor = as.integer(anchor),
       positive = as.integer(positive),
-      negative = as.integer(negative),
-      odd = as.integer(odd)
+      negative = as.integer(negative)
     )
   
   return(list(tbl_ooo_ids = tbl_ooo_ids, tbl_ooo_ID_save = tbl_ooo_ID_save))
