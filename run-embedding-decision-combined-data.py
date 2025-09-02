@@ -70,7 +70,8 @@ def parseargs():
         "--modeltype",
         type=str,
         default="random_weights_free_scaling",
-        choices=["random_weights_free_scaling", "random_weights_random_scaling"],
+        choices=["random_weights_free_scaling",
+                 "random_weights_random_scaling", "free_weights_no_scaling"],
         help="freely or randomly varying varying temperatures (by participant)",
     )
     aa(
@@ -188,6 +189,13 @@ def parseargs():
         default=20,
         help="number of threads used by PyTorch multiprocessing",
     )
+    aa(
+        "--individual_slopes_type",
+        type=str,
+        default="separate",
+        choices=["separate", "shared"],
+        help="whether individual slopes are separate per dimension or shared (one scalar) across dimensions",
+    )
     args = parser.parse_args()
     return args
 
@@ -239,6 +247,7 @@ def run(
     distance_metric: str = "dot",
     temperature: float = 1.0,
     data_subset: str = "testcase",
+    individual_slopes_type: str = "separate",
 ):
     # initialise logger and start logging events
     logger = setup_logging(
@@ -249,7 +258,7 @@ def run(
     logger.info("modeltype = ", f"{modeltype}")
 
     # load triplets into memory
-    train_triplets_ID = ut.load_data_combined(
+    train_triplets_ID, test_triplets_ID = ut.load_data_combined(
         device=device,
         triplets_dir=triplets_dir,
         dataset=data_subset,
@@ -259,9 +268,9 @@ def run(
 
     # load train and test mini-batches
     n_participants = len(np.unique(train_triplets_ID.numpy()[:, 3]))
-    train_batches, _ = ut.load_batches(
+    train_batches, test_batches = ut.load_batches(
         train_triplets=train_triplets_ID,
-        test_triplets=train_triplets_ID,
+        test_triplets=test_triplets_ID,
         n_items=n_items_ID,
         batch_size=batch_size,
         sampling_method=sampling_method,
@@ -269,13 +278,15 @@ def run(
         p=p,
         method="ids",
     )
-    logger.info(f"\nNumber of train batches in current process: {len(train_batches)}\n")
+    logger.info(
+        f"\nNumber of train batches in current process: {len(train_batches)}\n")
 
     ###############################
     ########## settings ###########
     ###############################
 
     temperature = torch.tensor(temperature).clone().detach()
+
     if modeltype == "random_weights_random_scaling":
         scaling = "random"
         model = md.CombinedModel(
@@ -284,6 +295,16 @@ def run(
             num_participants=n_participants,
             init_weights=True,
             scaling=scaling,
+            individual_slopes_type=individual_slopes_type
+        )
+    elif modeltype == "free_weights_no_scaling":
+        scaling = "fixed"
+        model = md.CombinedModel_weights_only(
+            in_size=n_items_ID,
+            out_size=embed_dim,
+            num_participants=n_participants,
+            init_weights=True,
+            individual_slopes_type=individual_slopes_type
         )
     else:
         # so far, only random weights and free scaling implemented
@@ -303,6 +324,7 @@ def run(
             "embeddings-decision-combined-data",
             f"modeltype_{modeltype}",
             f"{embed_dim}d",
+            f"{individual_slopes_type}",
             f"seed{rnd_seed}",
             f"data_subset_{data_subset}",
         )
@@ -315,6 +337,7 @@ def run(
             "embeddings-decision-combined-data",
             f"modeltype_{modeltype}",
             f"{embed_dim}d",
+            f"{individual_slopes_type}",
             f"seed{rnd_seed}",
             f"data_subset_{data_subset}",
         )
@@ -330,7 +353,8 @@ def run(
     if resume:
         if os.path.exists(model_dir):
             models = sorted(
-                [m.name for m in os.scandir(model_dir) if m.name.endswith(".tar")]
+                [m.name for m in os.scandir(
+                    model_dir) if m.name.endswith(".tar")]
             )
             if len(models) > 0:
                 try:
@@ -364,14 +388,17 @@ def run(
                     loglikelihoods, complexity_losses = [], []
                     nneg_d_over_time = []
             else:
-                raise Exception("No checkpoints found. Cannot resume training.")
+                raise Exception(
+                    "No checkpoints found. Cannot resume training.")
         else:
-            raise Exception("Model directory does not exist. Cannot resume training.")
+            raise Exception(
+                "Model directory does not exist. Cannot resume training.")
     else:
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
         start = 0
         train_accs_max, train_accs_proba = [], []
+        test_accs_max, test_accs_proba = [], []
         train_losses = []
         (
             loglikelihoods,
@@ -408,11 +435,16 @@ def run(
         batch_losses_train = torch.zeros(len(train_batches))
         batch_accs_max_train = torch.zeros(len(train_batches))
         batch_accs_proba_train = torch.zeros(len(train_batches))
+
+        batch_accs_max_test = torch.zeros(len(test_batches))
+        batch_accs_proba_test = torch.zeros(len(test_batches))
+
         for i, batch in enumerate(train_batches):
             optim.zero_grad()  # zero out gradients
             b = batch[0].to(device)
             id = batch[1].to(device)
-            c_entropy, anchor, positive, negative = model(b, id, distance_metric)
+            c_entropy, anchor, positive, negative = model(
+                b, id, task, temperature, distance_metric)
 
             # few-dimensional representations of the items
             l1_pen_avg = md.l1_regularization(model, "fc.weight", agreement="few").to(
@@ -421,7 +453,7 @@ def run(
             # mostly agreement with item reps, but few dimensions may be downweighted
             W = model.model1.fc.weight
             Bs = model.model1.individual_slopes.weight
-            temperature = model.model2(id[::3])
+            # temperature = model.model2(id[::3])
             # positivity constraint to enforce non-negative values in embedding matrix
             # pos_pen = torch.sum(F.relu(-W))
             pos_pen = torch.sum(F.relu(-W)) + torch.sum(F.relu(-Bs))
@@ -429,19 +461,18 @@ def run(
 
             # Gaussian loss on individual differences for each dimension
             # is only computed by random model
-            gaussian_pen = model.model1.hierarchical_loss(
-                id
-            ) + model.model2.hierarchical_loss(id)
-            gaussian_loss = gaussian_pen * lmbda_hierarchical
-            loss = c_entropy + 0.01 * pos_pen + complexity_loss_avg + gaussian_loss
+            # gaussian_pen = model.model1.hierarchical_loss(
+            #     id
+            # ) + model.model2.hierarchical_loss(id)
+            # gaussian_loss = gaussian_pen * lmbda_hierarchical
+            loss = c_entropy + 0.01 * pos_pen + complexity_loss_avg  # + gaussian_loss
 
             loss.backward()
             optim.step()
             batch_losses_train[i] += loss.item()
             batch_llikelihoods[i] += c_entropy.item()
-            batch_glosses[i] += gaussian_loss.item()
-            batch_closses[i] += complexity_loss_avg.item()
-            batch_glosses[i] += gaussian_loss.item()
+            batch_glosses[i] += 0  # gaussian_loss.item()
+            batch_closses[i] += 0  # complexity_loss_avg.item()
             accs_train_proba, accs_train_max = ut.choice_accuracy(
                 anchor,
                 positive,
@@ -454,12 +485,32 @@ def run(
             batch_accs_max_train[i] += accs_train_max
             iter += 1
 
+        for i, batch in enumerate(test_batches):
+            optim.zero_grad()  # zero out gradients
+            b = batch[0].to(device)
+            id = batch[1].to(device)
+            c_entropy, anchor, positive, negative = model(
+                b, id, task, temperature, distance_metric)
+            
+            accs_test_proba, accs_test_max = ut.choice_accuracy(
+                anchor,
+                positive,
+                negative,
+                task,
+                distance_metric,
+                scalingfactors=temperature,
+            )
+            batch_accs_proba_test[i] += accs_test_proba
+            batch_accs_max_test[i] += accs_test_max
+
         avg_llikelihood = torch.mean(batch_llikelihoods).item()
         avg_closs = torch.mean(batch_closses).item()
         avg_gloss = torch.mean(batch_glosses).item()
         avg_train_loss = torch.mean(batch_losses_train).item()
         avg_train_acc_max = torch.mean(batch_accs_max_train).item()
         avg_train_acc_proba = torch.mean(batch_accs_proba_train).item()
+        avg_test_acc_max = torch.mean(batch_accs_max_test).item()
+        avg_test_acc_proba = torch.mean(batch_accs_proba_test).item()
 
         loglikelihoods.append(avg_llikelihood)
         complexity_losses_avg.append(avg_closs)
@@ -467,6 +518,8 @@ def run(
         train_losses.append(avg_train_loss)
         train_accs_max.append(avg_train_acc_max)
         train_accs_proba.append(avg_train_acc_proba)
+        test_accs_max.append(avg_test_acc_max)
+        test_accs_proba.append(avg_test_acc_proba)
 
         logger.info(f"Epoch: {epoch+1}/{epochs}")
         logger.info(f"Train acc max: {avg_train_acc_max:.5f}")
@@ -498,24 +551,28 @@ def run(
         if (epoch + 1) % steps == 0:
             W = model.model1.fc.weight
             id_slopes = model.model1.individual_slopes.weight
-            id_decision_scaling = model.model2.individual_temps.weight
+            id_decision_scaling = temperature  # model.model2.individual_temps.weight
             np.savetxt(
-                os.path.join(results_dir, f"sparse_embed_epoch{epoch+1:04d}.txt"),
+                os.path.join(
+                    results_dir, f"sparse_embed_epoch{epoch+1:04d}.txt"),
                 W.detach().cpu().numpy(),
             )
             logger.info(f"Saving model weights at epoch {epoch+1}")
             np.savetxt(
-                os.path.join(results_dir, f"individual_slopes{epoch+1:04d}.txt"),
+                os.path.join(
+                    results_dir, f"individual_slopes{epoch+1:04d}.txt"),
                 id_slopes.detach().cpu().numpy(),
             )
-            logger.info(f"Saving individual decision weights at epoch {epoch+1}")
-            np.savetxt(
-                os.path.join(results_dir, f"individual_scalings{epoch+1:04d}.txt"),
-                id_decision_scaling.detach().cpu().numpy(),
-            )
             logger.info(
-                f"Saving individual decision scaling factors at epoch {epoch+1}"
-            )
+                f"Saving individual decision weights at epoch {epoch+1}")
+            # np.savetxt(
+            #     os.path.join(
+            #         results_dir, f"individual_scalings{epoch+1:04d}.txt"),
+            #     id_decision_scaling.detach().cpu().numpy(),
+            # )
+            # logger.info(
+            #     f"Saving individual decision scaling factors at epoch {epoch+1}"
+            # )
 
             # save model and optim parameters for inference or to resume training
             # PyTorch convention is to save checkpoints as .tar files
@@ -551,13 +608,17 @@ def run(
         "epoch": len(train_accs_max),
         "train_acc_max": train_accs_max[-1],
         "train_acc_proba": train_accs_proba[-1],
+        "test_acc_max": test_accs_max[-1],
+        "test_acc_proba": test_accs_proba[-1],
     }
-    logger.info(f"\nOptimization finished after {epoch+1} epochs for lambda: {lmbda}\n")
+    logger.info(
+        f"\nOptimization finished after {epoch+1} epochs for lambda: {lmbda}\n")
 
     logger.info(
         f"\nPlotting number of non-negative dimensions as a function of time for lambda: {lmbda}\n"
     )
-    pl.plot_nneg_dims_over_time(plots_dir=plots_dir, nneg_d_over_time=nneg_d_over_time)
+    pl.plot_nneg_dims_over_time(
+        plots_dir=plots_dir, nneg_d_over_time=nneg_d_over_time)
 
     logger.info(f"\nPlotting model performances over time for lambda: {lmbda}")
     # plot train and validation performance alongside each other to examine a potential overfit to the training data
@@ -619,4 +680,5 @@ if __name__ == "__main__":
         temperature=args.temperature,
         early_stopping=args.early_stopping,
         data_subset=args.data_subset,
+        individual_slopes_type=args.individual_slopes_type
     )

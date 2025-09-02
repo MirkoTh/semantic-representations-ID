@@ -178,9 +178,9 @@ class BatchGenerator(object):
             triplets = triplets[:, 0:3]
         for i in range(self.n_batches):
             batch = encode_as_onehot(
-                I, triplets[i * self.batch_size : (i + 1) * self.batch_size]
+                I, triplets[i * self.batch_size: (i + 1) * self.batch_size]
             )
-            ids_batch = ids[i * self.batch_size : (i + 1) * self.batch_size]
+            ids_batch = ids[i * self.batch_size: (i + 1) * self.batch_size]
             ids_batch_triplet = np.repeat(ids_batch, 3)
             if method == "average":
                 yield batch
@@ -262,11 +262,11 @@ class BatchGenerator_ID(object):
             # batch = encode_as_onehot(I, triplets[i*self.batch_size: (i+1)*self.batch_size])
             batch = average_reps[
                 triplets.flatten()[
-                    i * 3 * self.batch_size : (i + 1) * 3 * self.batch_size
+                    i * 3 * self.batch_size: (i + 1) * 3 * self.batch_size
                 ],
                 :,
             ]
-            ids_batch = ids[i * self.batch_size : (i + 1) * self.batch_size]
+            ids_batch = ids[i * self.batch_size: (i + 1) * self.batch_size]
             ids_batch_triplet = np.repeat(ids_batch, 3)
             if method == "two_step":
                 yield batch
@@ -297,7 +297,8 @@ def load_inds_and_item_names(folder: str = "./data") -> Tuple[np.ndarray]:
     item_names = pd.read_csv(
         pjoin(folder, "item_names.tsv"), encoding="utf-8", sep="\t"
     ).uniqueID.values
-    sortindex = pd.read_table(pjoin(folder, "sortindex"), header=None)[0].values
+    sortindex = pd.read_table(
+        pjoin(folder, "sortindex"), header=None)[0].values
     return item_names, sortindex
 
 
@@ -337,12 +338,14 @@ def load_data(
     try:
         with open(pjoin(triplets_dir, "train_90.npy"), "rb") as train_file:
             train_triplets = (
-                torch.from_numpy(np.load(train_file)).to(device).type(torch.LongTensor)
+                torch.from_numpy(np.load(train_file)).to(
+                    device).type(torch.LongTensor)
             )
 
         with open(pjoin(triplets_dir, "test_10.npy"), "rb") as test_file:
             test_triplets = (
-                torch.from_numpy(np.load(test_file)).to(device).type(torch.LongTensor)
+                torch.from_numpy(np.load(test_file)).to(
+                    device).type(torch.LongTensor)
             )
     except FileNotFoundError:
         print("\n...Could not find any .npy files for current modality.")
@@ -380,12 +383,14 @@ def load_data_ID(
     try:
         with open(pjoin(triplets_dir, "train_90_ID.npy"), "rb") as train_file:
             train_triplets = (
-                torch.from_numpy(np.load(train_file)).to(device).type(torch.LongTensor)
+                torch.from_numpy(np.load(train_file)).to(
+                    device).type(torch.LongTensor)
             )
 
         with open(pjoin(triplets_dir, "test_10_ID.npy"), "rb") as test_file:
             test_triplets = (
-                torch.from_numpy(np.load(test_file)).to(device).type(torch.LongTensor)
+                torch.from_numpy(np.load(test_file)).to(
+                    device).type(torch.LongTensor)
             )
     except FileNotFoundError:
         print("\n...Could not find any .npy files for current modality.")
@@ -394,14 +399,16 @@ def load_data_ID(
             if testcase:
                 train_triplets = (
                     torch.from_numpy(
-                        np.loadtxt(pjoin(triplets_dir, "train_90_ID_smallsample.txt"))
+                        np.loadtxt(
+                            pjoin(triplets_dir, "train_90_ID_smallsample.txt"))
                     )
                     .to(device)
                     .type(torch.LongTensor)
                 )
                 test_triplets = (
                     torch.from_numpy(
-                        np.loadtxt(pjoin(triplets_dir, "test_10_ID_smallsample.txt"))
+                        np.loadtxt(
+                            pjoin(triplets_dir, "test_10_ID_smallsample.txt"))
                     )
                     .to(device)
                     .type(torch.LongTensor)
@@ -410,14 +417,16 @@ def load_data_ID(
                 if use_shuffled_subjects == "actual":
                     train_triplets = (
                         torch.from_numpy(
-                            np.loadtxt(pjoin(triplets_dir, "train_90_ID_item.txt"))
+                            np.loadtxt(
+                                pjoin(triplets_dir, "train_90_ID_item.txt"))
                         )
                         .to(device)
                         .type(torch.LongTensor)
                     )
                     test_triplets = (
                         torch.from_numpy(
-                            np.loadtxt(pjoin(triplets_dir, "test_10_ID_item.txt"))
+                            np.loadtxt(
+                                pjoin(triplets_dir, "test_10_ID_item.txt"))
                         )
                         .to(device)
                         .type(torch.LongTensor)
@@ -426,7 +435,8 @@ def load_data_ID(
                     train_triplets = (
                         torch.from_numpy(
                             np.loadtxt(
-                                pjoin(triplets_dir, "train_shuffled_90_ID_item.txt")
+                                pjoin(triplets_dir,
+                                      "train_shuffled_90_ID_item.txt")
                             )
                         )
                         .to(device)
@@ -435,7 +445,8 @@ def load_data_ID(
                     test_triplets = (
                         torch.from_numpy(
                             np.loadtxt(
-                                pjoin(triplets_dir, "test_shuffled_10_ID_item.txt")
+                                pjoin(triplets_dir,
+                                      "test_shuffled_10_ID_item.txt")
                             )
                         )
                         .to(device)
@@ -489,10 +500,28 @@ def load_data_combined(
             .to(device)
             .type(torch.LongTensor)
         )
+        test_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_testcase.txt")
+                )
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
     elif dataset == "full":
         train_triplets = (
             torch.from_numpy(
-                np.loadtxt(pjoin(triplets_dir, "ooo_data_modeling_old_and_new.txt"))
+                np.loadtxt(
+                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+        test_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new.txt"))
             )
             .to(device)
             .type(torch.LongTensor)
@@ -500,7 +529,16 @@ def load_data_combined(
     elif dataset == "first_half":
         train_triplets = (
             torch.from_numpy(
-                np.loadtxt(pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h1.txt"))
+                np.loadtxt(
+                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h1.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+        test_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h2.txt"))
             )
             .to(device)
             .type(torch.LongTensor)
@@ -508,13 +546,22 @@ def load_data_combined(
     elif dataset == "second_half":
         train_triplets = (
             torch.from_numpy(
-                np.loadtxt(pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h2.txt"))
+                np.loadtxt(
+                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h2.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+        test_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h1.txt"))
             )
             .to(device)
             .type(torch.LongTensor)
         )
 
-    return train_triplets
+    return train_triplets, test_triplets
 
 
 def get_nitems(train_triplets: torch.Tensor) -> int:
@@ -681,10 +728,12 @@ def load_batches_ID(
 
 def l2_reg_(model, weight_decay: float = 1e-5) -> torch.Tensor:
     loc_norms_squared = 0.5 * (
-        model.encoder_mu[0].weight.pow(2).sum() + model.encoder_mu[0].bias.pow(2).sum()
+        model.encoder_mu[0].weight.pow(
+            2).sum() + model.encoder_mu[0].bias.pow(2).sum()
     )
     scale_norms_squared = (
-        model.encoder_b[0].weight.pow(2).sum() + model.encoder_mu[0].bias.pow(2).sum()
+        model.encoder_b[0].weight.pow(
+            2).sum() + model.encoder_mu[0].bias.pow(2).sum()
     )
     l2_reg = weight_decay * (loc_norms_squared + scale_norms_squared)
     return l2_reg
@@ -747,7 +796,8 @@ def compute_similarities(
 
 def accuracy_(probas: torch.Tensor) -> float:
     choices = np.where(
-        probas.mean(axis=1) == probas.max(axis=1), -1, np.argmax(probas, axis=1)
+        probas.mean(axis=1) == probas.max(axis=1), -
+        1, np.argmax(probas, axis=1)
     )
     acc = np.where(choices == 0, 1, 0).mean()
     return acc
@@ -782,7 +832,8 @@ def trinomial_probs(
     t: torch.Tensor,
     distance_metric: str = "dot",
 ) -> torch.Tensor:
-    sims = compute_similarities(anchor, positive, negative, method, distance_metric)
+    sims = compute_similarities(
+        anchor, positive, negative, method, distance_metric)
     return softmax(sims, t)
 
 
@@ -794,7 +845,8 @@ def trinomial_loss(
     t: torch.Tensor,
     distance_metric: str = "dot",
 ) -> torch.Tensor:
-    sims = compute_similarities(anchor, positive, negative, method, distance_metric)
+    sims = compute_similarities(
+        anchor, positive, negative, method, distance_metric)
     return cross_entropy_loss(sims, t)
 
 
@@ -986,7 +1038,8 @@ def collect_choices(
     probas = probas.flip(dims=[1])
     for pmf, choices in zip(probas, human_choices):
         sorted_choices = tuple(np.sort(choices))
-        model_choices[sorted_choices].append(np.argmax(pmf[np.argsort(choices)]))
+        model_choices[sorted_choices].append(
+            np.argmax(pmf[np.argsort(choices)]))
     return model_choices
 
 
@@ -1036,15 +1089,17 @@ def test(
                 )
                 # stacked_sims = torch.stack(similarities, dim=-1)
                 # batch_probas = F.softmax(logsumexp_(stacked_sims), dim=1)
-                batch_probas = F.softmax(torch.stack(similarities, dim=-1), dim=1)
+                batch_probas = F.softmax(
+                    torch.stack(similarities, dim=-1), dim=1)
                 test_acc = choice_accuracy(anchor, positive, negative, task)
 
-            probas[j * batch_size : (j + 1) * batch_size] += batch_probas
+            probas[j * batch_size: (j + 1) * batch_size] += batch_probas
             batch_accs[j] += test_acc
             human_choices = (
                 batch.nonzero(as_tuple=True)[-1].view(batch_size, -1).numpy()
             )
-            model_choices = collect_choices(batch_probas, human_choices, model_choices)
+            model_choices = collect_choices(
+                batch_probas, human_choices, model_choices)
 
     probas = probas.cpu().numpy()
     probas = probas[np.where(probas.sum(axis=1) != 0.0)]
@@ -1067,7 +1122,8 @@ def validation(
 ):
     if sampling:
         assert isinstance(batch_size, int), "batch size must be defined"
-        sampled_choices = np.zeros((int(len(val_batches) * batch_size), 3), dtype=int)
+        sampled_choices = np.zeros(
+            (int(len(val_batches) * batch_size), 3), dtype=int)
 
     model.eval()
     with torch.no_grad():
@@ -1128,7 +1184,8 @@ def validation(
                         for h_choice, p in zip(human_choices, probas)
                     ]
                 )
-                sampled_choices[j * batch_size : (j + 1) * batch_size] += model_choices
+                sampled_choices[j *
+                                batch_size: (j + 1) * batch_size] += model_choices
 
             else:
                 val_loss = c_entropy
@@ -1291,7 +1348,8 @@ def sort_weights(model, aggregate: bool) -> np.ndarray:
 def get_cut_off(klds: np.ndarray) -> int:
     klds /= klds.max(axis=0)
     cut_off = np.argmax(
-        [np.var(klds[i - 1]) - np.var(kld) for i, kld in enumerate(klds.T) if i > 0]
+        [np.var(klds[i - 1]) - np.var(kld)
+         for i, kld in enumerate(klds.T) if i > 0]
     )
     return cut_off
 
@@ -1412,7 +1470,8 @@ def rsm_pred(W: np.ndarray) -> np.ndarray:
         for j in prange(i + 1, N):
             for k in prange(N):
                 if k != i and k != j:
-                    rsm[i, j] += S_e[i, j] / (S_e[i, j] + S_e[i, k] + S_e[j, k])
+                    rsm[i, j] += S_e[i, j] / \
+                        (S_e[i, j] + S_e[i, k] + S_e[j, k])
     rsm /= N - 2
     rsm += rsm.T  # make similarity matrix symmetric
     np.fill_diagonal(rsm, 1)
@@ -1422,7 +1481,8 @@ def rsm_pred(W: np.ndarray) -> np.ndarray:
 def spose2rsm_odd_one_out(W: np.ndarray) -> np.ndarray:
     rsm = rsm_pred(W)
     rsm[rsm > 1] = 1
-    assert np.allclose(rsm, rsm.T), "\nRSM is required to be a symmetric matrix\n"
+    assert np.allclose(
+        rsm, rsm.T), "\nRSM is required to be a symmetric matrix\n"
     return rsm
 
 
@@ -1610,12 +1670,14 @@ def process_ID_results(
 ) -> dict:
     df_eval = pd.DataFrame(
         np.column_stack((np.arange(0, n_ID), l_val_ID, l_val_avg)),
-        columns=["id", "avg_loss_ID", "avg_acc_ID", "avg_loss_avg", "avg_acc_avg"],
+        columns=["id", "avg_loss_ID", "avg_acc_ID",
+                 "avg_loss_avg", "avg_acc_avg"],
     )
     df_eval_long = pd.melt(
         df_eval, id_vars="id", var_name="variable", value_name="value"
     )
-    df_swarm = df_eval_long.query("variable in ['avg_acc_avg', 'avg_acc_ID']").copy()
+    df_swarm = df_eval_long.query(
+        "variable in ['avg_acc_avg', 'avg_acc_ID']").copy()
     df_swarm.loc[df_swarm["variable"] == "avg_acc_avg", "x_position"] = 0.0
     df_swarm.loc[df_swarm["variable"] == "avg_acc_ID", "x_position"] = 0.5
 
@@ -1640,9 +1702,11 @@ def process_ID_results(
         )
         l_params.append(tmp)
     m_train_acc = np.concatenate(l_train_acc, axis=0)
-    df_train_acc = pd.DataFrame(m_train_acc, columns=["id", "epoch", "train_acc"])
+    df_train_acc = pd.DataFrame(
+        m_train_acc, columns=["id", "epoch", "train_acc"])
     m_params = np.concatenate(l_params, axis=0)
-    df_params = pd.DataFrame(m_params, columns=["id", "dim", "intercept", "slope"])
+    df_params = pd.DataFrame(
+        m_params, columns=["id", "dim", "intercept", "slope"])
 
     df_train_acc["epoch_bin"] = pd.cut(
         df_train_acc["epoch"],
@@ -1680,7 +1744,8 @@ def load_avg_embeddings(model_id: str, device: str) -> list:
         tokenizer = AutoTokenizer.from_pretrained(model_id)
         model = AutoModel.from_pretrained(model_id).to(device)
 
-        tbl_labels = pd.read_csv("data/unique_id.txt", delimiter="\\", header=None)
+        tbl_labels = pd.read_csv("data/unique_id.txt",
+                                 delimiter="\\", header=None)
         tbl_labels["label_id"] = np.arange(1, tbl_labels.shape[0] + 1)
         tbl_labels.columns = ["label", "label_id"]
         new_order = ["label_id", "label"]
@@ -1689,7 +1754,8 @@ def load_avg_embeddings(model_id: str, device: str) -> list:
         l_embeddings = []
 
         for prompt in tbl_labels["label"]:
-            tokenized_input = tokenizer.encode(prompt, return_tensors="pt").to(device)
+            tokenized_input = tokenizer.encode(
+                prompt, return_tensors="pt").to(device)
             with torch.no_grad():
                 output = model(tokenized_input)
             embedding = output.last_hidden_state[0]
@@ -1757,9 +1823,11 @@ def delta_avg_id(
         method="odd_one_out",
     )
     # calculate accuracies on test set
-    one_avg = (sims_avg[0] > sims_avg[1]).numpy() & (sims_avg[0] > sims_avg[2]).numpy()
+    one_avg = (sims_avg[0] > sims_avg[1]).numpy() & (
+        sims_avg[0] > sims_avg[2]).numpy()
     acc_eval_avg = one_avg.sum() / np.sum(ids == idx)
-    one_id = (sims_id[0] > sims_id[1]).numpy() & (sims_id[0] > sims_id[2]).numpy()
+    one_id = (sims_id[0] > sims_id[1]).numpy() & (
+        sims_id[0] > sims_id[2]).numpy()
     acc_eval_id = one_id.sum() / np.sum(ids == idx)
     delta = acc_eval_id - acc_eval_avg
     return delta, one_avg, one_id
@@ -1779,17 +1847,20 @@ def delta_avg_triplet(
     # prepare avg and id weights
     anchors = torch.Tensor(
         np.array(
-            [array_weights_items[i, :] for i in list(df_diagnostic_data.loc[:, 0])]
+            [array_weights_items[i, :]
+                for i in list(df_diagnostic_data.loc[:, 0])]
         )
     )
     positives = torch.Tensor(
         np.array(
-            [array_weights_items[i, :] for i in list(df_diagnostic_data.loc[:, 1])]
+            [array_weights_items[i, :]
+                for i in list(df_diagnostic_data.loc[:, 1])]
         )
     )
     negatives = torch.Tensor(
         np.array(
-            [array_weights_items[i, :] for i in list(df_diagnostic_data.loc[:, 2])]
+            [array_weights_items[i, :]
+                for i in list(df_diagnostic_data.loc[:, 2])]
         )
     )
     anchors_weighted = [
@@ -1808,13 +1879,16 @@ def delta_avg_triplet(
     positives_weighted = torch.vstack(positives_weighted)
     negatives_weighted = torch.vstack(negatives_weighted)
     # compute similarities for every triplet
-    sims_avg = compute_similarities(anchors, positives, negatives, method="odd_one_out")
+    sims_avg = compute_similarities(
+        anchors, positives, negatives, method="odd_one_out")
     sims_id = compute_similarities(
         anchors_weighted, positives_weighted, negatives_weighted, method="odd_one_out"
     )
     # mark correct and incorrect decisions given similarities (argmax)
-    one_avg = (sims_avg[0] > sims_avg[1]).numpy() & (sims_avg[0] > sims_avg[2]).numpy()
-    one_id = (sims_id[0] > sims_id[1]).numpy() & (sims_id[0] > sims_id[2]).numpy()
+    one_avg = (sims_avg[0] > sims_avg[1]).numpy() & (
+        sims_avg[0] > sims_avg[2]).numpy()
+    one_id = (sims_id[0] > sims_id[1]).numpy() & (
+        sims_id[0] > sims_id[2]).numpy()
     # and add back into df
     df_diagnostic_data["correct_avg"] = one_avg
     df_diagnostic_data["correct_id"] = one_id
@@ -1940,7 +2014,8 @@ def extract_results_id(
         latest_epoch = max_epoch(l_files)
         p = os.path.join(d, "model", latest_epoch)
         if os.path.isfile(p):
-            m = torch.load(p, weights_only=True, map_location=torch.device("cpu"))
+            m = torch.load(p, weights_only=True,
+                           map_location=torch.device("cpu"))
             m["sparsity"] = l_sparsity[i]
             m["subject_type"] = l_subject[i]
             l_all_models.append(m)
@@ -2041,7 +2116,8 @@ def extract_split_half(
         latest_epoch = max_epoch(l_files)
         p = os.path.join(d, "model", latest_epoch)
         if os.path.isfile(p):
-            m = torch.load(p, weights_only=True, map_location=torch.device("cpu"))
+            m = torch.load(p, weights_only=True,
+                           map_location=torch.device("cpu"))
             if modeltype in (
                 "random_weights_free_scaling",
                 "random_weights_random_scaling",
@@ -2080,7 +2156,8 @@ def extract_split_half(
 
 def extract_decision_weights(l, tp):
     """extract decision weights from a model with by-participant softmax"""
-    df_sh = pd.DataFrame(l["decision_weights"].detach().numpy()).reset_index(drop=False)
+    df_sh = pd.DataFrame(
+        l["decision_weights"].detach().numpy()).reset_index(drop=False)
     df_sh = pd.melt(
         df_sh, id_vars=["index"], var_name="dimension", value_name="decision_weight"
     )
@@ -2116,7 +2193,8 @@ def split_half_reliabilities(l_splithalf, idxs, ndims):
         )
 
     g = sns.FacetGrid(df_sh, col="dimension", col_wrap=5)
-    g.map_dataframe(scatter_with_corr, x="decision_weight_1", y="decision_weight_2")
+    g.map_dataframe(scatter_with_corr, x="decision_weight_1",
+                    y="decision_weight_2")
 
     df_corr = pd.DataFrame(
         df_sh.groupby("dimension")
@@ -2136,9 +2214,11 @@ def extract_image(l_concepts_filtered, i):
     path = os.path.join("data", "images", imagename)
     all_dirs = os.listdir(path)
 
-    l_names = [re.match("^[a-z]", all_dirs[i]) for i in range(0, len(all_dirs))]
+    l_names = [re.match("^[a-z]", all_dirs[i])
+               for i in range(0, len(all_dirs))]
     l_names_filter = [l_names[i] != None for i in range(0, len(l_names))]
-    l_names_filtered = [value for value, flag in zip(all_dirs, l_names_filter) if flag]
+    l_names_filtered = [value for value, flag in zip(
+        all_dirs, l_names_filter) if flag]
     just_first = l_names_filtered[0]
     path_keep = os.path.join(path, just_first)
     return path_keep
@@ -2181,7 +2261,8 @@ def iterate_similarity(embed1, embed2, ndim):
     similarities = np.zeros((ndim, ndim))
     for i in range(ndim):
         for j in range(ndim):
-            similarities[i, j] = cosine_similarity([embed1[:, i]], [embed2[:, j]])[0, 0]
+            similarities[i, j] = cosine_similarity(
+                [embed1[:, i]], [embed2[:, j]])[0, 0]
     return similarities
 
 
@@ -2227,13 +2308,13 @@ def reorder_dimensions(l, ndim):
     l_sims_dimensionality, l_idx1, l_idx2 = dimensional_similarities(l, ndim)
     for sims_dimensionality, idx1, idx2 in zip(l_sims_dimensionality, l_idx1, l_idx2):
         max_sims = np.argmax(sims_dimensionality, axis=1)
-        l[idx2]["item_embeddings"] = l[idx2]["item_embeddings"][:, max_sims]
+        l[idx2]["item_embeddings"] = l[idx2]["item_embeddings"][max_sims, :]
         l[idx2]["decision_weights"] = l[idx2]["decision_weights"][:, max_sims]
         l_max_sims.append(max_sims)
     return l_max_sims, l_idx1, l_idx2
 
 
-def max_sim_dimensions_per_ndim(l_max_sims, range_dims, plus_val=2):
+def max_sim_dimensions_per_ndim(l_max_sims, range_dims):
     """
     Identifies the index of the simulation result for each dimensionality in `range_dims`
     where the number of unique values equals the number of dimensions.
@@ -2257,23 +2338,22 @@ def max_sim_dimensions_per_ndim(l_max_sims, range_dims, plus_val=2):
             ndim = ms.shape[0]
             n_unique = len(np.unique(ms))
             if ndim == n_unique:
-                dict_idxs_use[idx_outer + plus_val] = idx_inner
+                dict_idxs_use[ndim] = idx_inner
                 break
     return dict_idxs_use
 
 
-def max_sim_results_per_ndim(dict_idxs_use, l_max_sims, range_dims, min_val=2):
+def max_sim_results_per_ndim(dict_idxs_use, dict_max_sims, range_dims):
     """
     Returns indexes for the list of simulation results where each dimension
     in the second half is maximally correlated with a unique dimension in the first half.
 
     Parameters:
         dict_idxs_use (dict): A dictionary mapping dimensionality to the index of the simulation to use.
-        l_max_sims (list): A list indexing the position, in which the respective results are stored:
+        dict_max_sims (dict): A dict indexing the position, in which the respective results are stored:
                            - [1]: first half results
                            - [2]: second half results
         range_dims (iterable): A sequence of dimensionalities to include in the output.
-        min_val (int): integer to subtract from the list indices
 
     Returns:
         dict: A dictionary mapping each dimensionality in `range_dims` to a list of two arrays:
@@ -2284,15 +2364,15 @@ def max_sim_results_per_ndim(dict_idxs_use, l_max_sims, range_dims, min_val=2):
     for ndim, idx in dict_idxs_use.items():
         if idx is not None:
             dict_idxs_list_use[ndim].append(
-                l_max_sims[ndim - min_val][1][idx]
+                dict_max_sims[ndim][1][idx]
             )  # idxs first half
             dict_idxs_list_use[ndim].append(
-                l_max_sims[ndim - min_val][2][idx]
+                dict_max_sims[ndim][2][idx]
             )  # idxs second half
     return dict_idxs_list_use
 
 
-def max_cors(range_dims, dict_idxs_use, l_cors):
+def max_cors(range_dims, dict_idxs_use, d_cors):
     """
     Computes the maximum correlation values across simulations for each dimensionality.
 
@@ -2307,12 +2387,13 @@ def max_cors(range_dims, dict_idxs_use, l_cors):
                       and each row contains the maximum correlation values for the selected simulation.
                       If no index is specified for a dimensionality, the column will contain NaNs.
     """
-    dict_cors = {i: None for i in range(2, 11)}
+    dict_cors = {i: None for i in range_dims}
     for k, v in dict_idxs_use.items():
         if v is not None:
-            tmp = l_cors[k - list(dict_cors.keys())[0]][0][v]
+            tmp = d_cors[k][0][v]
             dict_cors[k] = tmp.max(axis=0)
-    df_cors = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in dict_cors.items()]))
+    df_cors = pd.DataFrame(dict([(k, pd.Series(v))
+                           for k, v in dict_cors.items()]))
     return df_cors
 
 
@@ -2391,14 +2472,16 @@ def load_ID_lowdim(
             m = torch.load(
                 model_path, weights_only=True, map_location=torch.device("cpu")
             )
+            if modeltype == "random_weights_free_scaling" or modeltype == "random_weights_random_scaling":
+                ts = m["model_state_dict"]["model2.individual_temps.weight"]
+            elif modeltype == "free_weights_no_scaling":
+                ts = 1.0
             dict_out = {
                 "item_embeddings": m["model_state_dict"]["model1.fc.weight"],
                 "decision_weights": m["model_state_dict"][
                     "model1.individual_slopes.weight"
                 ],
-                "temperature_scalings": m["model_state_dict"][
-                    "model2.individual_temps.weight"
-                ],
+                "temperature_scalings": ts,
                 "modeltype": m["modeltype"],
                 "n_embed": m["n_embed"],
                 "rnd_seed": l_rnd_seeds_flat[i],
@@ -2425,7 +2508,8 @@ def reverse_code_big5(df_qs_num):
                       Reverse coding is done by subtracting the original value from 4.
     """
     # Reverse-coded item indices
-    reverse_items_qs = [1, 21, 26, 7, 17, 27, 3, 8, 28, 14, 19, 24, 29, 10, 20, 30]
+    reverse_items_qs = [1, 21, 26, 7, 17, 27,
+                        3, 8, 28, 14, 19, 24, 29, 10, 20, 30]
     reverse_items_python = [re - 1 for re in reverse_items_qs]
 
     # Reverse-code items
@@ -2553,7 +2637,8 @@ def scales_and_facets_big5(df_qs_num):
             axis=1
         )
         for facet, items in content["facets"].items():
-            df_qs_num[facet] = df_qs_num[[f"BIG5_SF_{i}" for i in items]].mean(axis=1)
+            df_qs_num[facet] = df_qs_num[[
+                f"BIG5_SF_{i}" for i in items]].mean(axis=1)
 
     return df_qs_num
 
@@ -2778,7 +2863,8 @@ def tokenize_col(txt, prefix1, prefix2, tokenizer, model, device):
         - Assumes a global variable `device` is defined for model execution.
     """
     all_together = prefix1 + prefix2 + txt
-    tokenized_input = tokenizer.encode(all_together, return_tensors="pt").to(device)
+    tokenized_input = tokenizer.encode(
+        all_together, return_tensors="pt").to(device)
     with torch.no_grad():
         output = model(tokenized_input)
     e = output.last_hidden_state[:, 0, :].numpy()
@@ -2838,7 +2924,8 @@ def extract_dim_weight_results(l_results, idx, n_embed, l_pids_model, l_pids_new
     new_order = col + [c for c in df_dim_weights.columns if c not in col]
     df_dim_weights = df_dim_weights[new_order]
     # create average weight feature
-    df_dim_weights["avg_weight"] = df_dim_weights.loc[:, 0 : (n_embed - 1)].mean(axis=1)
+    df_dim_weights["avg_weight"] = df_dim_weights.loc[:,
+                                                      0: (n_embed - 1)].mean(axis=1)
     return df_dim_weights
 
 
@@ -2907,7 +2994,8 @@ def gini_of_halves(df_both_halves, ginis, colnames_dim_weights):
     # then, calculate the ginis in each half
     df_halves_long = pd.concat([df_h1_long, df_h2_long], ignore_index=True)
     df_gini_halves = (
-        df_halves_long.groupby(["pid", "half"])[["weight"]].agg(gini).reset_index()
+        df_halves_long.groupby(["pid", "half"])[
+            ["weight"]].agg(gini).reset_index()
     )
     df_gini_halves = df_gini_halves.pivot(
         index="pid", columns="half", values="weight"
