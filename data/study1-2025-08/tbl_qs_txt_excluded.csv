@@ -46,6 +46,7 @@ participant_id,session_id,workHistory,interests1,interests2,interests3,feedback
 49,1,"Sales Assistant, Accountant, Manager of Production","reading books, taking care of my garden","reading books, watching tv series",reading books,"It was a great study, thank you"
 50,1,"Cashier, Pizza assembler, MUA, Dispatch Analyst, Tech Officer","Fashion, health, arts, politics, technology","Swimming, Netflix, Gardening, Singing","CS, psych, fashion design",N/A
 52,1,Software Developer,"competetive programming, doing studies on Prolific","walking, watching Nextflix series, wathcing esports",competetive programming,-
+53,1,"cashier,manager","hiking,baking,my dog,movies,family","watching movies,hiking,traveling","history, politics,world news",no
 54,1,"Senior manager, CFO, CSO, head of the department of suply chain","News, Live sports, Current events.","Spending time with my family, meditating, taking long walks around the neighborhood, watching movies and series, camping, fishing","physcology, science, computer, IT.",This study fried my brain and it was fun. Thank you! Have a great day!
 55,1,data analyst,"education, technology","reading, cooking","statistics, mathematics, psychology",no
 56,1,physical worker,"football, bet on sports.","doing sports, walk with dog, watch films",stock market,no
@@ -90,6 +91,7 @@ participant_id,session_id,workHistory,interests1,interests2,interests3,feedback
 96,1,"manager, human resource",interior deign fashion and athletics,reading books and watching documentaries,scifi books and fantasy,No
 97,1,Bartender,"Gaming, sports, pub","Playing cricket, tennis, pub, watching sports, gaming","Languages, coding",No
 98,1,"customer service agent, tele seller, IT technician","music, politic, global warming, cars, content creating","content creating, car repairs, music","global warming, psychology",The study was fun.
+99,1,"IT PROFESSIONAL, MANAGER, TEACHER","INFORMATION TECHNOLOGY, DATA ANALYSIS, DESIGN",READING SCIENCE BOOKS,COMPUTER PROGRAMMING,None.
 100,1,IT Officer,Programming. reading journals,"Swimming, Socker, Hockey","Programming, mathematics, science",no
 101,1,"assistant.production,planner,buyer,director of operation,hotel manager,general manager clinic, financial consultant","design,sport, travelling, finance, economy,","sport activities, reading, traveling abroad,","new technologies, economy,",nothing specific
 102,1,"tutor, teaching assistant","global news and activism, psychology","reading, social media, cooking, exercise","philosophy, health, history",n/a
@@ -114,6 +116,7 @@ participant_id,session_id,workHistory,interests1,interests2,interests3,feedback
 123,1,"lab assistant, student","crochet, reading, studying, fashion","reading fiction, watching series, playing games, listening to music","medicine, philosophy, economics","The study was very organized and pays well, it makes us feel motivated to pay attention and do a good job!"
 124,1,n/a,"Football, cars, music, documentaries","playing basketball, playing video games, hiking",tech,n/a
 125,1,"data analyst, farmer, sales assistant","gaming, parting and making money",gaming,biology and agriculture,no
+126,1,Information Technology,"Sport, gaming, gym, working",Playing online games,Computer Programming,NONE
 127,1,N/A,"Music, Mandarin, Guitar, Keyboard, Hockey.","Playing hockey, learning Mandarin, playing the guitar, playing the keyboard, reading romance novels, spending time with my pet dog.",Biology.,The study was lovely and I hope for more in the future :)
 128,1,Medical Assistant,lifestyle and personal growth,Side hustling by my small business,human brain and psychology,no
 129,1,"clerk, sales assistant, customer service, processor, tech support, business owner","learning, theology, history, nature, creativity","reading history and theology, hiking, drawing","theology, ancient history, middle ages, creative process",No comments
@@ -124,3 +127,73 @@ participant_id,session_id,workHistory,interests1,interests2,interests3,feedback
 134,1,content creator,"art,music,cats,graphics design,environmental issue,finance","drawing,dancing,power walking","mechanics,AI,metaphics","The study was interesting, I feel like I finished a bit early...hope that is not a problem."
 135,1,"class teacher customer care rep, admin officer, admin supervisor, Admin managerger","Fitness, gardening ,music, DIY crafts","listening to music, DIY crafts, Exercise",Philosophy,"yes , it was somewhat difficult finding correlation between pictures in order to pick the least similar"
 136,1,"IT Intern, Software Developer Intern, Cloud Engineer Intern","F1 Results, Local News, K-pop","Playing Badminton, Reading Sci-fi/Fantasy Books, Cooking, Walking","Financial Investment, Computer Science/AI, Food/Cooking",N/A
+137,1,-,"music production, movies, games, technology, gym (sport in general), fantasy books","gym, reading fantasy books, listening to music, making music, watching movies","languages, music production",-
+138,1,"webdesigner, programmer, writer","travel, Disney, video games, cats","going on holiday, reading, playing video games, listening to music","history, space, Disney",no further feedback
+139,1,"waiter, customer service rep, social media assistant, marketing manager","music, exercise, travel, family.","reading, walking, mma, listening to poscasts","gender differences, culture, philosphy, history.",Thank you for your study. Good luck with your research!
+140,1,"Receptionist, Accounts assistant, Bond Store Manager, Imports Manager","Fashion designing, Reading, Travelling","Reading, Jogging, tennis, hiking","Pyschology，Medical Forensics, AI",this was truly interesting。
+141,1,"forwarder ,forwarding manager","automotive, sports",fishing,ai,very positive study
+142,1,"care assistant, landscape gardener, screen printer, sole trader","Art, music, literature, gardening","painting, sketching, gardening, reading, listening to music","history of art, artificial intelligence, technology","Thank you so much for the clear and very interesting study, I enjoyed participating and appreciate the opportunity :-)"
+143,1,-,"Art, Design, Music","Crotcheting, reading",psychology,No
+144,1,"sales assistant, care assistant, childrens entertainer","art, music, travelling","cooking, reading, gaming","history, art",i enjoyed this study it was interesting
+145,1,"Waiter, data analyst intern, software developer","Gaming, Gym, Guitars and books","Playing video games, going to gym, learning and playing my bass guitar, and reading motivational books","Computer programming, coding, data analysis and guitar lessons",I enjoyed the study!
+146,1,Chemical technician,Art,Hiking.,"Research, Animal welfare",No.
+147,1,"Teacher, Analyst","Local politics , sport result and music","Reading books , cleaning, planting vegetables","Financial inequality, philosophy",No thank you for the opportunity
+149,1,"programmer, designer, electronic engineer","music, opera,science",reading books,"physics, mechanics",really fun study
+150,1,Project Manager,archiecture and waching sports,singing and soccer,computer programing and Geography,Nope.
+151,1,"Bartender, Accountant","Politics, Entertainment, Sports","Tennis, Reading novels","Finance, Politics, Economics",No
+152,1,"Manager, Data Analyst","Sport, Movies, SWIMMING","Reading science book, Swimming","Computer Programming, Philosophy",An interesting experiment
+153,1,"sales assistant, supervisor, project manager, administration manager","theatre, music, sport, politics, travel, animals, movies","movies, gym, socialising, travel, concerts, theater,","history, nature","Great study, really enjoyed that! some of the images i immediately spotted the odd on out, fascinating how the brain works"
+154,1,"Insurance sales, Insurance retentions advisors, digital technician/support, digital technician team manager","Gaming, technology, electronics and music","Gaming, reading, investing","Gaming, the world in general, finance, investing",N/A
+155,1,"waiter,nurse",soccer,reading,social sciences,no
+156,1,"pharmacist, sales assistant",politics,reading,"physics, computer science",great study
+157,1,Financial Accountant,"Family, politics and climate change","Reading Dancing, travelling and swimming.","Economics, Financials, Philosophy, AI",I did not encounter technical problems with the study.
+158,1,"Clerk, Accounts Payable Administrator","arts and crafts, sports, entrepreneurship, forex, music, health and fitness, movies, music, religion, nature, cooking, current local and international news","cooking, yoga, watching movies, attending music concerts, hiking, attending church, walks at the beach, shopping","forex, the bible, entrepreneurship, egyptian history, marine biology",I enjoyed the study.
+159,1,"Lab Assistant, Teaching Assistant, Software Programmer","Politics, Tech, Literature, Gaming, Cooking","Reading fanfiction, Writing, Cooking, Programming","Economics, Programming, History",No.
+160,1,"Sales assistant, Lab Assistant","Biology, Politics, Fashion, Arts","Reading, Singing, Listening to Music","Computer programming, Biology",No
+161,1,teacher,"interior decor, festivals, sports","music, reading",philosophy,None
+162,1,Auditor,Finance,Reaing,Finance,none
+163,1,"Accountant, Call centre agent, appointment setter","Sports, leisure, listening to music",Listening to music,"Mathematics, graphics",Everything worked perfectly fine
+164,1,"graphic designer , data analyst , inventory manager","sports , cars , politics , art , music","reading , playing basketball , gaming , listening to music","colonialism , corruption , crime intelligence",no
+165,1,"Educational assistant, Engineer","Music, fashion, current affairs","Reading books, attending concerts",Engineering,No
+166,1,"sales rep, cashier,bar attender,teacher",soccer games,"watching movies, watching soccer, going out, iceskating","philosophy, literature, psychology",no
+167,1,student law,music and sports,reading and baking,economics,i enjoyed the study
+168,1,hair dresser,"Drawing, arts, health","Drawing, watching TV","Biology, the human body, medicine",no
+170,1,"Tax assistant, post-doctoral research fellow, teaching assistant","walking, gardening, sewing and knitting, number puzzles, photography","walking in countryside, going holidays, knitting, taking photos","humans, health",no
+171,1,"Cashier, project manager",Virtual reality,Watching series',"Physics, religions",None
+173,1,IT Management,"Music, Sport",Writing and reading,Business studies,No thank you
+174,1,Blank,Dog,Video Games,Programming,"On one of the questions, around 400. 2 of the images didn't load. I only brought this up just in-case it's an attention check."
+175,1,sales assistant,cooking,gyming,english,great study
+176,1,"sales assistant ,IT",Sports result,"playing soccer, reading books , listening to music",computer programming,the study was very engaging
+177,1,"cleaner, teacher, nurse(matron), director of an orphanage home","politics, gym, my work","baking, taking a walk by the beach, taking my dog for a walk, reading or watching news","politics, gender equality",no
+178,1,"Paper boy, assembly worker, process technician. waiter. barman, care assistant, painter/decorator, gardener, Research Assistant. Lecturer, Applications Engineer, Systems Engineer.","Mountain sports, outdoors, reading, learning, history, psychology, technology, science","reading, relaxing, sports, walking, hiking trekking,","science, history, psychology, philosophy",What was this all about?
+179,1,"sales assistant, waiter, designer, lecturer","art, education, history","swimming, painting, food, travel","history, art",very interesting set of questions
+180,1,"Factory worker, US Army, Driver, Manufacturing, Warehouse worker","Fishing, Outdoors, Politics, News","Gardening, Yardwork, Relaxing","AI, Technology","Very engaging study, thank yo."
+181,1,"Clerical Officer, Administrator, Housing Officer, Quality Monitoring Manager","Reading, travel, listening to music","Reading, cooking, eating out, going on holiday, listening to music","Travel, foreign culture",No
+182,1,"salesman, delivery driver, computer programmer","music, sub culture, politics, motorcycles","reading, films, music",nothing much anymore,nothing to add
+183,1,"Medical intern, research assistant, public health worker,medical consultant, medical dotor","Being a mentor, community service","cooking, hiking,reading, travel, family time","networking, secure grandchildren futures, living a fulfilling life",No
+184,1,"Financial controler, Accountant,","Finance, politics","Reading, walking and meditating.","Finiance analytics, business analytics.","Yes i have a feed back about the study, the three image were confusing sometimesbut because i have to determine a refrence image to judge the similarities between the other two images, i wish we were giving a reference image to judge the similarity."
+185,1,"Research assistant, freelancer, datascientist.","Local politics, sports, cooking, makeup and design, hiking, park and chill, travelling the world.","Reading self-help books, playing golf, watching any good film, being on social media eg.Facebook and youtube and disney.","Computer programming, financial literacy, practical minimalism, philosophy.",Thank you for the opportunity to participate in this study. It was lengthy. Looking forward to more studies from you.
+186,1,"assistant to head of gov agency, education, showed dogs, census, Real Estate license, Worked at a real estate appraiser,  Worked at the computer center for bank.",Dog rescues because I have always had a passion for dogs.  I am 70 now and I can't show them because of my knee.  I like to volunteer at different ones but the one is a local one were I donate money.  I helped get some laws enacted about animal welfare.,"surveys, clean up the house, go to the beach here (we live on a lake), reading, talking to my friends.",People have to cool their tool.  Everyone is rude and mean to their fellow people.  That is just wrong.  We need to get back to at least tolerating people and not verbalize what you are thinking.  I am also afraid to go some places for fear of getting shot.  I have never felt this way.  I would like to learn about just about anything.  I like social interactions and I am sorry I didn't go into that.  I seem to be popular at that.,Interesting study.  I enjoyed it.  Thank you and have a good afternoon.
+187,1,"waiter, assistant teacher , tutor , software developer intern ,junior data analyst , software project coordinator , senior software engineer , chief technology officer","mentoring , tech blogging ,robotics hobbies , game development , travelling ,fitness ,gardening","reading books , ice skating , attending music festivals","computer science , bioinformatics",No everything was clear
+188,1,Product Manager,Local politics,Playing online games,Computer programming,Great and very interesting study.
+189,1,"Catering manager, banker","Sports, football, snooker, politics, Reading","Reading, DIY, socialising","Computers, politic's, history",Enjoyed but not sure I did too well on picking the right odd one out
+190,1,"Web Designer, Software Developer","Sports (Cue sports, Motorsports, Golf), Gaming, Finance, Travel","Playing Snooker and Pool, watching Formula 1 and other Motorsports & watching and playing Golf.","Cryptocurrency, Investing, eSports, AI technology","In relation to the task, there can be a variety of perspective's in which an individual views an image in relation to the others. Obviously I indicated my preferences on which image out of the three in each task was the most irrelevant from a common standpoint, but there could be individual's who view that image as similar."
+191,1,"Key clients consultant, sales assistant","politics, collectibles, geography","working out, learning foreign languages","philosophy, nutrition, healthy eating, Pokemon","Thank you for the study, and have a great day!"
+193,1,"Customer service, A registered nurse","Fashion, Cars, Health and lifestyle, Entertainment","Swimming, watching series, Cooking","Environment and Climate change, Financial management",Thankyou very much for the opportunity to give my valuable input to your research. I really appreciate this
+194,1,"Data Entry Analyst, Online Shop Owner","Videogames, Music, Nature, Photography, Painting, Make-up","Playing videogames, Taking Pictures, Painting",Science,N/A
+195,1,prison clerk,"sports, politics","play video games, hang out with friends","programming, IT engineering",I don't have.
+196,1,"dispatcher, HR assistant, shop assistant, retail sales clerk, retail sales manager, retail entrepreneur","gardening, keeping pet, politics, economic","reading philosophical books, gardening",philosophy,Thank you for the opportunity!
+197,1,I.T Supervisor,sports,"gardening, reading",NA,No
+198,1,Sales person,"Fitness, Religion, Entertainment, Real Estate, investment","listen to music, watch movies, series and podcasts, writing","Psychology, Religion, health",The questions take more time
+199,1,"Medical Assistant, Executive Assistant, Waitress, Customer Service","local and national politics, human rights, justice, gun reform, immigration reform","reading mysteries, hiking, traveling, cooking","psychology, sociology, medicine",no
+200,1,Software Developer,Coding,Studying,Computer Programming,No
+201,1,"Environmental specialist, environmental and wild life specialist",Interior decoration,"Reading, and watching documentary",programming,Non at the moment
+202,1,electrical engineer,sport,reading,computer proramming,no
+203,1,"doctor, business owner","politics, podcasts, business","cooking, reading novels",computer programming,no any
+204,1,receptionist administrator,"makeup, palestine, politics, social media, music, religion, travelling,","makeup, listening to music, going out with friends, watching tv and movies","religion, politics, culture, history, taxes/finance",no
+205,1,brand ambassador,"football, history, art, politics","playing football, reading, writing articles, diabolo","philosophy, art",feedback on the task would be nice
+206,1,"I don't have a job, Im a student.","sport results, cooking","cooking, playing video games",catering industry,No
+207,1,IT Administrative Assistance,"Football, Walking, Technology, Politics Worldwide","watching movies, Learning about Computer Science, Coding","Business an Information System, Financial Administrative",No
+208,1,"chef,supervisor","politics,design,traveling","cooking,reading,running","coding,it program",None
+209,1,artist,"gardening,gym,painting.","walking,hiking.",cooking,no
+210,1,Teacher,"Football,  politics","Watching football, driving",History,no
