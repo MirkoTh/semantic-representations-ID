@@ -90,6 +90,7 @@ tbl_ooo <- tbl_ooo %>%
   )
 
 rebase_subject_ids <- function(my_tbl) {
+  my_tbl$subject_id_old <- my_tbl$subject_id
   my_tbl$subject_id <- factor(
     my_tbl$subject_id, 
     labels = seq(0, (length(unique(my_tbl$subject_id)) - 1))
@@ -367,7 +368,8 @@ write_csv(tbl_diagnostic_items, file = "data/diagnostic-triplets.csv")
 # select those participants with substantial number of trials (e.g., 250 trials)
 thx <- 250
 prop_train <- .8
-tbl_include_trials <- tbl_ooo %>% count(subject_id) %>% filter(n >= thx) %>% select(-n)
+tbl_include_trials <- tbl_ooo %>% count(subject_id) %>% 
+  filter(n >= thx) %>% select(-n)
 # select all participants who have contributed to pairs with substantial number of trials
 # because only for those we can test whether modeling IDs improves particularly low-agreement pairs
 tbl_include_items <- tibble(subject_id = sort(unique(tbl_subset_items$subject_id)))
@@ -377,7 +379,17 @@ tbl_ooo_ID_item <- tbl_ooo %>% inner_join(tbl_include_both, by = "subject_id")
 
 
 # reset IDs to start from 0
+tbl_ooo_ID_item <- tbl_ooo_ID_item %>% rename(subject_id_THINGS = subject_id_old)
 tbl_ooo_ID_item <- rebase_subject_ids(tbl_ooo_ID_item)
+
+tbl_demographic_lookup <- tbl_triplets %>% count(subject_id, age, gender) %>%
+  select(-n)
+
+tbl_demographics <- tbl_ooo_ID_item %>% count(subject_id, subject_id_THINGS) %>%
+  left_join(tbl_demographic_lookup, by = c("subject_id_THINGS" = "subject_id"))
+write_csv(tbl_demographics, file = "data/THINGS-demographic-lookup.csv")  
+
+
 tbl_ooo_ID_item <- tbl_ooo_ID_item %>%
   group_by(subject_id) %>%
   mutate(trial_id_random = sample(1:n())) %>%
