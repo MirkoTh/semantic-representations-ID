@@ -283,37 +283,28 @@ write_delim(
 
 # extract agreement among triplets ----------------------------------------
 
+ooo_dt <- data.table(tbl_ooo)
+ooo_dt[, c("id_lo", "id_hi", "id_mid") := {
+  vals <- .SD
+  id_lo <- pmin(vals[[1]], vals[[2]], vals[[3]])
+  id_hi <- pmax(vals[[1]], vals[[2]], vals[[3]])
+  id_mid <- mapply(function(x, y, z, lo, hi) {
+    setdiff(c(x, y, z), c(lo, hi))
+  }, vals[[1]], vals[[2]], vals[[3]], id_lo, id_hi)
+  .(id_lo, id_hi, id_mid)
+}, .SDcols = c("col_0", "col_1", "col_2")]
 
-t_start <- Sys.time()
-# count how often an item was encountered across all participants
-tbl_count_triplets <- tbl_ooo %>%
-  # slice_sample(n = 500000) %>%
-  mutate(incr = 1:nrow(.)) %>%
-  rowwise() %>%
-  mutate(
-    id_lo = min(c(col_0, col_1, col_2)),
-    id_hi = max(c(col_0, col_1, col_2)),
-    id_mid = c(col_0, col_1, col_2)[!c(col_0, col_1, col_2) %in% c(id_lo, id_hi)]
-  ) %>%
-  relocate(id_mid, .before = id_hi) %>%
-  group_by(id_lo, id_mid, id_hi) %>%
-  mutate(rwn = row_number(incr)) %>%
-  mutate(
-    n_encounters = max(rwn)
-  ) %>%
-  arrange(desc(rwn)) %>%
-  ungroup()
+ooo_count_triplets <- ooo_dt[, .N, by=.(id_lo, id_mid, id_hi)][order(N, decreasing = TRUE), ]
+tbl_count_triplets <- merge(ooo_dt, ooo_count_triplets, by=c("id_lo", "id_mid", "id_hi"))
+setnames(tbl_count_triplets, "N", "n_encounters")
 
-t_end <- Sys.time()
-t_duration <- t_end - t_start
-cat(t_duration)
 
 # only take items, which were at least n_thx times observed across all participants
 n_thx <- 10
 tbl_subset_items <- tbl_count_triplets %>% filter(n_encounters >= n_thx) %>% mutate(triplet_id = factor(str_c(id_lo, id_mid, id_hi)))
 tbl_subset_items$triplet_id <- factor(tbl_subset_items$triplet_id, labels = 1:length(unique(tbl_subset_items$triplet_id)))
-tbl_subset_items %>% count(triplet_id) %>% ggplot(aes(n)) + 
-  geom_vline(xintercept = 25, color = "forestgreen", linetype = "dotdash", linewidth = 1, alpha = .2) +
+tbl_subset_items %>% ggplot(aes(n_encounters)) + 
+  geom_vline(xintercept = n_thx, color = "forestgreen", linetype = "dotdash", linewidth = 1, alpha = .2) +
   geom_histogram(color = "white", fill = "#6699FF", binwidth = 1) + 
   coord_cartesian(xlim = c(0, 130)) +
   theme_bw() +
@@ -364,6 +355,7 @@ ggplot(tbl_agreement, aes(prop_max)) +
 
 
 tbl_diagnostic_items <- tbl_agreement %>% select(id_lo, id_mid, id_hi, n_min, n_max, n_med, prop_max)
+tbl_diagnostic_items <- tbl_diagnostic_items %>% arrange(id_lo, id_mid, id_hi)
 write_csv(tbl_diagnostic_items, file = "data/diagnostic-triplets.csv")
 
 
