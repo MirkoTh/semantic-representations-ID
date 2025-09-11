@@ -312,9 +312,9 @@ cat(t_duration)
 n_thx <- 10
 tbl_subset_items <- tbl_count_triplets %>% filter(n_encounters >= n_thx) %>% mutate(triplet_id = factor(str_c(id_lo, id_mid, id_hi)))
 tbl_subset_items$triplet_id <- factor(tbl_subset_items$triplet_id, labels = 1:length(unique(tbl_subset_items$triplet_id)))
-tbl_subset_items %>% count(triplet_id) %>% ggplot(aes(n)) + 
-  geom_vline(xintercept = 25, color = "forestgreen", linetype = "dotdash", linewidth = 1, alpha = .2) +
-  geom_histogram(color = "white", fill = "#6699FF", binwidth = 1) + 
+pl_reps <- tbl_subset_items %>% count(triplet_id) %>% ggplot(aes(n)) + 
+  geom_vline(xintercept = n_thx, color = "forestgreen", linetype = "dotdash", linewidth = 1, alpha = .2) +
+  geom_histogram(color = "white", fill = "#6699FF", binwidth = 2) + 
   coord_cartesian(xlim = c(0, 130)) +
   theme_bw() +
   scale_x_continuous(expand = c(0.01, 0)) +
@@ -347,9 +347,9 @@ tbl_label <- tbl_agreement %>% mutate(prop_max_weighted = prop_max * (n_min + n_
   ungroup() %>% summarize(n_tot = sum(n_0 + n_1 + n_2), n_agree = sum(prop_max_weighted)) %>%
   mutate(avg_agreement = n_agree/n_tot)
 
-ggplot(tbl_agreement, aes(prop_max)) +
-  geom_histogram(fill = "#6699FF", color = "black") +
-  geom_label(data = tbl_label, aes(x = .8, y = 105, label = str_c("Average Agreement = ", round(avg_agreement, 2)))) +
+pl_agreement <- ggplot(tbl_agreement, aes(prop_max)) +
+  geom_histogram(fill = "#6699FF", color = "white", bins = 50) +
+  geom_label(data = tbl_label, aes(x = .2, y = 60, label = str_c("Average Agreement = ", round(avg_agreement, 2))), size=6) +
   theme_bw() +
   scale_x_continuous(expand = c(0.01, 0)) +
   scale_y_continuous(expand = c(0.01, 0)) +
@@ -358,10 +358,10 @@ ggplot(tbl_agreement, aes(prop_max)) +
     strip.background = element_rect(fill = "white"),
     text = element_text(size = 22),
     legend.position = "bottom"
-  ) + coord_cartesian(xlim = c(.25, 1.025))
+  ) + coord_cartesian(xlim = c(0, 1.025))
 
 
-
+gridExtra::grid.arrange(pl_reps, pl_agreement, nrow=2)
 
 tbl_diagnostic_items <- tbl_agreement %>% select(id_lo, id_mid, id_hi, n_min, n_max, n_med, prop_max)
 write_csv(tbl_diagnostic_items, file = "data/diagnostic-triplets.csv")
