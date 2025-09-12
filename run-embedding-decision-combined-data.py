@@ -596,6 +596,8 @@ def run(
                     "loglikelihoods": loglikelihoods,
                     "gaussian_loss": gaussian_losses_avg,
                     "complexity_costs_avg": complexity_losses_avg,
+                    "test_accs_max": test_accs_max,
+                    "test_accs_proba": test_accs_proba,
                 },
                 os.path.join(model_dir, f"model_epoch{epoch+1:04d}.tar"),
             )
