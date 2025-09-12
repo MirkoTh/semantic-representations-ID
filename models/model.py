@@ -242,6 +242,7 @@ class CombinedModel(nn.Module):
         out_size: int,
         num_participants: int,
         scaling: str = "free",
+        d_weights: str = "free",
         init_weights=True,
         individual_slopes_type: str = "separate",
     ):
@@ -251,15 +252,22 @@ class CombinedModel(nn.Module):
         self.num_participants = num_participants
         self.init_weights = init_weights
         self.individual_slopes_type = individual_slopes_type
-        # embedding model with random by-participant dimension weights
-
-        self.model1 = SPoSE_ID_Random(
-            in_size=self.in_size,
-            out_size=self.out_size,
-            num_participants=self.num_participants,
-            init_weights=self.init_weights,
-            individual_slopes_type=self.individual_slopes_type,
-        )
+        if d_weights == "free":
+            self.model1 = SPoSE_ID(
+                in_size=self.in_size,
+                out_size=self.out_size,
+                num_participants=self.num_participants,
+                init_weights=self.init_weights,
+                individual_slopes_type=self.individual_slopes_type,
+            )
+        elif d_weights == "random":
+            self.model1 = SPoSE_ID_Random(
+                in_size=self.in_size,
+                out_size=self.out_size,
+                num_participants=self.num_participants,
+                init_weights=self.init_weights,
+                individual_slopes_type=self.individual_slopes_type,
+            )
         if scaling == "free":
             # freely-varying by-participant softmax temperatures
             self.model2 = Scaling_ID(

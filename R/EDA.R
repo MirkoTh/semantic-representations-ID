@@ -45,12 +45,12 @@ ggplot(tbl_agreement, aes(agreement)) +
 
 
 
-# todos
-# prepare correlational analyses between weights, etc. and demographics & questionnaires
 
-
-
-
-
+# save average RT for the triplet task
+tbl_avg <- tbl_ooo %>% group_by(participant_id) %>%
+  summarize(mn_rt = mean(rt)) %>% ungroup()
+tbl_pid_mapping <- read_csv("data/study1-2025-08/new-participant-ids-in-joint-modeling.csv")
+tbl_avg <- tbl_avg %>% left_join(tbl_pid_mapping, by = c("participant_id" = "participant_id_new"))
+write_csv(tbl_avg, "data/study1-2025-08/avg-rt.csv")
 
 

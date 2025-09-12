@@ -3052,7 +3052,7 @@ def rename_dim_weight_cols(df, n_embed):
     return df, colnames_dim_weights
 
 
-def gini_of_halves(df_both_halves, ginis, colnames_dim_weights):
+def gini_of_halves(df_both_halves, ginis, colnames_dim_weights, colname_pid="pid"):
     """
     Computes Gini coefficients for decision weights across two halves of a study and evaluates their consistency.
 
@@ -3069,6 +3069,7 @@ def gini_of_halves(df_both_halves, ginis, colnames_dim_weights):
     - ginis (pd.DataFrame): A DataFrame containing precomputed Gini coefficients per participant.
       Must include a 'pid' column for merging.
     - colnames_dim_weights (list[str]): List of base dimension column names (e.g., ['dim1', 'dim2', ...]).
+    - colname_pid (str, optional): Name of the participant ID column. Defaults to 'pid'.
 
     Returns:
     - Tuple[pd.DataFrame, pd.DataFrame]:
@@ -3078,15 +3079,15 @@ def gini_of_halves(df_both_halves, ginis, colnames_dim_weights):
 
     # long format in both halves
     df_h1_long = df_both_halves[
-        ["pid"] + [f"""{cn}_h1""" for cn in colnames_dim_weights]
-    ].melt(id_vars="pid", value_name="weight", var_name="dimension")
+        [colname_pid] + [f"""{cn}_h1""" for cn in colnames_dim_weights]
+    ].melt(id_vars=colname_pid, value_name="weight", var_name="dimension")
     df_h1_long["dimension"] = df_h1_long["dimension"].str.replace(
         r"_h1$", "", regex=True
     )
     df_h1_long["half"] = 1
     df_h2_long = df_both_halves[
-        ["pid"] + [f"""{cn}_h2""" for cn in colnames_dim_weights]
-    ].melt(id_vars="pid", value_name="weight", var_name="dimension")
+        [colname_pid] + [f"""{cn}_h2""" for cn in colnames_dim_weights]
+    ].melt(id_vars=colname_pid, value_name="weight", var_name="dimension")
     df_h2_long["dimension"] = df_h2_long["dimension"].str.replace(
         r"_h2$", "", regex=True
     )
@@ -3095,24 +3096,26 @@ def gini_of_halves(df_both_halves, ginis, colnames_dim_weights):
     # then, calculate the ginis in each half
     df_halves_long = pd.concat([df_h1_long, df_h2_long], ignore_index=True)
     df_gini_halves = (
-        df_halves_long.groupby(["pid", "half"])[
+        df_halves_long.groupby([colname_pid, "half"])[
             ["weight"]].agg(gini).reset_index()
     )
     df_gini_halves = df_gini_halves.pivot(
-        index="pid", columns="half", values="weight"
+        index=colname_pid, columns="half", values="weight"
     ).reset_index()
-    df_gini_halves.columns = ["pid", "gini_first_half", "gini_second_half"]
+    df_gini_halves.columns = [colname_pid,
+                              "gini_first_half", "gini_second_half"]
     df_gini_halves["gini_delta"] = (
         df_gini_halves["gini_second_half"] - df_gini_halves["gini_first_half"]
     )
 
     # icc of ginis
     icc_ginis = pg.intraclass_corr(
-        data=df_gini_halves.drop("gini_delta", axis=1).melt(id_vars="pid"),
-        targets="pid",
+        data=df_gini_halves.drop(
+            "gini_delta", axis=1).melt(id_vars=colname_pid),
+        targets=colname_pid,
         raters="variable",
         ratings="value",
     )
-    df_gini_all = pd.merge(ginis, df_gini_halves, how="left", on="pid")
+    df_gini_all = pd.merge(ginis, df_gini_halves, how="left", on=colname_pid)
 
     return df_gini_all, icc_ginis

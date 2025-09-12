@@ -289,16 +289,31 @@ def run(
 
     if modeltype == "random_weights_random_scaling":
         scaling = "random"
+        d_weights = "random"
         model = md.CombinedModel(
             in_size=n_items_ID,
             out_size=embed_dim,
             num_participants=n_participants,
             init_weights=True,
             scaling=scaling,
+            d_weights=d_weights,
+            individual_slopes_type=individual_slopes_type
+        )
+    elif modeltype == "free_weights_free_scaling":
+        scaling = "free"
+        d_weights = "free"
+        model = md.CombinedModel(
+            in_size=n_items_ID,
+            out_size=embed_dim,
+            num_participants=n_participants,
+            init_weights=True,
+            scaling=scaling,
+            d_weights=d_weights,
             individual_slopes_type=individual_slopes_type
         )
     elif modeltype == "free_weights_no_scaling":
         scaling = "fixed"
+        d_weights = "free"
         model = md.CombinedModel_weights_only(
             in_size=n_items_ID,
             out_size=embed_dim,
@@ -491,7 +506,7 @@ def run(
             id = batch[1].to(device)
             c_entropy, anchor, positive, negative = model(
                 b, id, task, temperature, distance_metric)
-            
+
             accs_test_proba, accs_test_max = ut.choice_accuracy(
                 anchor,
                 positive,

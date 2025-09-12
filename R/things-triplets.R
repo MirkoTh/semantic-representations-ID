@@ -90,6 +90,7 @@ tbl_ooo <- tbl_ooo %>%
   )
 
 rebase_subject_ids <- function(my_tbl) {
+  my_tbl$subject_id_old <- my_tbl$subject_id
   my_tbl$subject_id <- factor(
     my_tbl$subject_id, 
     labels = seq(0, (length(unique(my_tbl$subject_id)) - 1))
@@ -283,38 +284,30 @@ write_delim(
 
 # extract agreement among triplets ----------------------------------------
 
+ooo_dt <- data.table(tbl_ooo)
+ooo_dt[, c("id_lo", "id_hi", "id_mid") := {
+  vals <- .SD
+  id_lo <- pmin(vals[[1]], vals[[2]], vals[[3]])
+  id_hi <- pmax(vals[[1]], vals[[2]], vals[[3]])
+  id_mid <- mapply(function(x, y, z, lo, hi) {
+    setdiff(c(x, y, z), c(lo, hi))
+  }, vals[[1]], vals[[2]], vals[[3]], id_lo, id_hi)
+  .(id_lo, id_hi, id_mid)
+}, .SDcols = c("col_0", "col_1", "col_2")]
 
-t_start <- Sys.time()
-# count how often an item was encountered across all participants
-tbl_count_triplets <- tbl_ooo %>%
-  # slice_sample(n = 500000) %>%
-  mutate(incr = 1:nrow(.)) %>%
-  rowwise() %>%
-  mutate(
-    id_lo = min(c(col_0, col_1, col_2)),
-    id_hi = max(c(col_0, col_1, col_2)),
-    id_mid = c(col_0, col_1, col_2)[!c(col_0, col_1, col_2) %in% c(id_lo, id_hi)]
-  ) %>%
-  relocate(id_mid, .before = id_hi) %>%
-  group_by(id_lo, id_mid, id_hi) %>%
-  mutate(rwn = row_number(incr)) %>%
-  mutate(
-    n_encounters = max(rwn)
-  ) %>%
-  arrange(desc(rwn)) %>%
-  ungroup()
+ooo_count_triplets <- ooo_dt[, .N, by=.(id_lo, id_mid, id_hi)][order(N, decreasing = TRUE), ]
+tbl_count_triplets <- merge(ooo_dt, ooo_count_triplets, by=c("id_lo", "id_mid", "id_hi"))
+setnames(tbl_count_triplets, "N", "n_encounters")
 
-t_end <- Sys.time()
-t_duration <- t_end - t_start
-cat(t_duration)
 
 # only take items, which were at least n_thx times observed across all participants
 n_thx <- 10
 tbl_subset_items <- tbl_count_triplets %>% filter(n_encounters >= n_thx) %>% mutate(triplet_id = factor(str_c(id_lo, id_mid, id_hi)))
 tbl_subset_items$triplet_id <- factor(tbl_subset_items$triplet_id, labels = 1:length(unique(tbl_subset_items$triplet_id)))
-tbl_subset_items %>% count(triplet_id) %>% ggplot(aes(n)) + 
-  geom_vline(xintercept = 25, color = "forestgreen", linetype = "dotdash", linewidth = 1, alpha = .2) +
-  geom_histogram(color = "white", fill = "#6699FF", binwidth = 1) + 
+
+pl_reps <- tbl_subset_items %>% count(triplet_id) %>% ggplot(aes(n)) + 
+  geom_vline(xintercept = n_thx, color = "forestgreen", linetype = "dotdash", linewidth = 1, alpha = .2) +
+  geom_histogram(color = "white", fill = "#6699FF", binwidth = 2) + 
   coord_cartesian(xlim = c(0, 130)) +
   theme_bw() +
   scale_x_continuous(expand = c(0.01, 0)) +
@@ -347,9 +340,9 @@ tbl_label <- tbl_agreement %>% mutate(prop_max_weighted = prop_max * (n_min + n_
   ungroup() %>% summarize(n_tot = sum(n_0 + n_1 + n_2), n_agree = sum(prop_max_weighted)) %>%
   mutate(avg_agreement = n_agree/n_tot)
 
-ggplot(tbl_agreement, aes(prop_max)) +
-  geom_histogram(fill = "#6699FF", color = "black") +
-  geom_label(data = tbl_label, aes(x = .8, y = 105, label = str_c("Average Agreement = ", round(avg_agreement, 2)))) +
+pl_agreement <- ggplot(tbl_agreement, aes(prop_max)) +
+  geom_histogram(fill = "#6699FF", color = "white", bins = 50) +
+  geom_label(data = tbl_label, aes(x = .2, y = 60, label = str_c("Average Agreement = ", round(avg_agreement, 2))), size=6) +
   theme_bw() +
   scale_x_continuous(expand = c(0.01, 0)) +
   scale_y_continuous(expand = c(0.01, 0)) +
@@ -358,12 +351,13 @@ ggplot(tbl_agreement, aes(prop_max)) +
     strip.background = element_rect(fill = "white"),
     text = element_text(size = 22),
     legend.position = "bottom"
-  ) + coord_cartesian(xlim = c(.25, 1.025))
+  ) + coord_cartesian(xlim = c(0, 1.025))
 
 
-
+gridExtra::grid.arrange(pl_reps, pl_agreement, nrow=2)
 
 tbl_diagnostic_items <- tbl_agreement %>% select(id_lo, id_mid, id_hi, n_min, n_max, n_med, prop_max)
+tbl_diagnostic_items <- tbl_diagnostic_items %>% arrange(id_lo, id_mid, id_hi)
 write_csv(tbl_diagnostic_items, file = "data/diagnostic-triplets.csv")
 
 
@@ -375,7 +369,8 @@ write_csv(tbl_diagnostic_items, file = "data/diagnostic-triplets.csv")
 # select those participants with substantial number of trials (e.g., 250 trials)
 thx <- 250
 prop_train <- .8
-tbl_include_trials <- tbl_ooo %>% count(subject_id) %>% filter(n >= thx) %>% select(-n)
+tbl_include_trials <- tbl_ooo %>% count(subject_id) %>% 
+  filter(n >= thx) %>% select(-n)
 # select all participants who have contributed to pairs with substantial number of trials
 # because only for those we can test whether modeling IDs improves particularly low-agreement pairs
 tbl_include_items <- tibble(subject_id = sort(unique(tbl_subset_items$subject_id)))
@@ -385,7 +380,17 @@ tbl_ooo_ID_item <- tbl_ooo %>% inner_join(tbl_include_both, by = "subject_id")
 
 
 # reset IDs to start from 0
+tbl_ooo_ID_item <- tbl_ooo_ID_item %>% rename(subject_id_THINGS = subject_id_old)
 tbl_ooo_ID_item <- rebase_subject_ids(tbl_ooo_ID_item)
+
+tbl_demographic_lookup <- tbl_triplets %>% count(subject_id, age, gender) %>%
+  select(-n)
+
+tbl_demographics <- tbl_ooo_ID_item %>% count(subject_id, subject_id_THINGS) %>%
+  left_join(tbl_demographic_lookup, by = c("subject_id_THINGS" = "subject_id"))
+write_csv(tbl_demographics, file = "data/THINGS-demographic-lookup.csv")  
+
+
 tbl_ooo_ID_item <- tbl_ooo_ID_item %>%
   group_by(subject_id) %>%
   mutate(trial_id_random = sample(1:n())) %>%
