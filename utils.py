@@ -1774,6 +1774,8 @@ def load_avg_embeddings(model_id: str, device: str) -> list:
         l_embeddings = np.load("data/word2vec-embeddings.npy")
     elif model_id == "clip-vit-base-p32":
         l_embeddings = np.load("data/clip-vit-base-p32-embeddings.npy")
+    elif model_id == "SPoSE49":
+        l_embeddings = np.load("data/spose49-embeddings.npy")
     else:
         tokenizer = AutoTokenizer.from_pretrained(model_id)
         model = AutoModel.from_pretrained(model_id).to(device)
@@ -2534,6 +2536,7 @@ def load_ID_lowdim_id_weights(
     l_rnd_seed,
     l_embed_dim,
     modelversion,
+    l_lmbda=["default"],
     modeltype="random_weights_random_scaling",
     l_id_weights_type=["separate"],
 ):
@@ -2570,19 +2573,32 @@ def load_ID_lowdim_id_weights(
     for rnd_seed in l_rnd_seed:
         for n in l_embed_dim:
             for data_subset in l_data_subset:
-                for id_weights_type in l_id_weights_type:
-                    results_dir_ID = os.path.join(
-                        "./results",
-                        modelversion,
-                        f"modeltype_{modeltype}",
-                        f"{n}d",
-                        f"{id_weights_type}",
-                        f"seed{rnd_seed}",
-                        f"data_subset_{data_subset}",
-                    )
-                    l_dirs.append(results_dir_ID)
-                    l_rnd_seeds_flat.append(rnd_seed)
-                    l_subs.append(data_subset)
+                for lmbda in l_lmbda:
+                    for id_weights_type in l_id_weights_type:
+                        if lmbda == ["default"]:
+                            results_dir_ID = os.path.join(
+                                "./results",
+                                modelversion,
+                                f"modeltype_{modeltype}",
+                                f"{n}d",
+                                f"{id_weights_type}",
+                                f"seed{rnd_seed}",
+                                f"data_subset_{data_subset}",
+                            )
+                        else:
+                            results_dir_ID = os.path.join(
+                                "./results",
+                                modelversion,
+                                f"modeltype_{modeltype}",
+                                f"{n}d",
+                                f"lmbda_{str(lmbda)}",
+                                f"{id_weights_type}",
+                                f"seed{rnd_seed}",
+                                f"data_subset_{data_subset}",
+                            )
+                        l_dirs.append(results_dir_ID)
+                        l_rnd_seeds_flat.append(rnd_seed)
+                        l_subs.append(data_subset)
 
     for i, d in enumerate(l_dirs):
         l_files = os.listdir(d)
@@ -2598,6 +2614,10 @@ def load_ID_lowdim_id_weights(
                 splithalf = "2"
             case "full":
                 splithalf = "no_split"
+            case "full_evaluate_actual":
+                splithalf = "no_split"
+            case "full_evaluate_shuffled":
+                splithalf = "no_split"
             case "testcase":
                 splithalf = "testcase"
 
@@ -2605,7 +2625,7 @@ def load_ID_lowdim_id_weights(
             m = torch.load(
                 model_path, weights_only=True, map_location=torch.device("cpu")
             )
-            if modeltype == "random_weights_free_scaling" or modeltype == "random_weights_random_scaling":
+            if modeltype == "random_weights_free_scaling" or modeltype == "random_weights_random_scaling" or modeltype == "free_weights_free_scaling":
                 ts = m["model_state_dict"]["model2.individual_temps.weight"]
             elif modeltype == "free_weights_no_scaling":
                 ts = 1.0
@@ -2618,8 +2638,16 @@ def load_ID_lowdim_id_weights(
                 "modeltype": m["modeltype"],
                 "n_embed": m["n_embed"],
                 "rnd_seed": l_rnd_seeds_flat[i],
+                "lmbda": m["lambda"],
                 "data_subset": m["data_subset"],
                 "splithalf": splithalf,
+                "train_losses": m["train_losses"],
+                "train_accs_max": m["train_accs_max"],
+                "train_accs_proba": m["train_accs_proba"],
+                "nneg_d_over_time": m["nneg_d_over_time"],
+                "test_accs_max": m["test_accs_max"],
+                "test_accs_proba": m["test_accs_proba"],
+                "test_losses": m["test_losses"],
             }
             l_models.append(dict_out)
         else:
