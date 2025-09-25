@@ -2516,6 +2516,7 @@ def load_ID_lowdim_id_weights(
         modelversion (str): Version identifier for the model (used in directory structure).
         modeltype (str, optional): Type of model architecture or training scheme.
             Defaults to "random_weights_random_scaling".
+        l_id_weights_type (list[str], optional): List of ID weight types (shared, separate, shared_and_separate)).
 
     Returns:
         list[dict]: A list of dictionaries, each containing:
@@ -2535,13 +2536,14 @@ def load_ID_lowdim_id_weights(
     l_rnd_seeds_flat = []
     l_subs = []
     l_results = []
+    l_id_weights = []
 
     for rnd_seed in l_rnd_seed:
         for n in l_embed_dim:
             for data_subset in l_data_subset:
                 for lmbda in l_lmbda:
                     for id_weights_type in l_id_weights_type:
-                        if lmbda == ["default"]:
+                        if lmbda == "default":
                             results_dir_ID = os.path.join(
                                 "./results",
                                 modelversion,
@@ -2565,13 +2567,18 @@ def load_ID_lowdim_id_weights(
                         l_dirs.append(results_dir_ID)
                         l_rnd_seeds_flat.append(rnd_seed)
                         l_subs.append(data_subset)
+                        l_id_weights.append(id_weights_type)
 
     for i, d in enumerate(l_dirs):
         l_files = os.listdir(d)
         latest_epoch = max_epoch(l_files)
         model_path = os.path.join(d, "model", latest_epoch)
 
-        results = json.load(open(os.path.join(d, "results.json")))
+        results = []
+        try:
+            results = json.load(open(os.path.join(d, "results.json")))
+        except:
+            print(f"no results found in {d}")
 
         match l_subs[i]:
             case "first_half":
@@ -2614,6 +2621,7 @@ def load_ID_lowdim_id_weights(
                 "test_accs_max": m["test_accs_max"],
                 "test_accs_proba": m["test_accs_proba"],
                 "test_losses": m["test_losses"],
+                "id_weights_type": l_id_weights[i],
             }
             l_models.append(dict_out)
         else:
@@ -2622,6 +2630,67 @@ def load_ID_lowdim_id_weights(
         l_results.append(results)
 
     return l_models, l_results
+
+
+
+def load_pretrained(
+    l_data_subset,
+    l_rnd_seed,
+    modelversion,
+    modeltype,
+    l_lmbda,
+    l_lr,
+    l_splithalf,
+    latest_epoch
+):
+    l_dirs = []
+    l_models = []
+    l_rnd_seeds_flat = []
+    ll_splithalf = []
+
+    for rnd_seed in l_rnd_seed:
+        for data_subset in l_data_subset:
+            for lmbda in l_lmbda:
+                for lr in l_lr:
+                    for splithalf in l_splithalf:
+                        results_dir_ID = os.path.join(
+                            "./results",
+                            modelversion,
+                            f"{modeltype}",
+                            f"lambda{str(lmbda)}",
+                            f"lr{str(lr)}",
+                            f"{data_subset}",
+                            f"splithalf_{splithalf}",
+                            f"seed{rnd_seed}",
+                        )
+                        l_dirs.append(results_dir_ID)
+                        l_rnd_seeds_flat.append(rnd_seed)
+                        ll_splithalf.append(splithalf)
+
+    for i, d in enumerate(l_dirs):
+        model_path = os.path.join(d, "model", latest_epoch)
+
+        if os.path.isfile(model_path):
+            m = torch.load(
+                model_path, weights_only=False, map_location=torch.device("cpu")
+            )
+
+            dict_out = {
+                "decision_weights": m["model_state_dict"][
+                    "individual_slopes.weight"
+                ],
+                "rnd_seed": l_rnd_seeds_flat[i],
+                "subject_type": m["subject_type"],
+                "splithalf": ll_splithalf[i],
+                "val_accs_max": m["val_accs_max"],
+                "val_accs_proba": m["val_accs_proba"],
+                "lmbda": m["lambda"],
+            }
+            l_models.append(dict_out)
+        else:
+            print(f"{model_path} does not exist")
+
+    return l_models
 
 
 def reverse_code_big5(df_qs_num):
