@@ -57,7 +57,13 @@ def parseargs():
         "--data_subset",
         type=str,
         default="testcase",
-        choices=["testcase", "full", "first_half", "second_half"],
+        choices=["testcase", "full", "first_half", "second_half", "full_evaluate_actual", "full_evaluate_shuffled"],
+    )
+    aa(
+        "--lmbda",
+        type=float,
+        default=0.0005,
+        help="l1 regularization to penalize n dims",
     )
     aa(
         "--loggername",
@@ -71,8 +77,8 @@ def parseargs():
         type=str,
         default="random_weights_free_scaling",
         choices=["random_weights_free_scaling",
-                 "random_weights_random_scaling", "free_weights_no_scaling"],
-        help="freely or randomly varying varying temperatures (by participant)",
+                 "random_weights_random_scaling", "free_weights_no_scaling", "free_weights_free_scaling"],
+        help="fixed, freely, or randomly varying temperatures (by participant)",
     )
     aa(
         "--results_dir",
@@ -193,7 +199,7 @@ def parseargs():
         "--individual_slopes_type",
         type=str,
         default="separate",
-        choices=["separate", "shared"],
+        choices=["separate", "shared", "shared_and_separate"],
         help="whether individual slopes are separate per dimension or shared (one scalar) across dimensions",
     )
     args = parser.parse_args()
@@ -239,6 +245,7 @@ def run(
     window_size: int,
     sampling_method: str,
     lr: float,
+    lmbda: float,
     steps: int,
     early_stopping: str = "No",
     p: float = None,
@@ -255,7 +262,7 @@ def run(
         dir=f"./log_files/{modeltype}/ndim_{embed_dim}/lr_{lr}/data_subset_{data_subset}",
         loggername=loggername,
     )
-    logger.info("modeltype = ", f"{modeltype}")
+    logger.info(f"modeltype = {modeltype}")
 
     # load triplets into memory
     train_triplets_ID, test_triplets_ID = ut.load_data_combined(
@@ -339,6 +346,7 @@ def run(
             "embeddings-decision-combined-data",
             f"modeltype_{modeltype}",
             f"{embed_dim}d",
+            f"lmbda_{lmbda}",
             f"{individual_slopes_type}",
             f"seed{rnd_seed}",
             f"data_subset_{data_subset}",
@@ -352,6 +360,7 @@ def run(
             "embeddings-decision-combined-data",
             f"modeltype_{modeltype}",
             f"{embed_dim}d",
+            f"lmbda_{lmbda}",
             f"{individual_slopes_type}",
             f"seed{rnd_seed}",
             f"data_subset_{data_subset}",
@@ -400,6 +409,7 @@ def run(
                         [],
                     )
                     train_losses = []
+                    test_losses = []
                     loglikelihoods, complexity_losses = [], []
                     nneg_d_over_time = []
             else:
@@ -415,6 +425,7 @@ def run(
         train_accs_max, train_accs_proba = [], []
         test_accs_max, test_accs_proba = [], []
         train_losses = []
+        test_losses = []
         (
             loglikelihoods,
             complexity_losses,
@@ -431,7 +442,7 @@ def run(
     ################################################
     ################## Training ####################
     ################################################
-    lmbda = 0.0005
+    #lmbda = 0.0005
     lmbda_hierarchical = 0.01
     iter = 0
     results = {}
@@ -453,11 +464,13 @@ def run(
 
         batch_accs_max_test = torch.zeros(len(test_batches))
         batch_accs_proba_test = torch.zeros(len(test_batches))
+        batch_losses_test = torch.zeros(len(test_batches))
 
         for i, batch in enumerate(train_batches):
             optim.zero_grad()  # zero out gradients
             b = batch[0].to(device)
             id = batch[1].to(device)
+            # note that temperature is not used when scaling varies by participant (i.e., is free or random)
             c_entropy, anchor, positive, negative = model(
                 b, id, task, temperature, distance_metric)
 
@@ -472,6 +485,9 @@ def run(
             # positivity constraint to enforce non-negative values in embedding matrix
             # pos_pen = torch.sum(F.relu(-W))
             pos_pen = torch.sum(F.relu(-W)) + torch.sum(F.relu(-Bs))
+            if individual_slopes_type == "shared_and_separate":
+                Bs_shared = model.model1.individual_shared_slope.weight
+                pos_pen += torch.sum(F.relu(-Bs_shared))
             complexity_loss_avg = (lmbda / n_items_ID) * l1_pen_avg
 
             # Gaussian loss on individual differences for each dimension
@@ -488,6 +504,9 @@ def run(
             batch_llikelihoods[i] += c_entropy.item()
             batch_glosses[i] += 0  # gaussian_loss.item()
             batch_closses[i] += 0  # complexity_loss_avg.item()
+            # correct if scaling is not fixed (i.e., if it is free or random)
+            if scaling != "fixed":
+                temperature = model.model2(id[::3])
             accs_train_proba, accs_train_max = ut.choice_accuracy(
                 anchor,
                 positive,
@@ -504,9 +523,13 @@ def run(
             optim.zero_grad()  # zero out gradients
             b = batch[0].to(device)
             id = batch[1].to(device)
+            # correct if scaling is not fixed (i.e., if it is free or random)
+            if scaling != "fixed":
+                temperature = model.model2(id[::3])
             c_entropy, anchor, positive, negative = model(
                 b, id, task, temperature, distance_metric)
-
+            loss = c_entropy + 0.01 * pos_pen + complexity_loss_avg  # + gaussian_loss
+            batch_losses_test[i] += loss.item()
             accs_test_proba, accs_test_max = ut.choice_accuracy(
                 anchor,
                 positive,
@@ -526,6 +549,7 @@ def run(
         avg_train_acc_proba = torch.mean(batch_accs_proba_train).item()
         avg_test_acc_max = torch.mean(batch_accs_max_test).item()
         avg_test_acc_proba = torch.mean(batch_accs_proba_test).item()
+        avg_test_loss = torch.mean(batch_losses_test).item()
 
         loglikelihoods.append(avg_llikelihood)
         complexity_losses_avg.append(avg_closs)
@@ -535,38 +559,46 @@ def run(
         train_accs_proba.append(avg_train_acc_proba)
         test_accs_max.append(avg_test_acc_max)
         test_accs_proba.append(avg_test_acc_proba)
+        test_losses.append(avg_test_loss)
 
         logger.info(f"Epoch: {epoch+1}/{epochs}")
         logger.info(f"Train acc max: {avg_train_acc_max:.5f}")
         logger.info(f"Train acc proba: {avg_train_acc_proba:.5f}")
         logger.info(f"Train loss: {avg_train_loss:.5f}")
+        logger.info(f"Test acc max: {avg_test_acc_max:.5f}")
+        logger.info(f"Test acc proba: {avg_test_acc_proba:.5f}")
+        logger.info(f"Test loss: {avg_test_loss:.5f}")
+        
 
         if show_progress:
-            print(
+            logger.info(
                 "\n========================================================================================================"
             )
-            print(
+            logger.info(
                 f"====== Epoch: {epoch+1}, Train acc max: {avg_train_acc_max:.5f}, Train acc proba: {avg_train_acc_proba:.5f}, Train loss: {avg_train_loss:.5f} ======"
             )
-            print(
+            logger.info(
+                f"====== Epoch: {epoch+1}, Test acc max: {avg_test_acc_max:.5f}, Test acc proba: {avg_test_acc_proba:.5f}, Test loss: {avg_test_loss:.5f} ======"
+            )
+            logger.info(
                 "========================================================================================================\n"
             )
             current_d = ut.get_nneg_dims(W)
             nneg_d_over_time.append((epoch + 1, current_d))
-            print(
+            logger.info(
                 "\n========================================================================================================"
             )
-            print(
+            logger.info(
                 f"========================= Current number of non-negative dimensions: {current_d} ========================="
             )
-            print(
+            logger.info(
                 "========================================================================================================\n"
             )
 
         if (epoch + 1) % steps == 0:
             W = model.model1.fc.weight
             id_slopes = model.model1.individual_slopes.weight
-            id_decision_scaling = temperature  # model.model2.individual_temps.weight
+
             np.savetxt(
                 os.path.join(
                     results_dir, f"sparse_embed_epoch{epoch+1:04d}.txt"),
@@ -579,7 +611,17 @@ def run(
                 id_slopes.detach().cpu().numpy(),
             )
             logger.info(
-                f"Saving individual decision weights at epoch {epoch+1}")
+                f"Saving individual dimensional weights at epoch {epoch+1}")
+            
+            if scaling != "fixed":
+                id_decision_scaling = model.model2.individual_temps.weight
+                np.savetxt(
+                    os.path.join(
+                        results_dir, f"individual_decision_scaling{epoch+1:04d}.txt"),
+                        id_decision_scaling.detach().cpu().numpy(),
+                        )
+                logger.info(f"Saving individual decision weights at epoch {epoch+1}")
+            
             # np.savetxt(
             #     os.path.join(
             #         results_dir, f"individual_scalings{epoch+1:04d}.txt"),
@@ -611,6 +653,9 @@ def run(
                     "loglikelihoods": loglikelihoods,
                     "gaussian_loss": gaussian_losses_avg,
                     "complexity_costs_avg": complexity_losses_avg,
+                    "test_accs_max": test_accs_max,
+                    "test_accs_proba": test_accs_proba,
+                    "test_losses": test_losses,
                 },
                 os.path.join(model_dir, f"model_epoch{epoch+1:04d}.tar"),
             )
@@ -625,6 +670,8 @@ def run(
         "train_acc_proba": train_accs_proba[-1],
         "test_acc_max": test_accs_max[-1],
         "test_acc_proba": test_accs_proba[-1],
+        "train_losses": train_losses,
+        "test_losses": test_losses,
     }
     logger.info(
         f"\nOptimization finished after {epoch+1} epochs for lambda: {lmbda}\n")
@@ -688,6 +735,7 @@ if __name__ == "__main__":
         window_size=args.window_size,
         sampling_method=args.sampling_method,
         lr=args.learning_rate,
+        lmbda=args.lmbda,
         steps=args.steps,
         resume=args.resume,
         p=args.p,

@@ -98,6 +98,11 @@ class SPoSE_ID(nn.Module):
                 num_participants, self.out_size)
         elif individual_slopes_type == "shared":
             self.individual_slopes = nn.Embedding(num_participants, 1)
+        elif individual_slopes_type == "shared_and_separate":
+            self.individual_slopes = nn.Embedding(
+                num_participants, self.out_size
+            )
+            self.individual_shared_slope = nn.Embedding(num_participants, 1)
         if init_weights:
             self._initialize_weights()
 
@@ -106,6 +111,8 @@ class SPoSE_ID(nn.Module):
         if self.individual_slopes == "shared":
             # Repeat the scalar across out_size dimensions
             w_i = w_i.repeat(1, self.out_size)  # shape: [batch_size, out_size]
+        elif self.individual_slopes == "shared_and_separate":
+            w_i = torch.add(w_i, self.individual_shared_slope(id).repeat(1, self.out_size))  # shape: (batch_size, 1) broadcast to (batch_size, out_size)
         return w_i * self.fc(x)
 
     def _initialize_weights(self) -> None:
@@ -285,13 +292,13 @@ class CombinedModel(nn.Module):
                 init_weights=self.init_weights,
             )
 
-    def forward(self, x, id, distance_metric):
+    def forward(self, x, id, task, temperature, distance_metric):
         x = self.model1(x, id)
         anchor, positive, negative = torch.unbind(
             torch.reshape(x, (-1, 3, self.out_size)), dim=1
         )
         sims_prep = ut.compute_similarities(
-            anchor, positive, negative, "odd_one_out", distance_metric
+            anchor, positive, negative, task, distance_metric
         )
         sims = torch.stack(sims_prep, dim=-1)
         temp_scaling = self.model2(id[::3])

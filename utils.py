@@ -494,7 +494,7 @@ def load_data_combined(
         train_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_testcase.txt")
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_testcase.txt")
                 )
             )
             .to(device)
@@ -503,7 +503,7 @@ def load_data_combined(
         test_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_testcase.txt")
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_testcase.txt")
                 )
             )
             .to(device)
@@ -513,7 +513,7 @@ def load_data_combined(
         train_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new.txt"))
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new.txt"))
             )
             .to(device)
             .type(torch.LongTensor)
@@ -521,7 +521,7 @@ def load_data_combined(
         test_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new.txt"))
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new.txt"))
             )
             .to(device)
             .type(torch.LongTensor)
@@ -530,7 +530,7 @@ def load_data_combined(
         train_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h1.txt"))
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h1.txt"))
             )
             .to(device)
             .type(torch.LongTensor)
@@ -538,7 +538,7 @@ def load_data_combined(
         test_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h2.txt"))
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h2.txt"))
             )
             .to(device)
             .type(torch.LongTensor)
@@ -547,7 +547,7 @@ def load_data_combined(
         train_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h2.txt"))
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h2.txt"))
             )
             .to(device)
             .type(torch.LongTensor)
@@ -555,7 +555,41 @@ def load_data_combined(
         test_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h1.txt"))
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h1.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+    elif dataset == "full_evaluate_actual":
+        train_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "train_90_ID_item.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+        test_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "test_10_ID_item.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+    elif dataset == "full_evaluate_shuffled":
+        train_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "train_shuffled_90_ID_item.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+        test_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "test_shuffled_10_ID_item.txt"))
             )
             .to(device)
             .type(torch.LongTensor)
