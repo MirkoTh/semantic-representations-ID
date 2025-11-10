@@ -31,12 +31,11 @@ tbl_ooo_study1 <- read_delim(
 participant_ids_new <- unique(tbl_ooo_study1$X4)
 tbl_ooo_study1 <- tbl_ooo_study1 %>% rebase_subject_ids() %>%
   mutate(X4 = X4 + 1)
-participant_ids_modeling_minus_old_ids <- unique(tbl_ooo_study1$X4)
 
 
 max_id_things_train <- max(tbl_train_things$X4)
 max_id_things_eval <- max(tbl_eval_things$X4)
-assertthat::are_equal(max_id_things_train,  max_id_things_eval)
+if (!assertthat::are_equal(max_id_things_train,  max_id_things_eval)) stop()
 
 
 # Merge and Save Full Data Set --------------------------------------------
@@ -57,7 +56,7 @@ pids_study1 <- tibble(
   participant_id_model = unique(tbl_ooo_study1$X4),
   # ids only used for new study participants
   participant_id_new = participant_ids_new
-  ) 
+)
 
 # save the updated participant ids to easily extract data after model fitting
 write_csv(pids_study1, "data/study1-2025-08/new-participant-ids-in-joint-modeling.csv")
@@ -69,10 +68,11 @@ write_csv(pids_study1, "data/study1-2025-08/new-participant-ids-in-joint-modelin
 
 # small data set for testing
 # make sure, new ids are in testcase set (for dev purposes)
-n_samples_old <- 10
+n_samples_each <- 10
 set.seed(10)
-tbl_testcase <- tbl_full[tbl_full$X4 %in% sample(max_id_things_train, n_samples_old), ]
-tbl_testcase <- rbind(tbl_testcase, tbl_ooo_study1)
+tbl_testcase <- tbl_full[tbl_full$X4 %in% sample(max_id_things_train, n_samples_each), ]
+tbl_ooo_study1_testcase <- tbl_ooo_study1[tbl_ooo_study1$X4 %in% sample((max_id_things_train+1):max(tbl_ooo_study1$X4), n_samples_each), ]
+tbl_testcase <- rbind(tbl_testcase, tbl_ooo_study1_testcase)
 
 
 tbl_testcase <- rebase_subject_ids(tbl_testcase)
@@ -86,11 +86,13 @@ write_delim(
 
 # only ids from new data set
 unique_test_pids <- unique(tbl_testcase$X4)
+participant_ids_new_testcase <- tbl_ooo_study1_testcase %>% left_join(pids_study1, by = c("X4" = "participant_id_model")) %>%
+  group_by(participant_id_new) %>% count() %>% select(participant_id_new) %>% as_vector()
 pids_study1_testcase <- tibble(
   # ids used in modeling
-  participant_id_model = unique_test_pids[which(unique_test_pids >= n_samples_old)],
+  participant_id_model = unique_test_pids[which(unique_test_pids >= n_samples_each)],
   # ids only used for new study participants
-  participant_id_new = participant_ids_new
+  participant_id_new = participant_ids_new_testcase
 )
 
 # save the updated participant ids to easily extract data after model fitting
@@ -102,6 +104,13 @@ write_csv(
 
 # Create and Save Half-Split Data Set ------------------------------------
 
+
+# do this twice with two different seed values
+# for the split-half reliability analysis of the weight change we need to run
+# each half twice to have the weight change measure twice
+
+
+# number 1
 set.seed(10)
 tbl_reorder <- tbl_full %>%
   mutate(idx = 1:nrow(.)) %>%
@@ -129,5 +138,36 @@ write_delim(
 write_delim(
   tbl_second_half, 
   "data/study1-2025-08/ooo_data_modeling_old_and_new_h2.txt",
+  col_names = FALSE
+)
+
+# number 2
+set.seed(597)
+tbl_reorder <- tbl_full %>%
+  mutate(idx = 1:nrow(.)) %>%
+  group_by(X4) %>%
+  mutate(
+    trial_id = row_number(idx),
+    trial_id_random = sample(max(trial_id), replace=FALSE),
+    first_half = trial_id_random <= max(trial_id) / 2
+  ) %>% ungroup() %>%
+  select(-c(idx, trial_id)) %>%
+  rename(trial_id = trial_id_random) %>%
+  arrange(X4, trial_id)
+
+l_reordered <- tbl_reorder %>% split(.$first_half)
+tbl_first_half <- l_reordered[[1]] %>% select(-c(trial_id, first_half))
+tbl_second_half <- l_reordered[[2]] %>% select(-c(trial_id, first_half))
+
+
+# save the updated participant ids to easily extract data after model fitting
+write_delim(
+  tbl_first_half, 
+  "data/study1-2025-08/ooo_data_modeling_old_and_new_h1_v2.txt",
+  col_names = FALSE
+)
+write_delim(
+  tbl_second_half, 
+  "data/study1-2025-08/ooo_data_modeling_old_and_new_h2_v2.txt",
   col_names = FALSE
 )
