@@ -560,6 +560,40 @@ def load_data_combined(
             .to(device)
             .type(torch.LongTensor)
         )
+    elif dataset == "first_half_v2":
+        train_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h1_v2.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+        test_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h2_v2.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+    elif dataset == "second_half_v2":
+        train_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h2.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+        test_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h1.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
     elif dataset == "full_evaluate_actual":
         train_triplets = (
             torch.from_numpy(
