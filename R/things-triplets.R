@@ -3,6 +3,7 @@ rm(list = ls())
 library(tidyverse)
 library(rutils)
 library(R.matlab)
+library(data.table)
 
 things_dimension_labels <- R.matlab::readMat("data/labels.mat")
 things_words <- R.matlab::readMat("data/words.mat")
@@ -16,13 +17,38 @@ tbl_triplets <- read_delim("data/triplets_large_final_correctednc_correctedorder
 grouped_agg(tbl_triplets, subject_id, RT) %>%
   summarize(m_RT = mean(mean_RT))
 
-tbl_triplets %>% count(subject_id) %>% mutate(n_trials_cut = cut(n, c(seq(0, 1000, by = 100), Inf))) %>%
-  count(n_trials_cut) %>%
-  ggplot(aes(n_trials_cut, n)) + 
+tbl_plt <- tbl_triplets %>% count(subject_id) %>%
+  mutate(n_trials_cut = cut(
+    n, c(seq(0, 600, by = 20), Inf), 
+    labels = c(seq(20, 600, by = 20), ">600")
+    )
+    ) %>%
+  count(n_trials_cut)
+
+write_csv(tbl_plt, file = "data/data-plotting/tbl-ntrials-hebart.csv")
+
+ggplot(tbl_plt, aes(n_trials_cut, n)) + 
+  ggpattern::geom_rect_pattern(
+    aes(xmin = match("20", levels(tbl_plt$n_trials_cut)),
+        xmax = match("260", levels(tbl_plt$n_trials_cut)) - 0.5,
+        ymin = 0, ymax = 4500),
+    pattern = "stripe",
+    pattern_fill = "black",
+    pattern_angle = 45,
+    pattern_density = 0.5,
+    pattern_spacing = 0.02,
+    fill = "salmon1",
+    color = "black",
+    alpha = 0.2
+  ) +
   geom_col(fill = "#6699FF", color = "black") +
+  geom_vline(xintercept = match("260", levels(tbl_plt$n_trials_cut)) - .5, 
+             color = "darkred", linetype = "dotdash", linewidth = 2) +
+  geom_label(aes(y = n + 200, label = n), angle = 0) +
   theme_bw() +
-  scale_x_discrete(expand = c(0.01, 0)) +
-  scale_y_continuous(expand = c(0.01, 0), breaks = seq(0, 9000, by = 1000)) +
+  coord_flip()+
+  scale_x_discrete(expand = c(0.02, 0.02)) +
+  scale_y_continuous(expand = c(0, 0)) +
   labs(x = "Nr. Trials", y = "Nr. Participants") +
   theme(
     strip.background = element_rect(fill = "white"),
@@ -30,11 +56,7 @@ tbl_triplets %>% count(subject_id) %>% mutate(n_trials_cut = cut(n, c(seq(0, 100
     legend.position = "bottom",
     axis.text.x = element_text(angle = 45, hjust = 1),
     panel.grid.major.y = element_line(size = 1, color = "grey")  # Adjust the size to make gridlines thicker
-  ) +
-  scale_color_brewer(palette = "Set2", name = "") +
-  scale_color_gradient2(name = "", high = "#66C2A5", low = "#FC8D62", mid = "white") +
-  scale_color_gradient(name = "", high = "#66C2A5", low = "#FC8D62")
-
+  )
 
 softmax <- function(x1, x2) {
   exp(x1) / (exp(x1) + exp(x2))
@@ -388,22 +410,28 @@ tbl_demographic_lookup <- tbl_triplets %>% count(subject_id, age, gender) %>%
 
 tbl_demographics <- tbl_ooo_ID_item %>% count(subject_id, subject_id_THINGS) %>%
   left_join(tbl_demographic_lookup, by = c("subject_id_THINGS" = "subject_id"))
-write_csv(tbl_demographics, file = "data/THINGS-demographic-lookup.csv")  
+write_csv(tbl_demographics, file = "data/THINGS-demographic-lookup.csv")
 
 
 tbl_ooo_ID_item <- tbl_ooo_ID_item %>%
   group_by(subject_id) %>%
-  mutate(trial_id_random = sample(1:n())) %>%
+  mutate(trial_id_random = sample(1:n()), trial_id_random_2 = sample(1:n())) %>%
   arrange(subject_id, trial_id_random) %>%
   mutate(
     cum_prop = trial_id_random / n()
-  ) %>% select(-trial_id_random)
+  )  %>%
+  arrange(subject_id, trial_id_random_2) %>%
+  mutate(
+    cum_prop_2 = trial_id_random_2 / n()
+  ) %>% select(-starts_with("trial_id_random"))
 tbl_ooo_ID_item_subset_train <- tbl_ooo_ID_item %>%
   filter(cum_prop <= prop_train) %>%
-  select(-cum_prop)
+  select(-starts_with("cum_prop"))
 tbl_ooo_ID_item_subset_test <- tbl_ooo_ID_item %>%
   filter(cum_prop > prop_train) %>%
-  select(-cum_prop)
+  select(-starts_with("cum_prop"))
+
+length(unique(tbl_ooo_ID_item$subject_id))
 
 write_delim(
   tbl_ooo_ID_item_subset_train %>% 
@@ -435,13 +463,13 @@ tbl_ooo_ID_item_shuffle_id <- tbl_ooo_ID_item_shuffle_id %>%
   arrange(subject_id, trial_id_random) %>%
   mutate(
     cum_prop = trial_id_random / n()
-  ) %>% select(-trial_id_random)
+  ) %>% select(-starts_with("trial_id_random"))
 tbl_ooo_ID_item_shuffle_id_train <- tbl_ooo_ID_item_shuffle_id %>%
   filter(cum_prop <= prop_train) %>%
-  select(-cum_prop)
+  select(-starts_with("cum_prop"))
 tbl_ooo_ID_item_shuffle_id_test <- tbl_ooo_ID_item_shuffle_id %>%
   filter(cum_prop > prop_train) %>%
-  select(-cum_prop)
+  select(-starts_with("cum_prop"))
 
 write_delim(
   tbl_ooo_ID_item_shuffle_id_train %>% 
@@ -494,7 +522,10 @@ tbl_bins_samesize <- tbl_bins_samesize %>% group_by(cumprop_cut_lag) %>% mutate(
 tbl_split_half <- tbl_ooo_ID_item %>% group_by(subject_id) %>% mutate(n = n()) %>%
   left_join(tbl_bins_samesize %>% select(n, cumprop_cut_lag, thx_lo, thx_hi), by = "n") %>%
   ungroup() %>%
-  mutate(half = factor(cum_prop <= .5, labels = c(1, 2)))
+  mutate(
+    half = factor(cum_prop <= .5, labels = c(1, 2)),
+    half_1 = factor(cum_prop_2 <= .5, labels = c(1, 2))
+    )
 
 # save the two halfs to run the model upon
 write_delim(
@@ -510,6 +541,21 @@ write_delim(
   "data/splithalf_2_ID_item.txt", col_names = FALSE
 )
 
+# save it again for a different split
+# actually, these data sets are not used because we do the split-half
+# on our data merged with the Hebart (2020) data
+write_delim(
+  tbl_split_half %>% 
+    filter(half_1 == 1) %>%
+    select(c("col_0", "col_1", "col_2", "subject_id")), 
+  "data/splithalf_1_ID_item_differentsplit.txt", col_names = FALSE
+)
+write_delim(
+  tbl_split_half %>% 
+    filter(half_1 == 2) %>%
+    select(c("col_0", "col_1", "col_2", "subject_id")), 
+  "data/splithalf_2_ID_item_differentsplit.txt", col_names = FALSE
+)
 # save a lookup table mapping subject_ids to 10% buckets
 tbl_bucket_lookup <- tbl_split_half %>% group_by(subject_id) %>% 
   summarize(
