@@ -260,3 +260,22 @@ merge_separate_ids <- function(tbl_df, tbl_partial_ids) {
   
   return(tbl_df)
 }
+
+save_my_tiff <- function(pl, path_fl, w, h) {
+  tiff(path_fl, w, h, "in", res = 300)
+  grid.draw(pl)
+  dev.off()
+}
+
+save_my_pdf <- function(pl, path_fl, w, h) {
+  pdf(path_fl, w, h, paper = "special")
+  grid.draw(pl)
+  dev.off()
+}
+
+save_my_pdf_and_tiff_and_png <- function(pl, path_fl, w, h) {
+  save_my_pdf(pl, str_c(path_fl, ".pdf"), w, h)
+  save_my_tiff(pl, str_c(path_fl, ".tiff"), w, h)
+  ggsave(filename = str_c(path_fl, ".png"), plot = pl, units = "in", width = w, height = h)
+  
+}

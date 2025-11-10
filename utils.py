@@ -494,7 +494,8 @@ def load_data_combined(
         train_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_testcase.txt")
+                    pjoin(
+                        triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_testcase.txt")
                 )
             )
             .to(device)
@@ -503,7 +504,8 @@ def load_data_combined(
         test_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_testcase.txt")
+                    pjoin(
+                        triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_testcase.txt")
                 )
             )
             .to(device)
@@ -2100,23 +2102,26 @@ def model_detail_dict(ls, embedding_only):
         pd.DataFrame(
             {
                 "modeltype": l["modeltype"],
-                "sparsity": l["sparsity"],
-                "subject_type": l["subject_type"],
-                "nr_epochs": l["epoch"],
+                # "sparsity": l["sparsity"],
+                # "subject_type": l["subject_type"],
+                "data_subset": l["data_subset"],
+                # "nr_epochs": l["epoch"],
                 "ndim": l["n_embed"],
-                "lambda": l["lambda"],
-                "lambda_hierarchical": l["lmbda_hierarchical"],
+                "lambda": l["lmbda"],
+                # "lambda_hierarchical": l["lmbda_hierarchical"],
                 "train_acc_max": l["train_accs_max"],
-                "val_acc_max": l["val_accs_max"],
+                "test_acc_max": l["test_accs_max"],
                 "train_acc_proba": l["train_accs_proba"],
-                "val_acc_proba": l["val_accs_proba"],
+                "test_acc_proba": l["test_accs_proba"],
+                "train_losses": l["train_losses"],
+                "test_losses": l["test_losses"],
             }
         )
         for l in ls
     ]
-    if embedding_only:
-        for i, l in enumerate(l_df):
-            l["temperature"] = ls[i]["temperature"].detach().numpy()
+    # if embedding_only:
+    #     for i, l in enumerate(l_df):
+    #         l["temperature"] = ls[i]["temperature"].detach().numpy()
     return l_df
 
 
@@ -2691,6 +2696,10 @@ def load_ID_lowdim_id_weights(
                 "test_losses": m["test_losses"],
                 "id_weights_type": l_id_weights[i],
             }
+            if l_id_weights[i] == "shared_and_separate":
+                dict_out["shared_decision_weight"] = m["model_state_dict"][
+                    "model1.individual_shared_slope.weight"
+                ]
             l_models.append(dict_out)
         else:
             print(f"{model_path} does not exist")
@@ -2698,7 +2707,6 @@ def load_ID_lowdim_id_weights(
         l_results.append(results)
 
     return l_models, l_results
-
 
 
 def load_pretrained(
