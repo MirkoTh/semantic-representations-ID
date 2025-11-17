@@ -23,48 +23,25 @@ tbl_triplets  %>% count(subject_id) %>% filter(n >= 260) %>% count(subject_id)
 
 tbl_trials_hebart$n_trials_cut <- fct_inorder(factor(tbl_trials_hebart$n_trials_cut))
 
-pl_ntrials_hebart <- ggplot(tbl_trials_hebart, aes(n_trials_cut, n)) + 
-  ggpattern::geom_rect_pattern(
-    aes(xmin = match("20", levels(tbl_trials_hebart$n_trials_cut)),
-        xmax = match("260", levels(tbl_trials_hebart$n_trials_cut)) - 0.5,
-        ymin = 0, ymax = 4535),
-    pattern = "stripe",
-    pattern_fill = "black",
-    pattern_angle = 45,
-    pattern_density = 0.5,
-    pattern_spacing = 0.02,
-    fill = "salmon1",
-    color = "black",
-    alpha = 0.2
-  ) +
-  geom_col(fill = "#6699FF", color = "black") +
-  geom_vline(
-    xintercept = match("260", levels(tbl_trials_hebart$n_trials_cut)) - .5,
-    color = "darkred", linewidth = 2 #linetype = "dotdash", 
-  ) +
-  geom_label(aes(y = n + 200, label = n), angle = 0) +
-  geom_segment(
-    aes(y = 1500, yend = 1500, 
-        x = match("260", levels(tbl_trials_hebart$n_trials_cut)) - .5, 
-        xend = match("440", levels(tbl_trials_hebart$n_trials_cut))), 
-    arrow = arrow(), color = "#66CDAA", linewidth = 2
-  ) +
-  geom_segment(
-    aes(y = 3000, yend = 3000, 
-        x = match("260", levels(tbl_trials_hebart$n_trials_cut)) - .5, 
-        xend = match("440", levels(tbl_trials_hebart$n_trials_cut))), 
-    arrow = arrow(), color = "#66CDAA", linewidth = 2
-  ) +
-  geom_label(aes(
-    x = match("460", levels(tbl_trials_hebart$n_trials_cut)) + 1, 
-    y = 2250, 
-    label = "+ triplets observed > 10 times\nTotal: 779 participants"
-  ), size = 7) +
+
+tbl_agg <- tbl_triplets %>% 
+  count(subject_id) %>%
+  mutate(n = ifelse(n >= 600, 600, n))
+
+pl_ntrials_hebart <- ggplot(tbl_agg, aes(n)) +
+  geom_vline(xintercept = 259, color = "darkred", linewidth = 1) +
+  annotate("rect",
+           xmin = 260, xmax = 620,
+           ymin = 0, ymax = 4250,
+           fill = "seagreen3", alpha = 0.5) +
+  geom_histogram(color = "black", fill = "dodgerblue1") +
+  annotate("label", x = 160, y = 2900,
+           label = "Participants\nwith < 260 trials\nwere excluded",
+           size = 6) +
   theme_bw() +
-  coord_flip()+
-  scale_x_discrete(expand = c(0.02, 0.02)) +
-  scale_y_continuous(expand = c(0, 25)) +
-  labs(x = "Nr. Trials", y = "Nr. Participants") +
+  scale_x_continuous(expand = c(0, 0.02)) +
+  scale_y_continuous(expand = c(0, 0.02)) +
+  labs(x = "Number of completed trials", y = "Number of participants") +
   theme(
     strip.background = element_rect(fill = "white"),
     text = element_text(size = 22),
@@ -73,8 +50,10 @@ pl_ntrials_hebart <- ggplot(tbl_trials_hebart, aes(n_trials_cut, n)) +
     panel.grid.major.y = element_line(size = 1, color = "grey")  # Adjust the size to make gridlines thicker
   )
 
-save_my_pdf(pl_ntrials_hebart, "documents/writeup/figures-plotting/plot-ntrials-hebart.pdf", 10, 7)
 
+ggsave("documents/writeup/figures-plotting/plot-ntrials-hebart.pdf",
+       plot = pl_ntrials_hebart,
+       width = 6, height = 5)
 
 
 
