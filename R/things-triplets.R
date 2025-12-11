@@ -3,6 +3,9 @@ rm(list = ls())
 library(tidyverse)
 library(rutils)
 library(R.matlab)
+library(data.table)
+
+source("R/utils.R")
 
 things_dimension_labels <- R.matlab::readMat("data/labels.mat")
 things_words <- R.matlab::readMat("data/words.mat")
@@ -71,7 +74,7 @@ extract_anchor <- function(image1, image2, image3, OOO, a) {
   c(image1, image2, image3)[lgl][a]
 }
 tbl_ooo <- tbl_triplets %>% 
-  select(image1, image2, image3, choice, subject_id)
+  select(image1, image2, image3, choice, subject_id, RT)
 tbl_ooo$OOO <- pmap_dbl(tbl_ooo[, c("image1", "image2", "image3", "choice")], ~ c(..1, ..2, ..3)[..4])
 tbl_ooo$anchor1 <- pmap_dbl(tbl_ooo[, c("image1", "image2", "image3", "OOO")], extract_anchor, a = 1)
 tbl_ooo$anchor2 <- pmap_dbl(tbl_ooo[, c("image1", "image2", "image3", "OOO")], extract_anchor, a = 2)
@@ -382,12 +385,19 @@ tbl_ooo_ID_item <- tbl_ooo %>% inner_join(tbl_include_both, by = "subject_id")
 tbl_ooo_ID_item <- tbl_ooo_ID_item %>% rename(subject_id_THINGS = subject_id_old)
 tbl_ooo_ID_item <- rebase_subject_ids(tbl_ooo_ID_item)
 
-tbl_demographic_lookup <- tbl_triplets %>% count(subject_id, age, gender) %>%
-  select(-n)
+tbl_demographic_lookup <- create_demographic_lookup(tbl_triplets)
 
 tbl_demographics <- tbl_ooo_ID_item %>% count(subject_id, subject_id_THINGS) %>%
   left_join(tbl_demographic_lookup, by = c("subject_id_THINGS" = "subject_id"))
-write_csv(tbl_demographics, file = "data/THINGS-demographic-lookup.csv")  
+
+write_csv(tbl_demographics, file = "data/THINGS-demographic-lookup.csv")
+
+#### Demographics on Used Dataset
+
+mean(tbl_demographics$mn_age, na.rm = TRUE)
+sd(tbl_demographics$mn_age, na.rm = TRUE)
+tbl_demographics %>% count(gender)
+
 
 
 tbl_ooo_ID_item <- tbl_ooo_ID_item %>%
@@ -564,4 +574,5 @@ tbl_test_new_old %>% filter(ID.x == ID.y) %>% count()
 tbl_train_shuffled <- read_delim("data/train_shuffled_90_ID.txt", col_names = c("anchor", "positive", "negative", "ID"))
 tbl_train_new_shuffled <- tbl_train_new %>% left_join(tbl_train_shuffled, by = c("anchor", "positive", "negative"), relationship = "many-to-many")
 tbl_train_new_shuffled %>% filter(ID.x == ID.y) %>% count()
+
 
