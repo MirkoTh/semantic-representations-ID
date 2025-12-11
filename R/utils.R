@@ -260,3 +260,86 @@ merge_separate_ids <- function(tbl_df, tbl_partial_ids) {
   
   return(tbl_df)
 }
+
+
+#' Create Demographic Lookup Table
+#'
+#' Processes a triplet-level dataset to generate a cleaned demographic lookup table 
+#' with one row per subject, including estimated age and resolved gender.
+#'
+#' @param tbl_triplets A tibble containing repeated triplet-level observations. 
+#' Must include the columns: `subject_id`, `age`, `gender`, and `date`.
+#'
+#' @return A tibble with one row per `subject_id`, containing:
+#' \describe{
+#'   \item{subject_id}{Unique identifier for each participant}
+#'   \item{gender}{Cleaned gender value, set to `NA` if conflicting entries exist}
+#'   \item{mn_age}{Mean age across entries, with year-of-birth converted using actual study date}
+#' }
+#'
+#' @details
+#' - If `age` appears to be a year of birth (between 1900 and 2100), it is converted to age 
+#'   using the `date` column, which reflects when the participant completed the study.
+#' - Implausible ages (<18 or >100) are set to `NA`.
+#' - Subjects with multiple conflicting gender entries have `gender` set to `NA`.
+#' - The function returns one row per subject, with averaged age and resolved gender.
+#'
+#' @examples
+#' \dontrun{
+#' tbl_lookup <- create_demographic_lookup(tbl_triplets)
+#' }
+#'
+#' @export
+create_demographic_lookup <- function(tbl_triplets) {
+  tbl_demographic_lookup <- tbl_triplets %>% 
+    group_by(subject_id, age, gender, date) %>%
+    summarize(mn_RT = mean(RT)) %>%
+    ungroup()
+  
+  # calculate age if participants entered year of birth
+  fillval <- 999999
+  tbl_demographic_lookup$age[is.na(tbl_demographic_lookup$age)] <- fillval
+  tbl_demographic_lookup$age[between(tbl_demographic_lookup$age, 1900, 2100)] <- 
+    year(as_date(
+      tbl_demographic_lookup$date[between(tbl_demographic_lookup$age, 1900, 2100)]
+    )) - tbl_demographic_lookup$age[between(tbl_demographic_lookup$age, 1900, 2100)]
+  tbl_demographic_lookup$age[tbl_demographic_lookup$age == fillval] <- NA
+  # below 18 is impossible and above 100 is unlikely
+  tbl_demographic_lookup$age[tbl_demographic_lookup$age < 18] <- NA
+  tbl_demographic_lookup$age[tbl_demographic_lookup$age > 100] <- NA
+  
+  # take the average age, ok for current purposes
+  tbl_demographic_lookup <- tbl_demographic_lookup %>% 
+    group_by(subject_id, gender) %>%
+    summarize(mn_age = mean(age, na.omit = TRUE), mn_RT = mean(mn_RT)) %>% ungroup()
+  
+  # set gender to NA when participants mentioned different genders
+  # 1. filter those who mentioned different values
+  tbl_several_genders <- tbl_demographic_lookup %>% select(-c(mn_age, mn_RT)) %>%
+    filter(!is.na(gender)) %>%
+    group_by(subject_id) %>%
+    count() %>%
+    filter(n > 1)
+  # 2. then set to NA in demographic_lookup
+  tbl_demographic_lookup <- tbl_demographic_lookup %>% 
+    left_join(tbl_several_genders, by = "subject_id") %>%
+    mutate(gender = ifelse(is.na(n), gender, NA))
+  # now use gender value when available otherwise set to NA
+  tbl_demographic_lookup <- tbl_demographic_lookup %>%
+    group_by(subject_id) %>%
+    mutate(
+      gender = ifelse(is.na(gender), "zz", gender), 
+      # use gender value if available
+      rwn = row_number(gender),
+      # otherwise set to NA
+      rwn = ifelse(is.na(rwn), 1, rwn),
+      # set back zz to NA
+      gender = ifelse(gender == "zz", NA, gender)
+    ) %>% ungroup() %>%
+    filter(rwn == 1) %>%
+    select(-c(n, rwn))
+  
+  return(tbl_demographic_lookup)
+}
+
+
