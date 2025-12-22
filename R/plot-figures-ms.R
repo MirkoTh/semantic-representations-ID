@@ -28,19 +28,22 @@ tbl_agg <- tbl_triplets %>%
   count(subject_id) %>%
   mutate(n = ifelse(n >= 600, 600, n))
 
+tbl_agg_agg <- tbl_agg %>% count(nn = n)
+
 pl_ntrials_hebart <- ggplot(tbl_agg, aes(n)) +
   geom_vline(xintercept = 259, color = "darkred", linewidth = 1) +
   annotate("rect",
            xmin = 260, xmax = 620,
-           ymin = 0, ymax = 4250,
+           ymin = 0, ymax = 5000,
            fill = "seagreen3", alpha = 0.5) +
-  geom_histogram(color = "black", fill = "dodgerblue1") +
+  geom_histogram(color = "black", fill = "dodgerblue1", binwidth = 20) +
   annotate("label", x = 160, y = 2900,
            label = "Participants\nwith < 260 trials\nwere excluded",
            size = 6) +
+  geom_label(data = tbl_agg_agg, aes(nn, n + 400, label = n), angle = 90, size = 6) +#%>% filter(nn %% 100 == 0)
   theme_bw() +
-  scale_x_continuous(expand = c(0, 0.02)) +
-  scale_y_continuous(expand = c(0, 0.02)) +
+  scale_x_continuous(expand = c(0, 0.02), breaks = seq(40, 600, by = 40), labels = c(seq(40, 580, by = 40), ">=600")) +
+  scale_y_continuous(expand = c(.035, 0.02)) +
   labs(x = "Number of completed trials", y = "Number of participants") +
   theme(
     strip.background = element_rect(fill = "white"),
@@ -51,9 +54,9 @@ pl_ntrials_hebart <- ggplot(tbl_agg, aes(n)) +
   )
 
 
-ggsave("documents/writeup/figures-plotting/plot-ntrials-hebart.pdf",
+ggsave("documents/writeup/figures-plotting/plot-ntrials-hebart.png",
        plot = pl_ntrials_hebart,
-       width = 6, height = 5)
+       width = 7, height = 5)
 
 
 
