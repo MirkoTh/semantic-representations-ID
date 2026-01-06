@@ -5,6 +5,7 @@ import seaborn as sns
 import pingouin as pg
 
 from sklearn.metrics.pairwise import cosine_similarity
+import matplotlib.colors as mcolors
 
 from transformers import (
     AutoTokenizer,
@@ -91,6 +92,9 @@ from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data import Dataset, DataLoader, SequentialSampler
 from typing import Tuple, Iterator, List, Dict
 from models import model as md
+from scipy.stats import pearsonr as scipy_pearsonr
+from functools import partial, reduce
+
 
 from transformers import (
     AutoTokenizer,
@@ -546,6 +550,40 @@ def load_data_combined(
             .type(torch.LongTensor)
         )
     elif dataset == "second_half":
+        train_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h2.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+        test_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h1.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+    elif dataset == "first_half_v2":
+        train_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h1_v2.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+        test_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h2_v2.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+    elif dataset == "second_half_v2":
         train_triplets = (
             torch.from_numpy(
                 np.loadtxt(
@@ -2234,7 +2272,7 @@ def split_half_reliabilities(l_splithalf, idxs, ndims):
         )
 
     g = sns.FacetGrid(df_sh, col="dimension", col_wrap=5)
-    g.map_dataframe(scatter_with_corr, x="decision_weight_1",
+    _ = g.map_dataframe(scatter_with_corr, x="decision_weight_1",
                     y="decision_weight_2")
 
     df_corr = pd.DataFrame(
@@ -2244,6 +2282,7 @@ def split_half_reliabilities(l_splithalf, idxs, ndims):
     )
     df_corr["ndims"] = ndims
     df_corr.columns = ["r", "ndims"]
+    plt.close(g.fig)  # Prevents auto-display
 
     return df_sh, df_corr, g
 
@@ -2623,6 +2662,10 @@ def load_ID_lowdim_id_weights(
             case "first_half":
                 splithalf = "1"
             case "second_half":
+                splithalf = "2"
+            case "first_half_v2":
+                splithalf = "1"
+            case "second_half_v2":
                 splithalf = "2"
             case "full":
                 splithalf = "no_split"
@@ -3258,3 +3301,498 @@ def gini_of_halves(df_both_halves, ginis, colnames_dim_weights, colname_pid="pid
     df_gini_all = pd.merge(ginis, df_gini_halves, how="left", on=colname_pid)
 
     return df_gini_all, icc_ginis
+
+
+def corr_weight(col_str, col_str_fixed, df_cor):
+    x=df_cor[col_str]
+    y=df_cor[col_str_fixed]
+    mask = ~np.isnan(x) & ~np.isnan(y)
+    x_clean = x[mask]
+    y_clean = y[mask]
+    corcoef, pval = scipy_pearsonr(x_clean, y_clean)
+    return corcoef, pval
+    
+
+def load_things_participants():
+    # THINGS participants
+    df_things_participants = pd.read_csv("data/THINGS-demographic-lookup.csv")
+    df_things_participants.rename(
+        columns={"subject_id":"participant_id_model", "subject_id_THINGS": "participant_id_THINGS"},
+        inplace=True
+    )
+    df_things_participants["participant_id_new"] = np.nan
+    df_things_participants['gender_num'] = df_things_participants['gender'].apply(
+        lambda x: 0 if x == "male" else 1 if x == "female" else 2
+    )
+    df_things_participants.drop(columns=["gender", "participant_id_THINGS", "n"], inplace=True)
+    # same naming as in new data
+    df_things_participants.rename(
+        columns={"gender_num":"Sex_0", "mn_age":"age", "mn_RT": "rt", "participant_id_new": "pid"},
+        inplace=True)
+
+    return df_things_participants
+
+def weights_delta_gini(df_h1, df_h2, df_to_merge_in, pid_str, colnames_dim_weights):
+    
+    # absolute sum of deltas of dimensional weights between halves
+    df_both_halves = pd.merge(df_h1, df_h2, how="left", on=pid_str, suffixes=["_h1", "_h2"])
+    for cn in colnames_dim_weights:
+        df_both_halves[f"""{cn}_delta"""] = df_both_halves[f"""{cn}_h2"""] - df_both_halves[f"""{cn}_h1"""]
+    df_both_halves["delta_abs_sum"] = np.sum(np.abs(df_both_halves[[c + "_delta" for c in colnames_dim_weights]]), axis=1)
+    # assign to omnibus df
+    df_to_merge_in["weights_delta_abs_sum"] = df_both_halves["delta_abs_sum"]
+    
+    # gini coef on distribution of weights
+    df_gini = df_to_merge_in[[pid_str] + colnames_dim_weights].melt(id_vars=pid_str, value_name="weight", var_name="dimension")
+    ginis = df_gini.groupby(pid_str)[["weight"]].agg(gini).reset_index()
+    ginis.columns = [pid_str, "gini_overall"]
+    
+    # gini coef on distribution of change of weights (i.e., same features weighted similarly across split halfs?)
+    df_gini_all, icc_ginis = gini_of_halves(df_both_halves, ginis, colnames_dim_weights, pid_str)
+    
+    # and merge ginis again with omnibus df
+    df_to_merge_in = pd.merge(df_to_merge_in, df_gini_all, how="left", on=pid_str)
+
+    return df_to_merge_in
+
+
+def load_q_data():
+    # load dfs saved with R (after applying exclusion criteria)
+    df_qs_num_long = pd.read_csv("data/study1-2025-08/tbl_qs_num_long_excluded.csv")
+    df_qs_txt = pd.read_csv("data/study1-2025-08/tbl_qs_txt_excluded.csv")
+    df_qs_num = df_qs_num_long.pivot(index=["participant_id", "session_id"], columns="name", values="value").reset_index(drop=False)
+
+    # read average RT per participant on triplet task
+    df_avg = pd.read_csv("data/study1-2025-08/avg-rt.csv")
+    # throw out average time taken on questionnaires and use average RT per triplet instead
+    df_qs_num = pd.merge(df_qs_num.drop(columns=["rt"]), df_avg.drop(columns=["participant_id_model"]), how="left", on="participant_id")
+    df_qs_num.rename(columns={"mn_rt":"rt"}, inplace=True)
+    
+    return df_qs_num
+
+
+def q_scale_values(df_qs_num):
+    # reverse code items
+    df_qs_num = reverse_code_q_items(df_qs_num).copy()
+    # create scale and facet scores
+    df_qs_num = scales_and_facets(df_qs_num)
+    # only keep scales, drop items and facets
+    df_qs_num = keep_scales_only(df_qs_num)
+    df_qs_num.drop(columns=["diagnosis_2", "meds_3", "attention_2", "rwn"], inplace=True)
+
+    return df_qs_num
+
+
+def correlate_qw(fixed_col, df_use, cols_corr):
+    f_partial = partial(corr_weight, col_str_fixed = fixed_col, df_cor = df_use)
+    l_cors = list(map(f_partial, cols_corr))
+    df_corr = pd.DataFrame({"var":cols_corr, "r":[float(c[0]) for c in l_cors], "pval":[float(c[1]) for c in l_cors]})
+    df_corr = df_corr.sort_values("r", ascending=False).reset_index(drop=True)
+    df_corr["var_fixed"] = fixed_col
+    return df_corr
+
+
+def corr_weight(col_str, col_str_fixed, df_cor):
+    x=df_cor[col_str]
+    y=df_cor[col_str_fixed]
+    mask = ~np.isnan(x) & ~np.isnan(y)
+    x_clean = x[mask]
+    y_clean = y[mask]
+    corcoef, pval = scipy_pearsonr(x_clean, y_clean)
+    return corcoef, pval
+
+
+def correlations_with_summary_stats(used_dim, l_results_full, l_results_splithalf, is_testcase, range_dims):
+    # similarities between dimensions in two halves
+    partial_sims = partial(dimensional_similarities, l_results_splithalf)
+    l_cors = list(map(partial_sims, range_dims))
+
+    # reorder dimensions in the two halves according to the max. similar result
+    partial_reorder = partial(reorder_dimensions, l_results_splithalf)
+    l_max_sims = list(map(partial_reorder, range_dims))
+    dict_max_sims = dict(zip(range_dims, l_max_sims))
+
+    # extract idxs from seeds with maximally similar embedding dimensions
+    dict_idxs_use = max_sim_dimensions_per_ndim(l_max_sims, range_dims)
+    dict_idxs_list_use = max_sim_results_per_ndim(dict_idxs_use, dict_max_sims, range_dims)
+    # for dims > 10, just use first instance
+    embed_dim_not_unique = [d for d in range_dims if d > 10]
+    for embed_dim in embed_dim_not_unique:
+        dict_idxs_list_use[embed_dim] = [idx for idx, l in enumerate(l_results_splithalf) if l["n_embed"] == embed_dim][0:2]
+ 
+    l_keys = list(dict_idxs_use.keys())
+    dict_cors = {int(f'{l_keys[i]}'): sublist for i, sublist in enumerate(l_cors)}
+
+    # Load Relevant IDs for correlational analyses
+    if is_testcase:
+        df_pids = pd.read_csv("data/study1-2025-08/new-participant-ids-in-joint-modeling-testcase.csv")
+    elif not is_testcase:
+        df_pids = pd.read_csv("data/study1-2025-08/new-participant-ids-in-joint-modeling.csv")
+
+    df_things_participants = load_things_participants()
+
+    # get participant ids from the new data
+    l_pids_model = list(df_pids["participant_id_model"])
+    l_pids_new = list(df_pids["participant_id_new"])
+
+    # get participant ids from the THINGS data
+    l_pids_model_THINGS = df_things_participants["participant_id_model"].tolist()
+    l_pids_model_THINGS_new = df_things_participants["pid"].tolist()
+
+    l_n_embed_full = [l["n_embed"] for l in l_results_full]
+    idx_full = l_n_embed_full.index(used_dim)
+    idx_h1 = dict_idxs_list_use[used_dim][0]
+    idx_h2 = dict_idxs_list_use[used_dim][1]
+
+    # do this twice:
+    #     - first, only for the new batch of participants (i.e., 2025/08)
+    #     - then, for all available participants in the model (i.e., including THINGS participants), because we have age and gender for most of those as well
+    # new participants
+    df_dim_weights = extract_dim_weight_results(l_results_full, idx_full, used_dim, l_pids_model, l_pids_new)
+    df_dim_weights_h1 = extract_dim_weight_results(l_results_splithalf, idx_h1, used_dim, l_pids_model, l_pids_new)
+    df_dim_weights_h2 = extract_dim_weight_results(l_results_splithalf, idx_h2, used_dim, l_pids_model, l_pids_new)
+    df_dim_weights, colnames_dim_weights = rename_dim_weight_cols(df_dim_weights, used_dim)
+    df_dim_weights_h1, _ = rename_dim_weight_cols(df_dim_weights_h1, used_dim)
+    df_dim_weights_h2, _ = rename_dim_weight_cols(df_dim_weights_h2, used_dim)
+
+    df_dim_weights_THINGS = extract_dim_weight_results(l_results_full, idx_full, used_dim, l_pids_model_THINGS, l_pids_model_THINGS_new)
+    df_dim_weights_h1_THINGS = extract_dim_weight_results(l_results_splithalf, idx_h1, used_dim, l_pids_model_THINGS, l_pids_model_THINGS_new)
+    df_dim_weights_h2_THINGS = extract_dim_weight_results(l_results_splithalf, idx_h2, used_dim, l_pids_model_THINGS, l_pids_model_THINGS_new)
+    df_dim_weights_THINGS, colnames_dim_weights = rename_dim_weight_cols(df_dim_weights_THINGS, used_dim)
+    df_dim_weights_h1_THINGS, _ = rename_dim_weight_cols(df_dim_weights_h1_THINGS, used_dim)
+    df_dim_weights_h2_THINGS, _ = rename_dim_weight_cols(df_dim_weights_h2_THINGS, used_dim)
+
+    df_qs_num = load_q_data()
+    df_qs_num = q_scale_values(df_qs_num)
+
+    # for new data, we have questionnaire data etc. add them
+    df_ooo_qs = df_dim_weights.merge(df_qs_num, how="left", left_on="participant_id_new", right_on="participant_id")
+    # rename participant id col
+    # in new dataset
+    df_ooo_qs.rename(columns={"participant_id_new":"pid"}, inplace=True)
+    df_dim_weights_h1.rename(columns={"participant_id_new":"pid"}, inplace=True)
+    df_dim_weights_h2.rename(columns={"participant_id_new":"pid"}, inplace=True)
+    # and in hebart dataset
+    df_dim_weights_h1_THINGS.rename(columns={"participant_id_new":"pid"}, inplace=True)
+    df_dim_weights_h2_THINGS.rename(columns={"participant_id_new":"pid"}, inplace=True)
+    df_dim_weights_THINGS.rename(columns={"participant_id_new":"pid"}, inplace=True)
+
+    df_ooo_qs = weights_delta_gini(df_dim_weights_h1, df_dim_weights_h2, df_ooo_qs, "pid", colnames_dim_weights)
+    df_dim_weights_THINGS = weights_delta_gini(df_dim_weights_h1_THINGS, df_dim_weights_h2_THINGS, df_dim_weights_THINGS, "participant_id_model", colnames_dim_weights)
+
+    df_dim_weights_THINGS = pd.merge(df_dim_weights_THINGS, df_things_participants, how="left", on=["participant_id_model", "pid"])
+
+    # not enough other values for analysis. therefore, exclude
+    df_ooo_qs.query("Sex_0 in (0, 1)", inplace=True)
+
+    # create age bins
+    df_ooo_qs["age_bin"] = pd.cut(df_ooo_qs["age"], bins=[0, 21, 30, 59, 70], labels=False)
+
+    cols_corr_new = ['edu', 'income_0', 'motivation_1', "idx",
+       'Extraversion', 'Agreeableness', 'Conscientiousness',
+       'Negative_Emotionality', 'Open_Mindedness', 'Negative Affect',
+       'Detachment', 'Antagonism', 'Disinhibition', 'Psychoticism',
+       'Impulsivity']
+    cols_corr_combined = ["age", "Sex_0", "rt"]
+
+    correlate_partial = partial(correlate_qw, df_use = df_ooo_qs, cols_corr = cols_corr_new)
+    l_df_corr = list(map(correlate_partial, ["avg_weight", "weights_delta_abs_sum", "gini_overall"]))
+    df_corr_new = reduce(lambda x, y: pd.concat([x, y]), l_df_corr)
+
+    df_dim_weights_THINGS.query("Sex_0 in (0, 1) and ~age.isna()", inplace=True)
+    df_weights_combined = pd.concat([
+        df_dim_weights_THINGS, df_ooo_qs.loc[:,df_dim_weights_THINGS.columns]
+    ])
+    df_weights_combined.loc[df_weights_combined["rt"] > 15000, "rt"] = np.nan
+
+    correlate_partial = partial(correlate_qw, df_use = df_weights_combined, cols_corr = cols_corr_combined)
+    l_df_corr = list(map(correlate_partial, ["avg_weight", "weights_delta_abs_sum", "gini_overall"]))
+    df_corr_all = reduce(lambda x, y: pd.concat([x, y]), l_df_corr)
+
+    df_corr_overview = pd.concat([df_corr_new, df_corr_all])
+    df_corr_overview["n_embed"] = used_dim
+
+    return df_corr_overview
+
+
+def barplot_cols(df_plt, ttl, f, ax):
+    
+    cmap = mcolors.LinearSegmentedColormap.from_list("rwr", ["red", "white", "red"])
+    norm = mcolors.Normalize(vmin=-1, vmax=1)
+    df_plt["color"] = df_plt["r"].map(lambda x: cmap(norm(x)))
+    
+    # Plot the barplot without specifying color
+    barplot = sns.barplot(data=df_plt, x="r", y="var", ax=ax)
+    
+    # Apply individual colors to each bar
+    for bar, color, r, pval in zip(barplot.patches, df_plt["color"], df_plt["r"], df_plt["pval"]):
+        bar.set_color(color)
+        wd = bar.get_width()
+        if wd > 0:
+            ax.text(
+                bar.get_width() / 10,                      # x-position
+                bar.get_y() + bar.get_height() / 2,   # y-position
+                f"{r:.2f}",                       # label text
+                va='center', ha='left', fontsize=12  # alignment and style
+            )
+            if pval <= 0.05:
+                ax.text(
+                    bar.get_width() / 10 + .035,                      # x-position
+                    bar.get_y() + bar.get_height() / 2,   # y-position
+                    "*",                       # label text
+                    va='center', ha='left', fontsize=12    # alignment and style
+                )
+        elif wd <= 0:
+            ax.text(
+                wd,                      # x-position
+                bar.get_y() + bar.get_height() / 2,   # y-position
+                f"{r:.2f}",                       # label text
+                va='center', ha='left', fontsize=12  # alignment and style
+            )
+            if pval <= 0.05:
+                ax.text(
+                    wd + .035,                      # x-position
+                    bar.get_y() + bar.get_height() / 2,   # y-position
+                    "*",                       # label text
+                    va='center', ha='left', fontsize=12    # alignment and style
+                )
+    
+    ax.set_title(ttl, fontsize=16)
+    ax.set_xlabel("Pearson's r", fontsize=14)
+    ax.set_ylabel("", fontsize=14)
+    ax.tick_params(axis='both', labelsize=12)
+    ax.vlines(x=0,ymin=-.5,ymax=df_plt.shape[0]-.5, color="red", linewidth=2, linestyle="--", alpha=.5)
+    _ = ax.set_xlim((-0.2, 0.2))
+
+    return f, ax
+
+
+def plot_cors_sumstat_violin(df_plt, f, axes):
+    
+    ordered_sumstat = ["Average Weight", "Gini Coefficient", "Absolute Delta"]
+    df_plt["Summary Stat"] = pd.Categorical(
+        df_plt["Summary Stat"].astype(str),
+        categories=[f"{x}" for x in ordered_sumstat],
+        ordered=True
+    )
+    palette = {
+        False: "tomato",
+        True: "#E0F7FA"
+    }
+    
+    
+    # Get min and max values for "Nr. Embed"
+    min_embed = df_plt["Nr. Embed"].min()
+    max_embed = df_plt["Nr. Embed"].max()
+    
+    # Define a colormap from tomato (red) to darkgreen
+    cmap = mcolors.LinearSegmentedColormap.from_list("tomato_green", ["tomato", "darkgreen"])
+    
+    # Normalize values between 0 and 12
+    norm = mcolors.Normalize(vmin=0, vmax=12)
+    
+    for i, sumstat in enumerate(list(df_plt["Summary Stat"].cat.categories)):
+        # select relevant summary stat
+        df_plt_current = df_plt.query(f"`Summary Stat` == '{sumstat}'").copy()
+        # count the nr of significant results per var
+        df_count_sig = df_plt_current.groupby(["Variable", "r_avg"]).agg({"below_thx": ["sum", "count"]}).reset_index()
+        df_count_sig.columns = ['_'.join(col).strip() if isinstance(col, tuple) else col for col in df_count_sig.columns.values]
+        df_count_sig.columns = [col.strip("_") for col in df_count_sig.columns]
+        df_count_sig.sort_values("r_avg", ascending=False, inplace=True)
+    
+        sns.violinplot(
+            data=df_plt_current, x="Variable", y="r_actual", hue="Variable", 
+            inner=None, zorder=2, palette='dark:#1f77b4', ax=axes[i]
+        )
+        sns.scatterplot(
+            data=df_plt_current, x="Variable", y="r_actual", hue="below_thx", size="Nr. Embed", alpha=1, zorder=2, 
+            palette=palette, sizes=(2.5, 75), legend=False, ax=axes[i]
+        )
+            # After drawing your plot
+        cats = [tick.get_text() for tick in axes[i].get_xticklabels()]
+        xs   = axes[i].get_xticks()
+        xmap = dict(zip(cats, xs))
+        # Use numeric x from the mapping, then nudge
+       
+        for _, row in df_count_sig.iterrows():
+            x = xmap[row["Variable"]] - 0.2
+            axes[i].text(x, -.35, str(row["below_thx_sum"]),
+                         fontsize=10, fontweight="bold", color=cmap(norm(row["below_thx_sum"])))
+        
+        axes[i].set_ylabel("Pearson's r", fontsize=14)
+        axes[i].set_xlabel("", fontsize=12)
+        axes[i].axhline(y=0, color="red", linestyle="--", zorder=1)
+    
+        # Get current tick labels
+        labels = [tick.get_text() for tick in axes[i].get_xticklabels()]
+        # Wrap each label onto two rows (insert newline)
+        wrapped_labels = [label.replace(" ", "\n", 1) for label in labels]
+        axes[i].set_xticklabels(wrapped_labels)
+        
+        axes[i].tick_params(axis="x", rotation=90, labelsize=12)
+        axes[i].tick_params(axis="y", labelsize=12, rotation=22)
+        axes[i].set_title(sumstat, fontsize=14)
+        axes[i].grid(True)
+        axes[i].set_ylim((-.375, .3))
+        axes[i].set_xlim(-1, df_plt_current["Variable"].nunique() + .75)
+        axes[i].axhline(y=-.29, color="black", alpha=.5, zorder=1)
+    
+        x2 = xmap[row["Variable"]] + .5
+        # Example usage inside your loop
+        axes[i].text(
+            x2, -.35, "/ " + str(row["below_thx_count"]),
+            fontsize=10,
+            fontweight="bold",
+            color= cmap(norm(row["below_thx_count"])) # mapped color
+        )
+    
+    # Add the size legend to the last axis (or choose one)
+    # Create dummy scatter handles with corresponding sizes
+    min_handle = plt.scatter([], [], s=2.5, label=f"{min_embed}", color="gray", alpha=0.6)
+    max_handle = plt.scatter([], [], s=50, label=f"{max_embed}", color="gray", alpha=0.6)
+    
+    axes[2].set_title("Weight Consistency", fontsize=14)
+    axes[1].legend(
+        handles=[min_handle, max_handle],
+        title="Nr. Embed",
+        loc="upper right",
+        bbox_to_anchor=(1, 1),  # Adjust position as needed
+        frameon=True,
+        fontsize=11,
+        title_fontsize=12
+    )
+
+    return f, axes
+
+
+def reliabilities_over_dimensionalities(df_splithalf_summary_long, df_corrs, f, axes):
+    
+    # average splithalf reliability per dimensionality (averaging over summary stats)
+    df_splithalf_avg_long = df_splithalf_summary_long.groupby(["ndim"])["value"].mean().reset_index()
+
+    # split-half reliability of individual dimensions
+    axes[0].fill_between([8.5, 12], 0, 1, color='red', alpha=0.3, label="No unique mapping")
+    
+    sns.violinplot(data=df_corrs, x="ndims", y="r_corrected", hue="ndims", inner=None, legend=False, ax=axes[0])
+    sns.swarmplot(data=df_corrs, x="ndims", y="r_corrected", color="white", legend=False, ax=axes[0], size=3.5)
+    axes[0].axhline(y=.7, color='lightgreen', linestyle='--', linewidth=2, label='THX Group-Level Comparison')
+    axes[0].axhline(y=.8, color='darkgreen', linestyle='--', linewidth=2, label='THX Individual-Level Comparison')
+    axes[0].axvline(x=8.5, color="red", linestyle='-.', linewidth=2.5, label="")
+    axes[0].set_xlabel("Nr. Dimensions", fontsize=14)
+    axes[0].set_ylabel("Spearman-Brown Correction", fontsize=14)
+    axes[0].set_title(axes[0].get_title(), fontsize=16)
+    axes[0].tick_params(axis='both', labelsize=12)
+    
+    # Remove duplicate legend
+    axes[0].legend()
+    axes[0].set_ylim((0, 1))
+    axes[0].grid(True)
+    
+    
+    # split-half reliability of summary stats
+    axes[1].axhline(y=.7, color='lightgreen', linestyle='--', linewidth=2, label='THX Group-Level Comparison')
+    axes[1].axhline(y=.8, color='darkgreen', linestyle='--', linewidth=2, label='THX Individual-Level Comparison')
+    
+    sns.lineplot(data=df_splithalf_summary_long, x="ndim", y="value", hue="Summary Statistic", zorder=4, legend=False, ax=axes[1])
+    sns.scatterplot(data=df_splithalf_summary_long, x="ndim", y="value", color = "white", s = 100, linestyle="None", zorder=5, ax=axes[1])
+    sns.scatterplot(data=df_splithalf_summary_long, x="ndim", y="value", hue="Summary Statistic", s = 50, linestyle="None", zorder=6, ax=axes[1])
+    
+    sns.lineplot(data=df_splithalf_avg_long, x="ndim", y="value", color="black", zorder=1, alpha=.3, linewidth=3, ax=axes[1], label="Average of Summary Stats")
+    sns.scatterplot(data=df_splithalf_avg_long, x="ndim", y="value", color = "white", s = 200, linestyle="None", zorder=2, ax=axes[1])
+    sns.scatterplot(data=df_splithalf_avg_long, x="ndim", y="value", color="black", s = 75, alpha=.3, linestyle="None", zorder=3, ax=axes[1])
+    
+    
+    
+    axes[1].set_xlabel("Nr. Dimensions", fontsize=14)
+    axes[1].set_ylabel("Spearman-Brown Correction", fontsize=14)
+    axes[1].tick_params(axis='both', labelsize=12)
+    _ = axes[1].grid(True)
+
+    return f, axes
+
+
+def plot_holdout_accuracy(g, legend_dict):
+    
+    for idx, ax in enumerate(g.axes.flat):
+        ax.grid(True)
+        if idx == 0:
+            line = ax.axhline(y=.33333, color='red', linestyle='--', linewidth=2, label='Chance Level')
+            line = ax.axhline(y=.6722, color='green', linestyle='--', linewidth=2, label='Avg. Agreement')
+        ax.set_title(ax.get_title(), fontsize=16)
+        ax.set_xlabel(ax.get_xlabel(), fontsize=14)
+        ax.set_ylabel(ax.get_ylabel(), fontsize=14)
+        ax.tick_params(axis='both', labelsize=12)
+        ax.set_xticks([2, 7, 15, 25, 35])
+        ax.set_xticklabels([2, 7, 15, 25, 35])
+        ax.set_ylim(.3, .7)
+    
+    # Update legend font size
+    _ = g.fig.legend(
+        legend_dict.values(),
+        legend_dict.keys(),
+        loc='lower center',
+        bbox_to_anchor=(0.55, -.25),
+        ncol=3,
+        frameon=True,
+        fontsize=14  # Add this line to scale legend text
+    )
+
+    return g
+
+def plot_hyp_search(g, tbl_plt2):
+
+    g.map_dataframe(sns.lineplot, x="lmbda_cat", y="value", hue="Subject IDs", style="Model", zorder=1)
+    g.map_dataframe(sns.scatterplot, x="lmbda_cat", y="value", style="Model", s=100, legend=False, color="white", zorder=2)
+    g.map_dataframe(sns.scatterplot, x="lmbda_cat", y="value", hue="Subject IDs", style="Model", s=50, legend=False, zorder=3)
+    
+    lmbda_win = tbl_plt2.query("variable == 'Accuracy'").sort_values("value", ascending=False).reset_index(drop=True).loc[0, "lmbda_cat"]
+    
+    for i, (ax, title) in enumerate(zip(g.axes.flat, g.col_names)):
+        ax.grid(True)
+        ax.set_title(title, fontsize=16)
+        ax.set_xlabel("Lambda (categorical)", fontsize=14)
+        ax.set_ylabel(["Prediction on Hold-Out Set", "Nr. Dimensions retained"][i], fontsize=14)
+        ax.tick_params(axis='both', labelsize=12)
+        ax.tick_params(axis="x", rotation=90)
+    
+        if i == 1:
+            yval = int(tbl_plt2.query(f"variable == 'Nr. Dims' and lmbda == {lmbda_win} and `Subject IDs` == 'Actual' and Model == 'Free Weights Only'")["value"].iloc[0])
+            ax.annotate(
+                f"{yval} Dims",              # The label text
+                xy=(lmbda_win, yval),              # The actual point in data coordinates
+                xytext=("0.0125", yval),# The displaced label position
+                textcoords='data',              # Use data coordinates for label
+                arrowprops=dict(arrowstyle="->", color='black'),  # Arrow from label to point
+                fontsize=12,
+                bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1)
+            )
+    
+        elif i == 0:
+            yval = np.round(tbl_plt2.query(f"variable == 'Accuracy' and lmbda == {lmbda_win} and `Subject IDs` == 'Actual' and Model == 'Free Weights Only'")["value"].iloc[0], 3)
+            ax.annotate(
+                f"{yval}",              # The label text
+                xy=(lmbda_win, yval),              # The actual point in data coordinates
+                xytext=("0.008", yval - .1),# The displaced label position
+                textcoords='data',              # Use data coordinates for label
+                arrowprops=dict(arrowstyle="->", color='black'),  # Arrow from label to point
+                fontsize=12,
+                bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1)
+            )
+            line = ax.axhline(y=.33333, color='red', linestyle='--', linewidth=2, label='Chance Level')
+            line = ax.axhline(y=.6722, color='green', linestyle='--', linewidth=2, label='Avg. Agreement')
+        
+    
+    
+    handles, labels = g.axes.flat[1].get_legend_handles_labels()
+    
+    g.fig.legend(
+        handles, labels,
+        bbox_to_anchor=(0.35, 0.675),  # Move legend further down
+        ncol=1,
+        fontsize=12,
+        title_fontsize=13
+    )
+    
+    g.fig.tight_layout()
+
+    return g

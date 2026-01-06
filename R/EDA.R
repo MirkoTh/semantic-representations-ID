@@ -21,12 +21,12 @@ tbl_agreement <- tbl_ooo %>% group_by(triplet_id) %>% count(response) %>%
   mutate(prop = n / n_participants) %>% summarize(agreement = max(prop))
 
 
-
+mn_agreement <- round(mean(tbl_agreement$agreement), 2)
 ggplot(tbl_agreement, aes(agreement)) + 
   geom_vline(xintercept = .33, color = "red", linetype = "dotdash", alpha = .3, linewidth = 1) +
   geom_histogram(color = "black", fill = "skyblue2", aes(y = after_stat(count / sum(count)))) + 
-  geom_label(y = .1, x = .15, label = str_c("Mean=", round(mean(tbl_agreement$agreement), 2)), size = 7) +
-  geom_label(y = .15, x = .33, label = "Chance", size = 7, color="red", alpha = .3) +
+  geom_label(y = .025, x = .15, label = str_c("Mean=", mn_agreement), size = 7) +
+  geom_label(y = .05, x = .33, label = "Chance", size = 7, color="red", alpha = .3) +
   coord_cartesian(xlim = c(0, 1)) +
   theme_bw() +
   scale_x_continuous(expand = c(0.01, 0)) +
