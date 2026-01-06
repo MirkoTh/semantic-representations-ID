@@ -62,6 +62,8 @@ ggsave("documents/writeup/figures-plotting/plot-ntrials-hebart.png",
 
 # Dimensional Weights -----------------------------------------------------
 
+# fill vectors of ndims length with random values
+
 ndims <- 7
 
 set.seed(23)
@@ -75,6 +77,8 @@ ws_mat <- map(rep(ndims, 2), runif, min = 0, max = 2) %>%
 ws <- ws_mat %>%
   mutate(id = 1:2) %>% pivot_longer(-id)
 ws$name <- as.numeric(factor(ws$name, labels = 1:ndims))
+
+# plot the vectors and save them as pdfs
 
 plot_vector <- function(idx, my_tbl, flip_coords = "nothing") {
   pl <- ggplot(my_tbl %>% filter(id == idx), aes("", name)) +
@@ -113,6 +117,8 @@ pths_ws <- str_c("documents/writeup/figures-plotting/", c("w1.pdf", "w2.pdf"))
 map2(l_plot_ws, pths_ws, save_my_pdf, w = 1.25, h = 4.5)
 
 
+# compute the hadamard products and plot the resulting vectors
+
 os_mat <- matrix(as.matrix(os_mat), nrow = 3)
 ws1_mat <- matrix(reduce(rep(ws_mat[1, ], 3), c), nrow = 3, byrow = TRUE)
 ws2_mat <- matrix(reduce(rep(ws_mat[2, ], 3), c), nrow = 3, byrow = TRUE)
@@ -124,7 +130,7 @@ ow_1 <- as.data.frame(ow_1_mat) %>% as_tibble() %>%
 ow_1$name <- as.numeric(factor(ow_1$name, labels = 1:ndims))
 
 ow_2_mat <- os_mat * ws2_mat
-ow_2 <- as.data.frame(os_2_mat) %>% as_tibble() %>%
+ow_2 <- as.data.frame(os_mat) %>% as_tibble() %>%
   mutate(id = 1:3) %>%
   pivot_longer(-id)
 ow_2$name <- as.numeric(factor(ow_2$name, labels = 1:ndims))
@@ -138,7 +144,8 @@ pths_ow_2 <- str_c("documents/writeup/figures-plotting/", c("ow_1_2.pdf", "ow_2_
 map2(l_plot_ow_1, pths_ow_1, save_my_pdf, w = 4.25, h = 1.4)
 map2(l_plot_ow_2, pths_ow_2, save_my_pdf, w = 4.25, h = 1.4)
 
-ow_1_mat
+
+# compute the dot products to get the similarity values
 
 dot_prod <- function(x, y) {
   sum(x * y)
@@ -148,9 +155,61 @@ dot_prod <- function(idx1, idx2, my_mat) {
   sum(my_mat[idx1, ] * my_mat[idx2, ])
 }
 
+# logits for maximally similar pair: 1-2, 1-3, 2-3, (odd is the missing digit)
 logits1 <- map2_dbl(c(1, 1, 2), c(2, 3, 3), dot_prod, my_mat = ow_1_mat)
 logits2 <- map2_dbl(c(1, 1, 2), c(2, 3, 3), dot_prod, my_mat = ow_2_mat)
 prob1 <- round(logits1/sum(logits1), 2)
 prob2 <- round(logits2/sum(logits2), 2)
 
+
+
+# Response Consistencies --------------------------------------------------
+
+tbl_avg_agreement <- readRDS("data/dataframes-plotting-ms/tbl-avg-agreement.rds")
+tbl_cor_joint_and_old <- readRDS("data/dataframes-plotting-ms/tbl-cor-joint-and-old.rds")
+tbl_cor_new <- readRDS("data/dataframes-plotting-ms/tbl-cor-new.rds")
+
+
+
+f_pl <- function(my_tbl, xvar, yvar, xlabel, ylabel, ttl, annot_string, annot_val) {
+  ggplot(my_tbl, aes(!!sym(xvar), !!sym(yvar))) +
+    geom_point(alpha = .25) +
+    geom_abline(linewidth = 1) +
+    theme_bw() +
+    annotate("label", .3, .9, label = str_c(
+      annot_string, " = ", round(annot_val, 2))
+    ) +
+    scale_x_continuous(breaks = seq(0, 1, by = .25), expand = c(0, 0.01)) +
+    scale_y_continuous(breaks = seq(0, 1, by = .25), expand = c(0, 0.0)) +
+    labs(x = xlabel, y = ylabel, title = ttl) +
+    coord_cartesian(xlim = c(0, 1), ylim = c(0, 1)) +
+    theme(
+      strip.background = element_rect(fill = "white"),
+      text = element_text(size = 20),
+      axis.text.x = element_text(angle = 90, vjust=.5),
+      axis.text.y = element_text(hjust = .5)
+    )
+}
+
+l_pl_cors <- pmap(
+  list(
+    list(tbl_cor_joint_and_old, tbl_cor_joint_and_old, tbl_cor_new), 
+    c("Old_prop", "1_prop", "1_prop"), 
+    c("New_prop", "2_prop", "2_prop"),
+    c("Prop. Hebart et al. (2020)", "Prop. First Half", "Prop. First Half"),
+    c("Prop. New Study", "Prop. Second Half", "Prop. Second Half"),
+    c("Merged Data", "Hebart et al. (2020)", "New Study"),
+    c("Corrected\nCorrelation", rep("Spearman-Brown\nCorrection", 2)),
+    c(tbl_avg_agreement$correction[1], tbl_avg_agreement$prophecy[2:3])
+  ), 
+  f_pl
+)
+
+pl_consistencies <- arrangeGrob(l_pl_cors[[2]], l_pl_cors[[3]], l_pl_cors[[1]], ncol = 3)
+grid.draw(pl_consistencies)
+save_my_pdf(
+  pl_consistencies, 
+  "documents/writeup/figures-plotting/response-consistencies.pdf", 
+  12, 4
+)
 
