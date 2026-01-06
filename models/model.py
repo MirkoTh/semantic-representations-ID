@@ -98,6 +98,11 @@ class SPoSE_ID(nn.Module):
                 num_participants, self.out_size)
         elif individual_slopes_type == "shared":
             self.individual_slopes = nn.Embedding(num_participants, 1)
+        elif individual_slopes_type == "shared_and_separate":
+            self.individual_slopes = nn.Embedding(
+                num_participants, self.out_size
+            )
+            self.individual_shared_slope = nn.Embedding(num_participants, 1)
         if init_weights:
             self._initialize_weights()
 
@@ -106,6 +111,8 @@ class SPoSE_ID(nn.Module):
         if self.individual_slopes == "shared":
             # Repeat the scalar across out_size dimensions
             w_i = w_i.repeat(1, self.out_size)  # shape: [batch_size, out_size]
+        elif self.individual_slopes == "shared_and_separate":
+            w_i = torch.add(w_i, self.individual_shared_slope(id).repeat(1, self.out_size))  # shape: (batch_size, 1) broadcast to (batch_size, out_size)
         return w_i * self.fc(x)
 
     def _initialize_weights(self) -> None:
@@ -242,6 +249,7 @@ class CombinedModel(nn.Module):
         out_size: int,
         num_participants: int,
         scaling: str = "free",
+        d_weights: str = "free",
         init_weights=True,
         individual_slopes_type: str = "separate",
     ):
@@ -251,15 +259,22 @@ class CombinedModel(nn.Module):
         self.num_participants = num_participants
         self.init_weights = init_weights
         self.individual_slopes_type = individual_slopes_type
-        # embedding model with random by-participant dimension weights
-
-        self.model1 = SPoSE_ID_Random(
-            in_size=self.in_size,
-            out_size=self.out_size,
-            num_participants=self.num_participants,
-            init_weights=self.init_weights,
-            individual_slopes_type=self.individual_slopes_type,
-        )
+        if d_weights == "free":
+            self.model1 = SPoSE_ID(
+                in_size=self.in_size,
+                out_size=self.out_size,
+                num_participants=self.num_participants,
+                init_weights=self.init_weights,
+                individual_slopes_type=self.individual_slopes_type,
+            )
+        elif d_weights == "random":
+            self.model1 = SPoSE_ID_Random(
+                in_size=self.in_size,
+                out_size=self.out_size,
+                num_participants=self.num_participants,
+                init_weights=self.init_weights,
+                individual_slopes_type=self.individual_slopes_type,
+            )
         if scaling == "free":
             # freely-varying by-participant softmax temperatures
             self.model2 = Scaling_ID(
@@ -277,13 +292,13 @@ class CombinedModel(nn.Module):
                 init_weights=self.init_weights,
             )
 
-    def forward(self, x, id, distance_metric):
+    def forward(self, x, id, task, temperature, distance_metric):
         x = self.model1(x, id)
         anchor, positive, negative = torch.unbind(
             torch.reshape(x, (-1, 3, self.out_size)), dim=1
         )
         sims_prep = ut.compute_similarities(
-            anchor, positive, negative, "odd_one_out", distance_metric
+            anchor, positive, negative, task, distance_metric
         )
         sims = torch.stack(sims_prep, dim=-1)
         temp_scaling = self.model2(id[::3])

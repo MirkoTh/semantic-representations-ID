@@ -18,23 +18,26 @@ base_dict = {
 # Define the variables and their possible values
 # lmbda_list = [0.0005, 0.001]
 
-lmbda_list = [0.001, 0.0005]
+# higher lmbda means focusing on fewer dimensions of an object
+lmbda_list = [0.01, 0.001, 0.000001]
 learning_rate_list = [0.0005]
-use_shuffled_subjects_list = ["shuffled", "actual"]
+use_shuffled_subjects_list = ["actual"]  # "shuffled",
+l_splithalf = ["1", "2"]
 
 # Generate all combinations
 combinations = list(itertools.product(
-    lmbda_list, learning_rate_list, use_shuffled_subjects_list))
+    lmbda_list, learning_rate_list, use_shuffled_subjects_list, l_splithalf))
 
 # Create the list of dictionaries
 arg_combinations = []
 # , sparsity in combinations:
-for lmbda, learning_rate, use_shuffled_subjects in combinations:
+for lmbda, learning_rate, use_shuffled_subjects, splithalf in combinations:
     temp_dict = base_dict.copy()
     temp_dict.update({
         'lmbda': lmbda,
         'learning_rate': learning_rate,
-        'use_shuffled_subjects': use_shuffled_subjects
+        'use_shuffled_subjects': use_shuffled_subjects,
+        'splithalf': splithalf
     })
     arg_combinations.append(temp_dict)
 
@@ -55,6 +58,7 @@ def run_command(args):
         --steps {args['steps']} \
         --device {args['device']} \
         --early_stopping {args['early_stopping']} \
+        --splithalf {args['splithalf']} \
         --use_shuffled_subjects {args['use_shuffled_subjects']} "
     )
     subprocess.run(command, shell=True)

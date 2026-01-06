@@ -494,7 +494,8 @@ def load_data_combined(
         train_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_testcase.txt")
+                    pjoin(
+                        triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_testcase.txt")
                 )
             )
             .to(device)
@@ -503,7 +504,8 @@ def load_data_combined(
         test_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_testcase.txt")
+                    pjoin(
+                        triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_testcase.txt")
                 )
             )
             .to(device)
@@ -513,7 +515,7 @@ def load_data_combined(
         train_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new.txt"))
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new.txt"))
             )
             .to(device)
             .type(torch.LongTensor)
@@ -521,7 +523,7 @@ def load_data_combined(
         test_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new.txt"))
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new.txt"))
             )
             .to(device)
             .type(torch.LongTensor)
@@ -530,7 +532,7 @@ def load_data_combined(
         train_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h1.txt"))
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h1.txt"))
             )
             .to(device)
             .type(torch.LongTensor)
@@ -538,7 +540,7 @@ def load_data_combined(
         test_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h2.txt"))
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h2.txt"))
             )
             .to(device)
             .type(torch.LongTensor)
@@ -547,7 +549,7 @@ def load_data_combined(
         train_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h2.txt"))
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h2.txt"))
             )
             .to(device)
             .type(torch.LongTensor)
@@ -555,7 +557,41 @@ def load_data_combined(
         test_triplets = (
             torch.from_numpy(
                 np.loadtxt(
-                    pjoin(triplets_dir, "ooo_data_modeling_old_and_new_h1.txt"))
+                    pjoin(triplets_dir, "study1-2025-08/ooo_data_modeling_old_and_new_h1.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+    elif dataset == "full_evaluate_actual":
+        train_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "train_90_ID_item.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+        test_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "test_10_ID_item.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+    elif dataset == "full_evaluate_shuffled":
+        train_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "train_shuffled_90_ID_item.txt"))
+            )
+            .to(device)
+            .type(torch.LongTensor)
+        )
+        test_triplets = (
+            torch.from_numpy(
+                np.loadtxt(
+                    pjoin(triplets_dir, "test_shuffled_10_ID_item.txt"))
             )
             .to(device)
             .type(torch.LongTensor)
@@ -1740,6 +1776,8 @@ def load_avg_embeddings(model_id: str, device: str) -> list:
         l_embeddings = np.load("data/word2vec-embeddings.npy")
     elif model_id == "clip-vit-base-p32":
         l_embeddings = np.load("data/clip-vit-base-p32-embeddings.npy")
+    elif model_id == "SPoSE49":
+        l_embeddings = np.load("data/spose49-embeddings.npy")
     else:
         tokenizer = AutoTokenizer.from_pretrained(model_id)
         model = AutoModel.from_pretrained(model_id).to(device)
@@ -2030,23 +2068,26 @@ def model_detail_dict(ls, embedding_only):
         pd.DataFrame(
             {
                 "modeltype": l["modeltype"],
-                "sparsity": l["sparsity"],
-                "subject_type": l["subject_type"],
-                "nr_epochs": l["epoch"],
+                # "sparsity": l["sparsity"],
+                # "subject_type": l["subject_type"],
+                "data_subset": l["data_subset"],
+                # "nr_epochs": l["epoch"],
                 "ndim": l["n_embed"],
-                "lambda": l["lambda"],
-                "lambda_hierarchical": l["lmbda_hierarchical"],
+                "lambda": l["lmbda"],
+                # "lambda_hierarchical": l["lmbda_hierarchical"],
                 "train_acc_max": l["train_accs_max"],
-                "val_acc_max": l["val_accs_max"],
+                "test_acc_max": l["test_accs_max"],
                 "train_acc_proba": l["train_accs_proba"],
-                "val_acc_proba": l["val_accs_proba"],
+                "test_acc_proba": l["test_accs_proba"],
+                "train_losses": l["train_losses"],
+                "test_losses": l["test_losses"],
             }
         )
         for l in ls
     ]
-    if embedding_only:
-        for i, l in enumerate(l_df):
-            l["temperature"] = ls[i]["temperature"].detach().numpy()
+    # if embedding_only:
+    #     for i, l in enumerate(l_df):
+    #         l["temperature"] = ls[i]["temperature"].detach().numpy()
     return l_df
 
 
@@ -2500,6 +2541,7 @@ def load_ID_lowdim_id_weights(
     l_rnd_seed,
     l_embed_dim,
     modelversion,
+    l_lmbda=["default"],
     modeltype="random_weights_random_scaling",
     l_id_weights_type=["separate"],
 ):
@@ -2513,6 +2555,7 @@ def load_ID_lowdim_id_weights(
         modelversion (str): Version identifier for the model (used in directory structure).
         modeltype (str, optional): Type of model architecture or training scheme.
             Defaults to "random_weights_random_scaling".
+        l_id_weights_type (list[str], optional): List of ID weight types (shared, separate, shared_and_separate)).
 
     Returns:
         list[dict]: A list of dictionaries, each containing:
@@ -2532,30 +2575,49 @@ def load_ID_lowdim_id_weights(
     l_rnd_seeds_flat = []
     l_subs = []
     l_results = []
+    l_id_weights = []
 
     for rnd_seed in l_rnd_seed:
         for n in l_embed_dim:
             for data_subset in l_data_subset:
-                for id_weights_type in l_id_weights_type:
-                    results_dir_ID = os.path.join(
-                        "./results",
-                        modelversion,
-                        f"modeltype_{modeltype}",
-                        f"{n}d",
-                        f"{id_weights_type}",
-                        f"seed{rnd_seed}",
-                        f"data_subset_{data_subset}",
-                    )
-                    l_dirs.append(results_dir_ID)
-                    l_rnd_seeds_flat.append(rnd_seed)
-                    l_subs.append(data_subset)
+                for lmbda in l_lmbda:
+                    for id_weights_type in l_id_weights_type:
+                        if lmbda == "default":
+                            results_dir_ID = os.path.join(
+                                "./results",
+                                modelversion,
+                                f"modeltype_{modeltype}",
+                                f"{n}d",
+                                f"{id_weights_type}",
+                                f"seed{rnd_seed}",
+                                f"data_subset_{data_subset}",
+                            )
+                        else:
+                            results_dir_ID = os.path.join(
+                                "./results",
+                                modelversion,
+                                f"modeltype_{modeltype}",
+                                f"{n}d",
+                                f"lmbda_{str(lmbda)}",
+                                f"{id_weights_type}",
+                                f"seed{rnd_seed}",
+                                f"data_subset_{data_subset}",
+                            )
+                        l_dirs.append(results_dir_ID)
+                        l_rnd_seeds_flat.append(rnd_seed)
+                        l_subs.append(data_subset)
+                        l_id_weights.append(id_weights_type)
 
     for i, d in enumerate(l_dirs):
         l_files = os.listdir(d)
         latest_epoch = max_epoch(l_files)
         model_path = os.path.join(d, "model", latest_epoch)
 
-        results = json.load(open(os.path.join(d, "results.json")))
+        results = []
+        try:
+            results = json.load(open(os.path.join(d, "results.json")))
+        except:
+            print(f"no results found in {d}")
 
         match l_subs[i]:
             case "first_half":
@@ -2564,6 +2626,10 @@ def load_ID_lowdim_id_weights(
                 splithalf = "2"
             case "full":
                 splithalf = "no_split"
+            case "full_evaluate_actual":
+                splithalf = "no_split"
+            case "full_evaluate_shuffled":
+                splithalf = "no_split"
             case "testcase":
                 splithalf = "testcase"
 
@@ -2571,7 +2637,7 @@ def load_ID_lowdim_id_weights(
             m = torch.load(
                 model_path, weights_only=True, map_location=torch.device("cpu")
             )
-            if modeltype == "random_weights_free_scaling" or modeltype == "random_weights_random_scaling":
+            if modeltype == "random_weights_free_scaling" or modeltype == "random_weights_random_scaling" or modeltype == "free_weights_free_scaling":
                 ts = m["model_state_dict"]["model2.individual_temps.weight"]
             elif modeltype == "free_weights_no_scaling":
                 ts = 1.0
@@ -2584,9 +2650,22 @@ def load_ID_lowdim_id_weights(
                 "modeltype": m["modeltype"],
                 "n_embed": m["n_embed"],
                 "rnd_seed": l_rnd_seeds_flat[i],
+                "lmbda": m["lambda"],
                 "data_subset": m["data_subset"],
                 "splithalf": splithalf,
+                "train_losses": m["train_losses"],
+                "train_accs_max": m["train_accs_max"],
+                "train_accs_proba": m["train_accs_proba"],
+                "nneg_d_over_time": m["nneg_d_over_time"],
+                "test_accs_max": m["test_accs_max"],
+                "test_accs_proba": m["test_accs_proba"],
+                "test_losses": m["test_losses"],
+                "id_weights_type": l_id_weights[i],
             }
+            if l_id_weights[i] == "shared_and_separate":
+                dict_out["shared_decision_weight"] = m["model_state_dict"][
+                    "model1.individual_shared_slope.weight"
+                ]
             l_models.append(dict_out)
         else:
             print(f"{model_path} does not exist")
@@ -2594,6 +2673,66 @@ def load_ID_lowdim_id_weights(
         l_results.append(results)
 
     return l_models, l_results
+
+
+def load_pretrained(
+    l_data_subset,
+    l_rnd_seed,
+    modelversion,
+    modeltype,
+    l_lmbda,
+    l_lr,
+    l_splithalf,
+    latest_epoch
+):
+    l_dirs = []
+    l_models = []
+    l_rnd_seeds_flat = []
+    ll_splithalf = []
+
+    for rnd_seed in l_rnd_seed:
+        for data_subset in l_data_subset:
+            for lmbda in l_lmbda:
+                for lr in l_lr:
+                    for splithalf in l_splithalf:
+                        results_dir_ID = os.path.join(
+                            "./results",
+                            modelversion,
+                            f"{modeltype}",
+                            f"lambda{str(lmbda)}",
+                            f"lr{str(lr)}",
+                            f"{data_subset}",
+                            f"splithalf_{splithalf}",
+                            f"seed{rnd_seed}",
+                        )
+                        l_dirs.append(results_dir_ID)
+                        l_rnd_seeds_flat.append(rnd_seed)
+                        ll_splithalf.append(splithalf)
+
+    for i, d in enumerate(l_dirs):
+        model_path = os.path.join(d, "model", latest_epoch)
+
+        if os.path.isfile(model_path):
+            m = torch.load(
+                model_path, weights_only=False, map_location=torch.device("cpu")
+            )
+
+            dict_out = {
+                "decision_weights": m["model_state_dict"][
+                    "individual_slopes.weight"
+                ],
+                "rnd_seed": l_rnd_seeds_flat[i],
+                "subject_type": m["subject_type"],
+                "splithalf": ll_splithalf[i],
+                "val_accs_max": m["val_accs_max"],
+                "val_accs_proba": m["val_accs_proba"],
+                "lmbda": m["lambda"],
+            }
+            l_models.append(dict_out)
+        else:
+            print(f"{model_path} does not exist")
+
+    return l_models
 
 
 def reverse_code_big5(df_qs_num):
@@ -3052,7 +3191,7 @@ def rename_dim_weight_cols(df, n_embed):
     return df, colnames_dim_weights
 
 
-def gini_of_halves(df_both_halves, ginis, colnames_dim_weights):
+def gini_of_halves(df_both_halves, ginis, colnames_dim_weights, colname_pid="pid"):
     """
     Computes Gini coefficients for decision weights across two halves of a study and evaluates their consistency.
 
@@ -3069,6 +3208,7 @@ def gini_of_halves(df_both_halves, ginis, colnames_dim_weights):
     - ginis (pd.DataFrame): A DataFrame containing precomputed Gini coefficients per participant.
       Must include a 'pid' column for merging.
     - colnames_dim_weights (list[str]): List of base dimension column names (e.g., ['dim1', 'dim2', ...]).
+    - colname_pid (str, optional): Name of the participant ID column. Defaults to 'pid'.
 
     Returns:
     - Tuple[pd.DataFrame, pd.DataFrame]:
@@ -3078,15 +3218,15 @@ def gini_of_halves(df_both_halves, ginis, colnames_dim_weights):
 
     # long format in both halves
     df_h1_long = df_both_halves[
-        ["pid"] + [f"""{cn}_h1""" for cn in colnames_dim_weights]
-    ].melt(id_vars="pid", value_name="weight", var_name="dimension")
+        [colname_pid] + [f"""{cn}_h1""" for cn in colnames_dim_weights]
+    ].melt(id_vars=colname_pid, value_name="weight", var_name="dimension")
     df_h1_long["dimension"] = df_h1_long["dimension"].str.replace(
         r"_h1$", "", regex=True
     )
     df_h1_long["half"] = 1
     df_h2_long = df_both_halves[
-        ["pid"] + [f"""{cn}_h2""" for cn in colnames_dim_weights]
-    ].melt(id_vars="pid", value_name="weight", var_name="dimension")
+        [colname_pid] + [f"""{cn}_h2""" for cn in colnames_dim_weights]
+    ].melt(id_vars=colname_pid, value_name="weight", var_name="dimension")
     df_h2_long["dimension"] = df_h2_long["dimension"].str.replace(
         r"_h2$", "", regex=True
     )
@@ -3095,24 +3235,26 @@ def gini_of_halves(df_both_halves, ginis, colnames_dim_weights):
     # then, calculate the ginis in each half
     df_halves_long = pd.concat([df_h1_long, df_h2_long], ignore_index=True)
     df_gini_halves = (
-        df_halves_long.groupby(["pid", "half"])[
+        df_halves_long.groupby([colname_pid, "half"])[
             ["weight"]].agg(gini).reset_index()
     )
     df_gini_halves = df_gini_halves.pivot(
-        index="pid", columns="half", values="weight"
+        index=colname_pid, columns="half", values="weight"
     ).reset_index()
-    df_gini_halves.columns = ["pid", "gini_first_half", "gini_second_half"]
+    df_gini_halves.columns = [colname_pid,
+                              "gini_first_half", "gini_second_half"]
     df_gini_halves["gini_delta"] = (
         df_gini_halves["gini_second_half"] - df_gini_halves["gini_first_half"]
     )
 
     # icc of ginis
     icc_ginis = pg.intraclass_corr(
-        data=df_gini_halves.drop("gini_delta", axis=1).melt(id_vars="pid"),
-        targets="pid",
+        data=df_gini_halves.drop(
+            "gini_delta", axis=1).melt(id_vars=colname_pid),
+        targets=colname_pid,
         raters="variable",
         ratings="value",
     )
-    df_gini_all = pd.merge(ginis, df_gini_halves, how="left", on="pid")
+    df_gini_all = pd.merge(ginis, df_gini_halves, how="left", on=colname_pid)
 
     return df_gini_all, icc_ginis
