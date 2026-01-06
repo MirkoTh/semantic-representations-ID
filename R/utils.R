@@ -1,4 +1,3 @@
-
 #' Iterate over component directories to collect file paths
 #'
 #' @param study_dir Character. Name of the study directory (e.g., "study1").
@@ -7,13 +6,12 @@
 #' @return Character vector. Full paths to all files within the specified component directories.
 #'
 iterate_files <- function(study_dir, comp_dir) {
-  
   file_folders <- imap(comp_dir, function(cd, idx) {
     str_c(base_dir, study_dir, "/", cd, "/files/")
   })
-  
+
   file_paths <- map(file_folders, function(x) str_c(list.dirs(x), dir(x)))
-  
+
   return(file_paths)
 }
 
@@ -29,19 +27,19 @@ iterate_files <- function(study_dir, comp_dir) {
 #'   }
 #'
 file_paths_separate <- function(base_dir) {
-  study_dirs <- as.list(dir(base_dir))  # List of study subdirectories
-  comp_dirs <- map(str_c(base_dir, study_dirs), dir)  # List of component subdirectories per study
-  l_file_paths <- map2(study_dirs, comp_dirs, iterate_files)  # List of file paths per study
-  
-  v_file_paths <- reduce(l_file_paths, c) %>% reduce(c)  # Flatten into a single vector
+  study_dirs <- as.list(dir(base_dir)) # List of study subdirectories
+  comp_dirs <- map(str_c(base_dir, study_dirs), dir) # List of component subdirectories per study
+  l_file_paths <- map2(study_dirs, comp_dirs, iterate_files) # List of file paths per study
+
+  v_file_paths <- reduce(l_file_paths, c) %>% reduce(c) # Flatten into a single vector
   mask_cc <- str_detect(v_file_paths, "comprehension-check")
   mask_ooo <- str_detect(v_file_paths, "odd-one-out")
   mask_qs <- str_detect(v_file_paths, "questionnaires")
-  
+
   v_cc_paths <- v_file_paths[mask_cc]
   v_ooo_paths <- v_file_paths[mask_ooo]
   v_qs_paths <- v_file_paths[mask_qs]
-  
+
   return(list("cc" = v_cc_paths, "ooo" = v_ooo_paths, "qs" = v_qs_paths))
 }
 
@@ -68,8 +66,8 @@ file_paths_separate <- function(base_dir) {
 #'
 hash_tbl <- function(tbl_df, tbl_lookup) {
   tbl_new <- left_join(tbl_df, tbl_lookup, by = c("participant_id" = "prolific_pid"))
-  tbl_new <- tbl_new %>% 
-    select(-participant_id) %>% 
+  tbl_new <- tbl_new %>%
+    select(-participant_id) %>%
     rename(participant_id = participant_id_new) %>%
     relocate(participant_id, .before = 1) %>%
     mutate(session_id = 1) %>%
@@ -110,23 +108,24 @@ hash_tbl <- function(tbl_df, tbl_lookup) {
 ooo_modeling_format <- function(tbl_ooo) {
   # format for modeling: anchor pos neg ID
   # saved as .txt
-  tbl_ooo_ids <- tbl_ooo %>% unnest(stimulus_ids) %>%
+  tbl_ooo_ids <- tbl_ooo %>%
+    unnest(stimulus_ids) %>%
     mutate(stimulus_loc = rep(c("ID1", "ID2", "ID3"), nrow(.) / 3)) %>%
     pivot_wider(names_from = stimulus_loc, values_from = stimulus_ids)
-  
-  tbl_ooo_ids <- tbl_ooo_ids %>% 
-    rowwise() %>% 
+
+  tbl_ooo_ids <- tbl_ooo_ids %>%
+    rowwise() %>%
     mutate(
       idx_odd = which(1:3 == response + 1),
       which_not_odd = list(c(1, 2, 3)[-idx_odd])
-    ) %>% 
+    ) %>%
     unnest(which_not_odd) %>%
     mutate(idx_not_odd = rep(c("idx_anchor", "idx_positive"), nrow(.) / 2)) %>%
     pivot_wider(names_from = idx_not_odd, values_from = which_not_odd) %>%
     relocate(idx_anchor, .before = idx_odd) %>%
     relocate(idx_positive, .before = idx_odd)
-  
-  tbl_ooo_ID_save <- tbl_ooo_ids %>% 
+
+  tbl_ooo_ID_save <- tbl_ooo_ids %>%
     rowwise() %>%
     mutate(
       anchor = c(ID1, ID2, ID3)[idx_anchor],
@@ -139,7 +138,7 @@ ooo_modeling_format <- function(tbl_ooo) {
       positive = as.integer(positive),
       negative = as.integer(negative)
     )
-  
+
   return(list(tbl_ooo_ids = tbl_ooo_ids, tbl_ooo_ID_save = tbl_ooo_ID_save))
 }
 
@@ -203,24 +202,25 @@ cumsum_reset <- function(x, reset_val = 0) {
 #'
 #' @export
 keep_first_encounters_only <- function(tbl_ooo) {
-  tbl_multiple_ooo <- tbl_ooo %>% 
-    group_by(participant_id) %>% 
+  tbl_multiple_ooo <- tbl_ooo %>%
+    group_by(participant_id) %>%
     summarize(n_entries = n()) %>%
-    filter(n_entries > 440) %>% 
+    filter(n_entries > 440) %>%
     ungroup()
-  
+
   tbl_ooo_repeated <- tbl_multiple_ooo %>% left_join(tbl_ooo, by = "participant_id")
   tbl_ooo_repeated$idx <- 1:nrow(tbl_ooo_repeated)
-  
+
   tbl_ooo_unique <- tbl_ooo %>% filter(!(participant_id %in% tbl_multiple_ooo$participant_id))
-  tbl_ooo_first_trial <- tbl_ooo_repeated %>% 
-    group_by(participant_id, trial_id) %>% 
+  tbl_ooo_first_trial <- tbl_ooo_repeated %>%
+    group_by(participant_id, trial_id) %>%
     mutate(rwn = row_number(idx)) %>%
-    filter(rwn == 1) %>% 
-    select(-c(idx, rwn, n_entries)) %>% ungroup()
-  
+    filter(rwn == 1) %>%
+    select(-c(idx, rwn, n_entries)) %>%
+    ungroup()
+
   tbl_ooo <- rbind(tbl_ooo_unique, tbl_ooo_first_trial)
-  
+
   return(tbl_ooo)
 }
 
@@ -250,16 +250,103 @@ keep_first_encounters_only <- function(tbl_ooo) {
 #'
 #' @export
 merge_separate_ids <- function(tbl_df, tbl_partial_ids) {
-  tbl_df <- tbl_df %>% 
+  tbl_df <- tbl_df %>%
     left_join(tbl_partial_ids, by = c("participant_id" = "separate_id"), suffix = c("", "_separate"))
-  
-  tbl_df$participant_id[!is.na(tbl_df$participant_id_separate)] <- 
+
+  tbl_df$participant_id[!is.na(tbl_df$participant_id_separate)] <-
     tbl_df$participant_id_separate[!is.na(tbl_df$participant_id_separate)]
-  
+
   tbl_df <- tbl_df %>% select(-participant_id_separate)
-  
+
   return(tbl_df)
 }
+
+
+#' Create Demographic Lookup Table
+#'
+#' Processes a triplet-level dataset to generate a cleaned demographic lookup table
+#' with one row per subject, including estimated age and resolved gender.
+#'
+#' @param tbl_triplets A tibble containing repeated triplet-level observations.
+#' Must include the columns: `subject_id`, `age`, `gender`, and `date`.
+#'
+#' @return A tibble with one row per `subject_id`, containing:
+#' \describe{
+#'   \item{subject_id}{Unique identifier for each participant}
+#'   \item{gender}{Cleaned gender value, set to `NA` if conflicting entries exist}
+#'   \item{mn_age}{Mean age across entries, with year-of-birth converted using actual study date}
+#' }
+#'
+#' @details
+#' - If `age` appears to be a year of birth (between 1900 and 2100), it is converted to age
+#'   using the `date` column, which reflects when the participant completed the study.
+#' - Implausible ages (<18 or >100) are set to `NA`.
+#' - Subjects with multiple conflicting gender entries have `gender` set to `NA`.
+#' - The function returns one row per subject, with averaged age and resolved gender.
+#'
+#' @examples
+#' \dontrun{
+#' tbl_lookup <- create_demographic_lookup(tbl_triplets)
+#' }
+#'
+#' @export
+create_demographic_lookup <- function(tbl_triplets) {
+  tbl_demographic_lookup <- tbl_triplets %>%
+    group_by(subject_id, age, gender, date) %>%
+    summarize(mn_RT = mean(RT)) %>%
+    ungroup()
+
+  # calculate age if participants entered year of birth
+  fillval <- 999999
+  tbl_demographic_lookup$age[is.na(tbl_demographic_lookup$age)] <- fillval
+  tbl_demographic_lookup$age[between(tbl_demographic_lookup$age, 1900, 2100)] <-
+    year(as_date(
+      tbl_demographic_lookup$date[between(tbl_demographic_lookup$age, 1900, 2100)]
+    )) - tbl_demographic_lookup$age[between(tbl_demographic_lookup$age, 1900, 2100)]
+  tbl_demographic_lookup$age[tbl_demographic_lookup$age == fillval] <- NA
+  # below 18 is impossible and above 100 is unlikely
+  tbl_demographic_lookup$age[tbl_demographic_lookup$age < 18] <- NA
+  tbl_demographic_lookup$age[tbl_demographic_lookup$age > 100] <- NA
+
+  # take the average age, ok for current purposes
+  tbl_demographic_lookup <- tbl_demographic_lookup %>%
+    group_by(subject_id, gender) %>%
+    summarize(mn_age = mean(age, na.omit = TRUE), mn_RT = mean(mn_RT)) %>%
+    ungroup()
+
+  # set gender to NA when participants mentioned different genders
+  # 1. filter those who mentioned different values
+  tbl_several_genders <- tbl_demographic_lookup %>%
+    select(-c(mn_age, mn_RT)) %>%
+    filter(!is.na(gender)) %>%
+    group_by(subject_id) %>%
+    count() %>%
+    filter(n > 1)
+  # 2. then set to NA in demographic_lookup
+  tbl_demographic_lookup <- tbl_demographic_lookup %>%
+    left_join(tbl_several_genders, by = "subject_id") %>%
+    mutate(gender = ifelse(is.na(n), gender, NA))
+  # now use gender value when available otherwise set to NA
+  tbl_demographic_lookup <- tbl_demographic_lookup %>%
+    group_by(subject_id) %>%
+    mutate(
+      gender = ifelse(is.na(gender), "zz", gender),
+      # use gender value if available
+      rwn = row_number(gender),
+      # otherwise set to NA
+      rwn = ifelse(is.na(rwn), 1, rwn),
+      # set back zz to NA
+      gender = ifelse(gender == "zz", NA, gender)
+    ) %>%
+    ungroup() %>%
+    filter(rwn == 1) %>%
+    select(-c(n, rwn))
+
+  return(tbl_demographic_lookup)
+}
+
+
+
 
 save_my_tiff <- function(pl, path_fl, w, h) {
   tiff(path_fl, w, h, "in", res = 300)
@@ -277,5 +364,4 @@ save_my_pdf_and_tiff_and_png <- function(pl, path_fl, w, h) {
   save_my_pdf(pl, str_c(path_fl, ".pdf"), w, h)
   save_my_tiff(pl, str_c(path_fl, ".tiff"), w, h)
   ggsave(filename = str_c(path_fl, ".png"), plot = pl, units = "in", width = w, height = h)
-  
 }
