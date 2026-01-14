@@ -1,27 +1,30 @@
 # Individual Differences in Object Representations
 
-Instructions for how to run the code, reproduce the results, and run Study 2.
+**Instructions for how to run the code, reproduce the results, and run Study 2.**
 
-Modeling and analysis code is provided in R and python; the experiment is programmed with jsPsych and custom java script, html, and css code. Before starting, make sure you have installed the following two requirements:
-1. a local copy of jatos (www.jatos.org). This will allow you to run the experiment locally.
-2. the rutils R package from the main author (available under github.com/MirkoTh/rutils). This will allow you to run all the R scripts.
-
-Please read the following points carefully before using the code:
+Please first read the following points carefully before using the code:
 
 - Running the model may take a lot of time. We therefore also provide the resulting files from the modeling scripts, so you can analyze the results without actually running the model.
 - In the following instructions and explanations, the root folder of the project is represented by "~/"
 - If you want to run Study 2 in jatos (without running the models and analyzing them), we provide the full code repo under ~/study-only/
 
 
+
+Modeling and analysis code is provided in R and python; the experiment is programmed with jsPsych and custom java script, html, and css code. Before starting, make sure to carry out the following steps:
+
+1. a local copy of jatos (www.jatos.org). This will allow you to run the experiment locally.
+2. the rutils R package from the main author (available under github.com/MirkoTh/rutils). This will allow you to run all the R scripts.
+3. download the files from the source studies relevant for the current project.
+    - From https://osf.io/z2784/files/osfstorage, download the following files: labels.mat, words.mat, unique_id.txt.
+    - From https://osf.io/f5rn6/overview download the file called triplets_large_final_correctednc_correctedorder.csv.
+
+    --> Place all four downloaded files into ~/data/
+
+    - From https://osf.io/jum2f/overview download the images from the source study as a zip file. Place the unzipped file called "images" into the ~/data/ folder.
+
+
 ## Study 1
-First, download the files from the source studies relevant for the current project.
-- From https://osf.io/z2784/files/osfstorage, download the following files: labels.mat, words.mat, unique_id.txt.
-- From https://osf.io/f5rn6/overview download the file called triplets_large_final_correctednc_correctedorder.csv.
-- From https://osf.io/jum2f/overview download the images from the source study as a zip file. Place the unzipped file called "images" into the ~/data/ folder.
-
-Place all downloaded files into ~/data/
-
-Then, run the script ~/R/things-triplets.R to create the necessary data files for running the model. Note that this script also writes a file containing the "diagnostic triplets", i.e. those, which have been observed multiple times. This is going to be important for creating the fixed triplet set used in Study 2.
+Run the script ~/R/things-triplets.R to create the necessary data files for running the model. Note that this script also writes a file containing the "diagnostic triplets", i.e. those, which have been observed multiple times. This is going to be important for creating the fixed triplet set used in Study 2.
 
 After that, you are ready to run the pytorch models, i.e. the weighted-embedding models.
 
