@@ -435,7 +435,7 @@ tbl_include_trials <- tbl_ooo %>%
   count(subject_id) %>%
   filter(n >= thx) %>%
   select(-n)
-# select all participants who have contributed to pairs with substantial number of trials
+# select all participants who have contributed to triplets with substantial number of trials
 # because only for those we can test whether modeling IDs improves particularly low-agreement pairs
 tbl_include_items <- tibble(subject_id = sort(unique(tbl_subset_items$subject_id)))
 # take the intersection
