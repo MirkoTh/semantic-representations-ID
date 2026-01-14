@@ -625,8 +625,8 @@ I agree to participate in this study.
 I consent to the use of my data described in the Data Protection Information Sheet
 and confirm having received a copy of the Data Protection Sheet.
 
-I consent to data transfer from the MPI for Biological Cybernetics encrypted database to the project-related collaborators:
-inside of the Max Planck Society and affiliated research institutes, or at partnering institutions like the University of Tuebingen.`;
+I consent to data transfer from the used encrypted database (jatos.mindprobe.eu) to the project-related collaborators:
+inside of Helmholtz Munich and affiliated research institutes, or at partnering research institutions.`;
 }
 
 function direct_to_ooo() {
