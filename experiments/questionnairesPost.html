@@ -584,7 +584,7 @@
                             $(document.getElementById("questionnaires")).hide()
                             $(document.getElementById("header")).hide()
                             //window.scrollTo(0.0)
-                            var complete_url = 'https://app.prolific.com/submissions/complete?cc=UEIONKBASDOGK837955K8395';    
+                            var complete_url = 'https://app.prolific.com/submissions/complete?cc=C1FZ0K4N';    
                             document.getElementById('instruction').innerHTML = 'This is the end of this study. Thank you very much for your participation. <br/>Your data has been recorded.<br/>Please click' +
                             ' <a href="' + complete_url + '">here</a> to return to Prolific';
                         }
@@ -594,7 +594,7 @@
                         console.error("Error writing document: ", error);
                         $(document.getElementById("questionnaires")).hide()
                         $(document.getElementById("header")).hide()
-                        var complete_url = 'https://app.prolific.com/submissions/complete?cc=UEIONKBASDOGK837955K8395'; 
+                        var complete_url = 'https://app.prolific.com/submissions/complete?cc=C1FZ0K4N'; 
                         document.getElementById('instruction').innerHTML = 'This is the end of this study. Thank you very much for your participation. <br/>Your data has been recorded.<br/>Please click' +
                         ' <a href="' + complete_url + '">here</a> to return to Prolific';
                         // window.location.href = complete_url;
@@ -651,14 +651,15 @@
                 // createQuestionnaire(questionnaire_data.CAPE);
                 // createQuestionnaire(questionnaire_data.RRQ);
                 // createQuestionnaire(questionnaire_data.PSWQ);
-                // big5 short form SF
-                createQuestionnaire(questionnaire_data.BIG5_SF);
                 // big5 extra short form XSF
                 // createQuestionnaire(questionnaire_data.BIG5_XSF);
-                // impulsivity
-                createQuestionnaire(questionnaire_data.I_8);
                 // short form SF with 100 items (~15-20 mins)
                 // createQuestionnaire(questionnaire_data.PID5_SF);
+
+                // big5 short form SF
+                createQuestionnaire(questionnaire_data.BIG5_SF);
+                // impulsivity
+                createQuestionnaire(questionnaire_data.I_8);
                 // brief form BF with 25 items (~5 mins)
                 createQuestionnaire(questionnaire_data.PID5_BF);
 
