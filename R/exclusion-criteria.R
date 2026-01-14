@@ -115,7 +115,7 @@ write_csv(tbl_qs_txt, "data/study1-2025-08/tbl_qs_txt_excluded.csv")
 # ooo file for pytorch model in python without colnames
 tbl_ooo_ID_save <- tbl_ooo_ID_save %>%
   select(-session_id) %>%
-  relocate(participant_id, .after = odd)
+  relocate(participant_id, .after = negative)
 
 write_delim(
   tbl_ooo_ID_save,

@@ -7,7 +7,7 @@ library(tidyverse)
 library(jsonlite)
 
 # home-grown
-l_load <- c("R/utils.R")
+l_load <- c("R/utils.R", "R/utils-private.R")
 walk(l_load, source)
 
 # recode reversely coded questionnaire items
@@ -17,7 +17,7 @@ walk(l_load, source)
 # first, list all result files available in the respective folders
 
 # Set the base directory containing study data
-base_dir <- "data/study1-2025-08/jatos_results_files_20250820165020/"
+base_dir <- "data/study1-2025-08/jatos_results_files_20250902065020/"
 l_paths_sep <- file_paths_separate(base_dir)
 
 
@@ -44,8 +44,9 @@ tbl_comprehension <- tbl_comprehension %>%
 
 
 ## odd-one-out
-tbl_ooo <- map(l_paths_sep$ooo, function(x) as_tibble(fromJSON(x))) %>% 
-  reduce(rbind) %>% filter(is_practice == 0)
+tbl_ooo <- map(l_paths_sep$ooo, function(x) as_tibble(fromJSON(x))) %>%
+  reduce(rbind) %>%
+  filter(is_practice == 0)
 tbl_ooo <- merge_separate_ids(tbl_ooo, tbl_partial_ids)
 
 # for ooo trials, we simply keep the first datapoint a participant has contributed
@@ -54,8 +55,10 @@ tbl_ooo <- merge_separate_ids(tbl_ooo, tbl_partial_ids)
 # and delete the second and third times
 
 tbl_ooo <- keep_first_encounters_only(tbl_ooo)
-n_trials <- tbl_ooo %>% count(participant_id) %>% select(n)
-if (!assertthat::assert_that(all(n_trials$n <= 440))){
+n_trials <- tbl_ooo %>%
+  count(participant_id) %>%
+  select(n)
+if (!assertthat::assert_that(all(n_trials$n <= 440))) {
   stop()
 }
 l_ooo <- ooo_modeling_format(tbl_ooo)
@@ -74,7 +77,8 @@ tbl_qs_prep$idx <- 1:nrow(tbl_qs_prep)
 tbl_qs_prep <- tbl_qs_prep %>%
   group_by(participant_id) %>%
   mutate(rwn = row_number(idx)) %>%
-  filter(rwn == 1) %>% ungroup()
+  filter(rwn == 1) %>%
+  ungroup()
 
 # numeric responses from questionnaires
 tbl_qs_num <- tbl_qs_prep %>%
@@ -82,7 +86,7 @@ tbl_qs_num <- tbl_qs_prep %>%
 # control data types
 cols_numeric <- colnames(tbl_qs_num)[!colnames(tbl_qs_num) %in% cols_id]
 tbl_qs_num[, cols_numeric] <- map(tbl_qs_num[, cols_numeric], as.numeric)
-tbl_qs_num_long <- tbl_qs_num %>% pivot_longer(cols=-all_of(cols_id))
+tbl_qs_num_long <- tbl_qs_num %>% pivot_longer(cols = -all_of(cols_id))
 
 # text responses from questionnaires
 tbl_qs_txt <- tbl_qs_prep %>%
@@ -94,10 +98,10 @@ tbl_qs_txt <- tbl_qs_prep %>%
 
 # files to hash and save:
 l_tbl_to_hash <- list(
-  tbl_comprehension = tbl_comprehension, 
-  tbl_ooo_ids = tbl_ooo_ids, 
-  tbl_ooo_ID_save = tbl_ooo_ID_save, 
-  tbl_qs_num_long = tbl_qs_num_long, 
+  tbl_comprehension = tbl_comprehension,
+  tbl_ooo_ids = tbl_ooo_ids,
+  tbl_ooo_ID_save = tbl_ooo_ID_save,
+  tbl_qs_num_long = tbl_qs_num_long,
   tbl_qs_txt = tbl_qs_txt
 )
 
