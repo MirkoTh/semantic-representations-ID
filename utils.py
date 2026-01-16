@@ -5,6 +5,7 @@ import seaborn as sns
 import pingouin as pg
 
 from sklearn.metrics.pairwise import cosine_similarity
+from scipy.spatial import procrustes
 import matplotlib.colors as mcolors
 
 from transformers import (
@@ -2245,17 +2246,7 @@ def extract_decision_weights(l, tp):
     return df_sh
 
 
-def split_half_reliabilities(l_splithalf, idxs, ndims):
-    """extract and plot split-half reliabilities"""
-
-    df_sh1 = extract_decision_weights(l_splithalf[idxs[0]], 1)
-    df_sh2 = extract_decision_weights(l_splithalf[idxs[1]], 2)
-    df_sh = pd.merge(
-        df_sh1, df_sh2, how="left", on=["id", "dimension"], suffixes=["_1", "_2"]
-    )
-    # Create a faceted scatterplot: one for each day
-
-    def scatter_with_corr(data, x, y, **kwargs):
+def scatter_with_corr(data, x, y, **kwargs):
         r, _ = np.corrcoef(data[x], data[y])[0, 1], None
         z_val = data["dimension"].iloc[0]  # safely grab the facet value
         sns.scatterplot(data=data, x=x, y=y, **kwargs)
@@ -2271,9 +2262,22 @@ def split_half_reliabilities(l_splithalf, idxs, ndims):
             linewidth=1,
         )
 
-    g = sns.FacetGrid(df_sh, col="dimension", col_wrap=5)
-    _ = g.map_dataframe(scatter_with_corr, x="decision_weight_1",
-                    y="decision_weight_2")
+def split_half_reliabilities(l_splithalf, idxs, ndims, do_plot = False):
+    """extract and plot split-half reliabilities"""
+
+    df_sh1 = extract_decision_weights(l_splithalf[idxs[0]], 1)
+    df_sh2 = extract_decision_weights(l_splithalf[idxs[1]], 2)
+    df_sh = pd.merge(
+        df_sh1, df_sh2, how="left", on=["id", "dimension"], suffixes=["_1", "_2"]
+    )
+    # Create a faceted scatterplot: one for each day
+
+    g = None
+    if do_plot:
+        g = sns.FacetGrid(df_sh, col="dimension", col_wrap=5)
+        _ = g.map_dataframe(scatter_with_corr, x="decision_weight_1",
+                        y="decision_weight_2")
+        plt.close(g.figure)  # Prevents auto-display
 
     df_corr = pd.DataFrame(
         df_sh.groupby("dimension")
@@ -2282,7 +2286,7 @@ def split_half_reliabilities(l_splithalf, idxs, ndims):
     )
     df_corr["ndims"] = ndims
     df_corr.columns = ["r", "ndims"]
-    plt.close(g.fig)  # Prevents auto-display
+    
 
     return df_sh, df_corr, g
 
@@ -2346,7 +2350,7 @@ def iterate_similarity(embed1, embed2, ndim):
     return similarities
 
 
-def dimensional_similarities(l, ndim):
+def dimensional_similarities(l, ndim, use_procrustes=False):
     """
     Calculate the cosine similarity matrix of embedding dimensions
     between two splits for the specified dimensionality.
@@ -2354,6 +2358,7 @@ def dimensional_similarities(l, ndim):
     Parameters:
         l (list of dict): A list containing metadata and embeddings for each split.
         ndim (int): The dimensionality of embeddings to compare.
+        use_procrustes (bool): Whether to apply Procrustes alignment before similarity calculation.
 
     Returns:
         tuple:
@@ -2367,12 +2372,16 @@ def dimensional_similarities(l, ndim):
     for idx1, idx2 in zip(l_idx1, l_idx2):
         embed1 = l[idx1]["item_embeddings"].t().numpy()
         embed2 = l[idx2]["item_embeddings"].t().numpy()
+        if use_procrustes:
+            mtx1, mtx2, disparity = procrustes(embed1, embed2)
+            embed1 = mtx1
+            embed2 = mtx2
         similarities = iterate_similarity(embed1, embed2, ndim)
         l_similarities.append(similarities)
     return l_similarities, l_idx1, l_idx2
 
 
-def reorder_dimensions(l, ndim):
+def reorder_dimensions(l, ndim, use_procrustes=False):
     """
     Reorder the embedding dimensions in split "2" so they best match the ordering
     of split "1", based on maximum cosine similarity.
@@ -2380,12 +2389,13 @@ def reorder_dimensions(l, ndim):
     Parameters:
         l (list of dict): A list containing metadata and embeddings for each split.
         ndim (int): The number of embedding dimensions to reorder.
+        use_procrustes (bool): Whether to apply Procrustes alignment before similarity calculation.
 
     Returns:
         ndarray: Index mapping from split "2" dimensions to split "1" dimensions.
     """
     l_max_sims = []
-    l_sims_dimensionality, l_idx1, l_idx2 = dimensional_similarities(l, ndim)
+    l_sims_dimensionality, l_idx1, l_idx2 = dimensional_similarities(l, ndim, use_procrustes)
     for sims_dimensionality, idx1, idx2 in zip(l_sims_dimensionality, l_idx1, l_idx2):
         max_sims = np.argmax(sims_dimensionality, axis=1)
         l[idx2]["item_embeddings"] = l[idx2]["item_embeddings"][max_sims, :]
@@ -2451,6 +2461,32 @@ def max_sim_results_per_ndim(dict_idxs_use, dict_max_sims, range_dims):
             )  # idxs second half
     return dict_idxs_list_use
 
+
+def best_procrustes_solution(l_cors, list_dims):
+    """
+    Identifies the simulation with the highest mean correlation across dimensions.
+
+    Parameters:
+        l_cors (list): A list of correlation result tuples. Each tuple contains:
+                       - [0]: list of correlation matrices for each simulation.
+                       - [1]: list of indices of the object embeddings in the first half of the split
+                       - [2]: list of indices of the object embeddings in the second half of the split
+        list_dims (list): A list of dimensionalities corresponding to each simulation.
+
+    Returns:
+        int: Index of the simulation with the highest mean correlation.
+    """
+    mean_cors = []
+    dict_best_cors = {}
+    dict_best_cors_idx = {}
+    for idx, dims in enumerate(list_dims):
+        for cors in l_cors[idx][0]:
+            mean_cors.append(np.diag(cors).mean())
+        best_idx = np.argmax(mean_cors)
+        dict_best_cors_idx[dims] = best_idx
+        dict_best_cors[dims] = mean_cors[best_idx]
+        mean_cors = []
+    return dict_best_cors_idx, dict_best_cors
 
 def max_cors(range_dims, dict_idxs_use, d_cors):
     """
