@@ -3832,3 +3832,58 @@ def plot_hyp_search(g, tbl_plt2):
     g.fig.tight_layout()
 
     return g
+
+
+def min_similarity_and_reliability(dict_cors, l_splithalf):
+    dict_min_sims = {}
+    dict_min_rel = {}
+    for k, v in dict_cors.items():
+        dict_min_sims[k] = []
+        dict_min_rel[k] = []
+        for idx, mat in enumerate(v[0]):
+            min_sim = np.min(np.diag(mat))
+            dict_min_sims[k].append(min_sim)
+            df_sh, df_corr, g = split_half_reliabilities(l_splithalf, [v[1][idx], v[2][idx]], k, do_plot=False)
+            min_corr = df_corr["r"].min()
+            spearman_correction = (2*min_corr)/(1 + min_corr)
+            dict_min_rel[k].append(spearman_correction)
+    return dict_min_sims, dict_min_rel
+
+
+def merge_min_similarity_and_reliability(dict_min_sims, dict_min_rel):
+    df_min_similarities = pd.DataFrame.from_dict(dict_min_sims, orient="index").T.reset_index()
+    df_min_similarities = df_min_similarities.melt(id_vars="index", var_name="Dimensionality", value_name="min_similarity")
+    df_min_similarities = df_min_similarities.dropna()
+    df_min_similarities.reset_index(drop=True, inplace=True)
+    df_min_similarities["index"] = df_min_similarities.groupby("Dimensionality").cumcount()
+    
+    df_min_reliabilities = pd.DataFrame.from_dict(dict_min_rel, orient="index").T.reset_index()
+    df_min_reliabilities = df_min_reliabilities.melt(id_vars="index", var_name="Dimensionality", value_name="min_reliability")
+    df_min_reliabilities = df_min_reliabilities.dropna()
+    df_min_reliabilities.reset_index(drop=True, inplace=True)
+    df_min_reliabilities["index"] = df_min_reliabilities.groupby("Dimensionality").cumcount()
+    
+    df_two_mins = pd.merge(df_min_reliabilities, df_min_similarities, how="inner", on=["index", "Dimensionality"])
+
+    return df_two_mins
+
+
+def select_most_similar_and_reliable(df_two_mins):
+    df_two_mins["avg_rel_sim"] = (df_two_mins["min_reliability"] + df_two_mins["min_similarity"]) / 2
+    df_two_mins = df_two_mins.sort_values("avg_rel_sim", ascending=False)
+    df_two_mins["rwn"] = df_two_mins.groupby("Dimensionality").cumcount()
+    df_two_mins.sort_values(["Dimensionality", "avg_rel_sim"], ascending=[True, False])
+    df_use = df_two_mins.query("rwn == 0").sort_values("Dimensionality")[["index", "Dimensionality"]]
+    return df_use
+
+
+def max_average_similarity_and_reliability(dict_cors, l_splithalf):
+    dict_min_sims, dict_min_rel = min_similarity_and_reliability(dict_cors, l_splithalf)
+    df_two_mins = merge_min_similarity_and_reliability(dict_min_sims, dict_min_rel)
+    df_use = select_most_similar_and_reliable(df_two_mins)
+    dict_idxs_use = {}
+    for d, idx in zip(df_use["Dimensionality"], df_use["index"]):
+        dict_idxs_use[d] = idx
+    return dict_idxs_use
+
+    
