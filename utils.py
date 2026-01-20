@@ -3438,19 +3438,24 @@ def corr_weight(col_str, col_str_fixed, df_cor):
     return corcoef, pval
 
 
-def correlations_with_summary_stats(used_dim, l_results_full, l_results_splithalf, is_testcase, range_dims):
+def correlations_with_summary_stats(used_dim, l_results_full, l_results_splithalf, is_testcase, range_dims, use_procrustes=True):
     # similarities between dimensions in two halves
-    partial_sims = partial(dimensional_similarities, l_results_splithalf)
+    partial_sims = partial(dimensional_similarities, l_results_splithalf, use_procrustes=use_procrustes)
     l_cors = list(map(partial_sims, range_dims))
 
+    dict_cors = {int(f'{range_dims[i]}'): sublist for i, sublist in enumerate(l_cors)}
     # reorder dimensions in the two halves according to the max. similar result
-    partial_reorder = partial(reorder_dimensions, l_results_splithalf)
+    partial_reorder = partial(reorder_dimensions, l_results_splithalf, use_procrustes=use_procrustes)
     l_max_sims = list(map(partial_reorder, range_dims))
     dict_max_sims = dict(zip(range_dims, l_max_sims))
 
     # extract idxs from seeds with maximally similar embedding dimensions
-    dict_idxs_use = max_sim_dimensions_per_ndim(l_max_sims, range_dims)
+    if use_procrustes:
+        dict_idxs_use = max_average_similarity_and_reliability(dict_cors, l_results_splithalf)
+    else:
+        dict_idxs_use = max_sim_dimensions_per_ndim(l_max_sims, range_dims)
     dict_idxs_list_use = max_sim_results_per_ndim(dict_idxs_use, dict_max_sims, range_dims)
+    
     # for dims > 10, just use first instance
     embed_dim_not_unique = [d for d in range_dims if d > 10]
     for embed_dim in embed_dim_not_unique:
