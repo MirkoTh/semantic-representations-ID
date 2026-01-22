@@ -3782,7 +3782,7 @@ def reliabilities_over_dimensionalities(df_splithalf_summary_long, df_corrs, f, 
                     linewidth=2, label='THX Group-Level Comparison')
     axes[0].axhline(y=.8, color='darkgreen', linestyle='--',
                     linewidth=2, label='THX Individual-Level Comparison')
-    axes[0].axvline(x=8.5, color="red", linestyle='-.',
+    axes[0].axvline(x=6.5, color="red", linestyle='-.',
                     linewidth=2.5, label="")
     axes[0].set_xlabel("Nr. Dimensions", fontsize=14)
     axes[0].set_ylabel("Spearman-Brown Correction", fontsize=14)
