@@ -30,15 +30,16 @@ re-run.
 The images come from OSF as one large (~5 GB) **password-protected** zip and are
 unpacked into `data/images/`.
 
-- **Password:** `things4all` (published with the source dataset under https://osf.io/jum2f; hardcoded in
-  the get_data.py — by running the script, you agree to use the images only for
-  research and non-commercial purposes and to not distribute or alter them without
-  permission of the owner of the images.).
+- **Password:** `things4all` (published with the source dataset; hardcoded in
+  the script). By using these data you agree to use the images only for research
+  and non-commercial purposes and to not distribute or alter them without
+  permission of the owner of the images.
 - **7-Zip strongly recommended.** If `7z` is available (on PATH, or at the
   default Windows install path `C:\Program Files\7-Zip\7z.exe`), the script uses
-  it — extraction takes a few minutes. Without 7-Zip it falls back to Python's
-  built-in unzip, whose encrypted-zip path is pure-Python and can take _hours_.
-  Install 7-Zip from https://www.7-zip.org before running if you don't have it.
+  it — unpacking the ~28,000 image files takes about 15 minutes on a normal
+  laptop. Without 7-Zip it falls back to Python's built-in unzip, whose
+  encrypted-zip path is pure-Python and can take _hours_. Install 7-Zip from
+  https://www.7-zip.org before running if you don't have it.
 - The archive nests everything under a top-level `object_images/` folder; the
   script flattens this so images land directly at `data/images/<category>/...`.
 
