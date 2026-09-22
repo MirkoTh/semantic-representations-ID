@@ -7,11 +7,12 @@ library(data.table)
 
 source("R/utils.R")
 
+if (!dir.exists("data/data-plotting/")){
+  dir.create("data/data-plotting/", recursive = TRUE, showWarnings = FALSE)
+}
+
 things_dimension_labels <- R.matlab::readMat("data/labels.mat")
 things_words <- R.matlab::readMat("data/words.mat")
-
-# read_delim("data/data1854_batch5_test10.txt", col_names = FALSE)
-# tmp <- read_delim("data/spose_embedding_49d_sorted.txt", col_names = FALSE)
 
 tbl_labels <- read_delim("data/unique_id.txt", delim = "\\", col_names = FALSE)
 tbl_triplets <- read_delim("data/triplets_large_final_correctednc_correctedorder.csv")
@@ -235,10 +236,6 @@ tbl_ooo_subset_train <- tbl_ooo_subset %>%
 tbl_ooo_subset_test <- tbl_ooo_subset %>%
   filter(cum_prop > prop_train) %>%
   select(-cum_prop)
-
-#
-# tbl_old <- read_delim("data/test_10_ID_old.txt", col_names = FALSE)
-# tbl_old %>% count(X4) %>% mutate(n = 4*n) %>% arrange(n)
 
 write_delim(
   tbl_ooo_subset_train %>%
