@@ -146,6 +146,7 @@ class BatchGenerator(object):
         sampling_method: str = "normal",
         p=None,
         method: str = "average",
+        rnd_seed: int = None,
     ):
         self.I = I
         self.dataset = dataset
@@ -153,6 +154,15 @@ class BatchGenerator(object):
         self.sampling_method = sampling_method
         self.p = p
         self.method = method
+
+        # Dedicated RNG for epoch-wise shuffling. Seeding it from rnd_seed makes
+        # the shuffle sequence a deterministic function of rnd_seed alone,
+        # independent of the global torch RNG.
+        if rnd_seed is not None:
+            self.generator = torch.Generator()
+            self.generator.manual_seed(int(rnd_seed))
+        else:
+            self.generator = None
 
         if sampling_method == "soft":
             assert isinstance(self.p, float)
@@ -168,7 +178,7 @@ class BatchGenerator(object):
 
     def sampling(self, triplets: torch.Tensor, ids: torch.Tensor) -> torch.Tensor:
         """randomly sample training data during each epoch"""
-        rnd_perm = torch.randperm(len(triplets))
+        rnd_perm = torch.randperm(len(triplets), generator=self.generator)
         if self.sampling_method == "soft":
             rnd_perm = rnd_perm[: int(len(rnd_perm) * self.p)]
         return triplets[rnd_perm], ids[rnd_perm]
@@ -204,6 +214,7 @@ class BatchGenerator_ID(object):
         p=None,
         method: str = "two_step",
         within_subjects: bool = False,
+        rnd_seed: int = None,
     ):
         self.average_reps = average_reps
         self.dataset = dataset
@@ -212,6 +223,15 @@ class BatchGenerator_ID(object):
         self.p = p
         self.method = method
         self.within_subjects = within_subjects
+
+        # Dedicated RNG for epoch-wise shuffling. Seeding it from rnd_seed makes
+        # the shuffle sequence a deterministic function of rnd_seed alone,
+        # independent of the global torch RNG. Used for both sampling paths.
+        if rnd_seed is not None:
+            self.generator = torch.Generator()
+            self.generator.manual_seed(int(rnd_seed))
+        else:
+            self.generator = None
 
         if sampling_method == "soft":
             assert isinstance(self.p, float)
@@ -230,13 +250,22 @@ class BatchGenerator_ID(object):
     ) -> torch.Tensor:
         """randomly sample training data during each epoch"""
         if within_subjects:
+            # Derive a per-call integer random_state from the dedicated generator
+            # so the pandas shuffle is deterministic given rnd_seed, yet advances
+            # each epoch. Falls back to None (global RNG) when no seed was set.
+            if self.generator is not None:
+                random_state = int(
+                    torch.randint(0, 2**31 - 1, (1,), generator=self.generator).item()
+                )
+            else:
+                random_state = None
             df_triplets = pd.DataFrame(
                 np.concatenate((triplets[:, 0:3], ids[:, np.newaxis]), axis=1)
             )
             df_triplets.columns = [0, 1, 2, "ID"]
             df_triplets_random = (
                 df_triplets.groupby("ID")[[0, 1, 2]]
-                .apply(lambda x: x.sample(frac=1))
+                .apply(lambda x: x.sample(frac=1, random_state=random_state))
                 .reset_index(drop=False)
             )
             return (
@@ -245,7 +274,7 @@ class BatchGenerator_ID(object):
             )
 
         elif within_subjects == False:
-            rnd_perm = torch.randperm(len(triplets))
+            rnd_perm = torch.randperm(len(triplets), generator=self.generator)
             if self.sampling_method == "soft":
                 rnd_perm = rnd_perm[: int(len(rnd_perm) * self.p)]
             return triplets[rnd_perm], ids[rnd_perm]
@@ -710,6 +739,7 @@ def load_batches(
             sampling_method=sampling_method,
             p=p,
             method=method,
+            rnd_seed=rnd_seed,  # deterministic epoch-wise shuffling
         )
         val_batches = BatchGenerator(
             I=I,
@@ -788,6 +818,7 @@ def load_batches_ID(
             p=p,
             method=method,
             within_subjects=within_subjects,
+            rnd_seed=rnd_seed,  # deterministic epoch-wise shuffling
         )
         val_batches = BatchGenerator_ID(
             average_reps=average_reps,

@@ -12,8 +12,8 @@ os.environ["MKL_THREADING_LAYER"] = "TBB"
 base_dict = {
     "triplets_dir": "./data",
     "task": "odd_one_out",
-    "epochs": 100,
-    "steps": 25,
+    "epochs": 2,#100,
+    "steps": 1,#25,
     "device": "cpu",  # "cuda:0" #
 }
 

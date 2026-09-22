@@ -12,8 +12,8 @@ os.environ["MKL_THREADING_LAYER"] = "TBB"
 base_dict = {
     "triplets_dir": "./data",
     "task": "odd_one_out",
-    "epochs": 100,
-    "steps": 25,
+    "epochs": 5,#100,
+    "steps": 5,#25,
     "device": "cpu",  # "cuda:0" #
 }
 
@@ -38,7 +38,7 @@ l_python_file = ["run-embedding-decision-combined-data.py"]
 # "second_half": second half of the full dataset, including data from new batch (2025-08)
 # "full_evaluate_actual": Hebart et al. (2023), but selected subset with correct subject ID, 90/10 train-test split
 # "full_evaluate_shuffled": Hebart et al. (2023), but selected subset with shuffled subject ID, 90/10 train-test split
-l_data_subset = ["full_evaluate_actual", "full_evaluate_shuffled"]  # ,"testcase", , "full", "first_half", "second_half", "first_half_v2", "second_half_v2"
+l_data_subset = ["testcase"]#["full_evaluate_actual", "full_evaluate_shuffled"]  # ,"testcase", , "full", "first_half", "second_half", "first_half_v2", "second_half_v2"
 l_individual_slopes_type = ["separate"]  # ,  ,"shared",, "shared_and_separate"
 
 # Generate all combinations

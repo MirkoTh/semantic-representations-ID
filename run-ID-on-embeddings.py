@@ -12,7 +12,6 @@ import logging
 import os
 import random
 import re
-from turtle import distance
 import torch
 import warnings
 import pickle
@@ -38,7 +37,9 @@ import utils as ut
 
 
 os.environ['PYTHONIOENCODING'] = 'UTF-8'
-os.environ['CUDA_LAUNCH_BLOCKING'] = str(1)
+# Debug flag: forces synchronous CUDA execution so errors surface at the right
+# line. Slows down GPU runs (no effect on CPU). Re-enable only for GPU debugging.
+# os.environ['CUDA_LAUNCH_BLOCKING'] = str(1)
 
 
 def parseargs():
@@ -388,12 +389,6 @@ def run(
                 logger.info(f"Early stopping at epoch {epoch}")
                 break
 
-            # check termination condition (we want to train until convergence)
-            # lmres = linregress(range(window_size), train_losses[(
-            #     epoch + 1 - window_size):(epoch + 2)])
-            # if (lmres.slope > 0) or (lmres.pvalue > .1):
-            #     break
-
     # save final model weights
     results = {'epoch': len(
         train_accs_max), 'train_acc': train_accs_max[-1], 'val_acc': val_accs_max[-1], 'val_loss': val_losses[-1]}
@@ -425,6 +420,7 @@ if __name__ == "__main__":
         device = torch.device(args.device)
         torch.cuda.manual_seed_all(args.rnd_seed)
         torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True  # reproducible cuDNN ops
         # try:
         #     torch.cuda.set_device(int(args.device[-1]))
         # except:

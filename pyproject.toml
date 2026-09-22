@@ -1,0 +1,82 @@
+[project]
+name = "individual-differences-in-object-representations"
+version = "0.1.0"
+description = "Individual Differences in Object Representations — modeling and analysis"
+requires-python = ">=3.11,<3.13"
+
+# Dependencies for the whole project. Loose lower bounds keep
+# resolution flexible; the committed uv.lock pins exact versions for
+# reproducibility. torch is NOT listed here — it comes via the cpu / cu128 /
+# cu130 extras below so the compute backend is an explicit, opt-in choice.
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "pandas>=2.1",
+    "scikit-learn>=1.4",
+    "scikit-image>=0.22",     # skimage: image loading / resize in utils.py
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+    "pingouin>=0.5",          # statistics (ICC etc.) in utils.py
+    "numba>=0.59",            # njit-accelerated routines in utils.py
+    "transformers>=4.40",     # text embeddings for interest-prediction analysis
+    "jupyter>=1.0",
+    "jupyterlab>=4.0",
+    "tqdm>=4.66",
+    "requests>=2.32",         # used by get_data.py
+]
+
+# ---------------------------------------------------------------------------
+# Compute backends for PyTorch — mutually exclusive. Pick exactly ONE at sync:
+#
+#   uv sync --extra cpu      # DEFAULT: works everywhere, no GPU needed
+#   uv sync --extra cu128    # NVIDIA GPU, CUDA 12.8 wheels
+#   uv sync --extra cu130    # NVIDIA GPU, CUDA 13.0 wheels (current PyPI stable)
+#
+# If you don't know: use cpu. The models run on CPU (slower, but identical
+# results). Only pick a cuNNN extra if you have an NVIDIA GPU and know your
+# driver supports that CUDA version.
+# ---------------------------------------------------------------------------
+[project.optional-dependencies]
+cpu = [
+    "torch>=2.9,<2.12",
+]
+cu128 = [
+    "torch>=2.9,<2.12",
+]
+cu130 = [
+    "torch>=2.9,<2.12",
+]
+
+[tool.uv]
+# Tell uv these extras can never be installed together, so resolution of the
+# single lockfile doesn't try to satisfy all three torch builds at once.
+conflicts = [
+    [{ extra = "cpu" }, { extra = "cu128" }, { extra = "cu130" }],
+]
+
+# Route torch to the right PyTorch index depending on which extra is active.
+# On macOS, PyTorch publishes no CUDA wheels, so the cuNNN extras fall back to
+# the default index (PyPI) there via the platform marker.
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cu128", extra = "cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+    { index = "pytorch-cu130", extra = "cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+# Explicit indexes: `explicit = true` means uv only pulls a package from here
+# when a [tool.uv.sources] entry points at it — never for anything else.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true

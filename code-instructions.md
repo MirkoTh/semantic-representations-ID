@@ -6,14 +6,15 @@ Please first read the following points carefully before using the code:
 
 - Running the model may take a lot of time. We therefore also provide the resulting files from the modeling scripts, so you can analyze the results without actually running the model.
 - In the following instructions and explanations, the root folder of the project is represented by "~/"
-- If you want to run Study 2 in jatos (without running the models and analyzing them), we provide the full code repo under ~/study-only/
+- "Study 2" in the MS refers to "study1" in the folder structure
+- If you want to run Study 2 in jatos (without running the models and analyzing them), we provide the .jzip file for the study here: https://osf.io/m4yfr/overview
 
 
 
 Modeling and analysis code is provided in R and python; the experiment is programmed with jsPsych and custom java script, html, and css code. Before starting, make sure to carry out the following steps:
 
-1. a local copy of jatos (www.jatos.org). This will allow you to run the experiment locally.
-2. the rutils R package from the main author (available under github.com/MirkoTh/rutils). This will allow you to run all the R scripts.
+1. install jatos (www.jatos.org) locally. This will allow you to run the experiment on your machine. If you have a mindprobe account, you can also directly import the .jzip file there.
+2. install the rutils R package from the main author (available under github.com/MirkoTh/rutils; use devtools or Rtools for the installation). This will allow you to run all the R scripts.
 3. download the files from the source studies relevant for the current project.
     - From https://osf.io/z2784/files/osfstorage, download the following files: labels.mat, words.mat, unique_id.txt.
     - From https://osf.io/f5rn6/overview download the file called triplets_large_final_correctednc_correctedorder.csv.
@@ -36,7 +37,7 @@ If you want to obtain the results faster, consider splitting the models, e.g., b
 Run the python file ~/initialize-model-improvement-dimensionality.py
 
 ### Split-half reliabilities
-Run ~/initialize-model-splithalf-reliability-cc.py and ~/initialize-model-splithalf-reliability.py
+Run ~/initialize-model-splithalf-reliability-icc.py and ~/initialize-model-splithalf-reliability.py
 
 After you have run the models, you can analyze the results with a set of jupyter notebooks, which are listed in the following.
 
@@ -66,16 +67,18 @@ To create the fixed set of 440 triplets, run the jupyter notebook create-triplet
 
 
 ### Run the study
-We provide a separate folder with all the code and files necessary to run the study in jatos. For details on jatos, visit www.jatos.org. In case you want to re-create the study from scratch using the results from the analyses, you would have to move all the relevant files from the source folder ~/ to the respective jatos folder (study_assets_root) on your computer.
+We provide a separate folder with all the code and files necessary to run the study in jatos. For details on jatos, visit www.jatos.org.
+
+In case you want to re-create the study from scratch using the results from the analyses, you would have to copy the folders ~/experiments/ and ~/data (after running all the code mentioned above) and paste them into the respective jatos folder (study_assets_root). Additionally, in the jatos folder, run the jupyter notebook delete-unused-images.ipynb.
 
 ### Load the data
-Run the following two R scripts sequentially: ~/exclusion-criteria.R, ~/concatenate-ooo-old-new.R. These scripts filter the data according to the exclusion criteria, and concatenate our new results with the results from the source study. Note that we do not provide raw data files from prolific, but only data files with hashed prolific ids.
+Run the following three R scripts sequentially: ~/exclusion-criteria.R, ~/concatenate-ooo-old-new.R, ~/R/EDA.R. These scripts filter the data according to the exclusion criteria, concatenate our new results with the results from the source study, and save a file with the average triplet response time per participant. Note that we do not provide raw data files from prolific, but only data files with hashed prolific ids.
 
 ### Analyze dimensionality 35
 Run the jupyter notebook ~/analyze-combined-data-finaldym.ipynb
 
 ### Analyze all 12 dimensionalities
-Run the jupyter notebook ~/analyze-combined-data-alldims.ipynb
+Run the jupyter notebook ~/analyze-combined-data-model-alldims.ipynb
 
 ### Predict dimensional weightings using self-report text responses about work history and general interests
 Run the jupyter notebook ~/predict-dims-by-interests.ipynb

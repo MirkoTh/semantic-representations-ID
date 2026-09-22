@@ -12,7 +12,6 @@ import logging
 import os
 import random
 import re
-from turtle import distance
 import torch
 import warnings
 import pickle
@@ -38,7 +37,9 @@ import utils as ut
 
 
 os.environ["PYTHONIOENCODING"] = "UTF-8"
-os.environ["CUDA_LAUNCH_BLOCKING"] = str(1)
+# Debug flag: forces synchronous CUDA execution so errors surface at the right
+# line. Slows down GPU runs (no effect on CPU). Re-enable only for GPU debugging.
+# os.environ["CUDA_LAUNCH_BLOCKING"] = str(1)
 
 
 def parseargs():
@@ -622,11 +623,6 @@ def run(
                         )
                 logger.info(f"Saving individual decision weights at epoch {epoch+1}")
             
-            # np.savetxt(
-            #     os.path.join(
-            #         results_dir, f"individual_scalings{epoch+1:04d}.txt"),
-            #     id_decision_scaling.detach().cpu().numpy(),
-            # )
             # logger.info(
             #     f"Saving individual decision scaling factors at epoch {epoch+1}"
             # )
@@ -711,6 +707,7 @@ if __name__ == "__main__":
         device = torch.device(args.device)
         torch.cuda.manual_seed_all(args.rnd_seed)
         torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True  # reproducible cuDNN ops
         # try:
         #     torch.cuda.set_device(int(args.device[-1]))
         # except:
