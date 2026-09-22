@@ -57,7 +57,7 @@ def parseargs():
         "--data_subset",
         type=str,
         default="testcase",
-        choices=["testcase", "full", "first_half", "second_half", "full_evaluate_actual", "full_evaluate_shuffled"],
+        choices=["testcase", "full", "first_half", "second_half", "first_half_v2", "second_half_v2", "full_evaluate_actual", "full_evaluate_shuffled"],
     )
     aa(
         "--lmbda",
