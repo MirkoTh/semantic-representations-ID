@@ -10,7 +10,6 @@ import logging
 import os
 import random
 import re
-from turtle import distance
 import torch
 import warnings
 import utils
