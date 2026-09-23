@@ -28,7 +28,7 @@ embed_dim_list = [8]  # 15, 15
 learning_rate_list = [0.0005]  # 0.0005
 # , "random_weights_random_scaling"
 modeltype_list = ["free_weights_no_scaling", "free_weights_free_scaling"]
-l_python_file = ["run-embedding-decision-combined-data.py"]
+l_python_file = ["python/run-embedding-decision-combined-data.py"]
 l_data_subset = ["full", "first_half", "second_half"]  # ,"testcase"
 l_individual_slopes_type = ["separate"]  # , "shared"
 

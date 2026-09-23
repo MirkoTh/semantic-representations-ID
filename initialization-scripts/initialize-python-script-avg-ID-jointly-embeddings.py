@@ -29,7 +29,7 @@ learning_rate_list = [0.001]
 modeltype_list = ["random_weights"]
 splithalf_list = ["no"] #, "1", "2"
 use_shuffled_subjects_list = ["actual", "shuffled"]
-python_file_embeddings_list = ["run-avg-ID-jointly-embeddings.py"]
+python_file_embeddings_list = ["python/run-avg-ID-jointly-embeddings.py"]
 temperature_list = [0.01, 1, 10]
 
 # Generate combinations for random weights

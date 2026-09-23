@@ -20,7 +20,7 @@ base_dict = {
 learning_rate_list = [0.0005]  # 0.0005
 l_lmbda = [0.0000001] #[0.0000001]  # 0.0000001, , 0.008, 0.05, 0.1, 0.5, 0.9, 0.0005
 modeltype_list = ["free_weights_no_scaling"]#, "free_weights_free_scaling"
-l_python_file = ["run-embedding-decision-combined-data.py"]
+l_python_file = ["python/run-embedding-decision-combined-data.py"]
 l_data_subset = ["first_half", "second_half", "first_half_v2", "second_half_v2"]  # ,"full" , "full_evaluate_actual", "full_evaluate_shuffled","testcase", , "full", "first_half", "second_half", "first_half_v2", "second_half_v2"
 l_individual_slopes_type = ["separate"]  # ,  ,"shared",, "shared_and_separate"
 

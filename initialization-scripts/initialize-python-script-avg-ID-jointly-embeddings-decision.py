@@ -26,7 +26,7 @@ learning_rate_list = [0.0005] # 0.0005
 modeltype_list = ["random_weights_free_scaling"]
 splithalf_list = ["no"] #, 
 use_shuffled_subjects_list = ["actual", "shuffled"] #
-python_file_embeddings_decision_list = ["run-avg-ID-jointly-embeddings-decision.py"]
+python_file_embeddings_decision_list = ["python/run-avg-ID-jointly-embeddings-decision.py"]
 
 # Generate all combinations
 combinations = list(itertools.product(

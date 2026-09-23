@@ -31,9 +31,9 @@ from collections import defaultdict
 from scipy.stats import linregress
 from torch.optim import Adam, AdamW
 
-import python.plotting as pl
+import plotting as pl
 from models import model as md
-import python.utils as ut
+import utils as ut
 
 
 os.environ["PYTHONIOENCODING"] = "UTF-8"

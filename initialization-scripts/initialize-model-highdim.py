@@ -12,8 +12,8 @@ os.environ["MKL_THREADING_LAYER"] = "TBB"
 base_dict = {
     "triplets_dir": "./data",
     "task": "odd_one_out",
-    "epochs": 5,#100,
-    "steps": 5,#25,
+    "epochs": 100,
+    "steps": 25,
     "device": "cpu",  # "cuda:0" #
 }
 
@@ -29,7 +29,7 @@ learning_rate_list = [0.0005]  # 0.0005
 l_lmbda = [0.0000001, 0.008, 0.01, 0.0105, 0.011, 0.012, 0.0125, 0.015, 0.025, 0.05, 0.1, 0.5, 0.9] #[0.0000001]  # 0.0000001, , 0.008, 0.05, 0.1, 0.5, 0.9, 0.0005
 # , "random_weights_random_scaling"
 modeltype_list = ["free_weights_no_scaling", "free_weights_free_scaling"]#
-l_python_file = ["run-embedding-decision-combined-data.py"]
+l_python_file = ["python/run-embedding-decision-combined-data.py"]
 
 # dataset explanations
 # "testcase": small dataset for testing the code
@@ -38,7 +38,7 @@ l_python_file = ["run-embedding-decision-combined-data.py"]
 # "second_half": second half of the full dataset, including data from new batch (2025-08)
 # "full_evaluate_actual": Hebart et al. (2023), but selected subset with correct subject ID, 90/10 train-test split
 # "full_evaluate_shuffled": Hebart et al. (2023), but selected subset with shuffled subject ID, 90/10 train-test split
-l_data_subset = ["testcase"]#["full_evaluate_actual", "full_evaluate_shuffled"]  # ,"testcase", , "full", "first_half", "second_half", "first_half_v2", "second_half_v2"
+l_data_subset = ["full_evaluate_actual", "full_evaluate_shuffled"]  # ,"testcase", , "full", "first_half", "second_half", "first_half_v2", "second_half_v2"
 l_individual_slopes_type = ["separate"]  # ,  ,"shared",, "shared_and_separate"
 
 # Generate all combinations

@@ -24,7 +24,7 @@ from collections import defaultdict
 from scipy.stats import linregress
 from torch.optim import Adam, AdamW
 
-from python.plotting import *
+from plotting import *
 from models.model import *
 
 os.environ['PYTHONIOENCODING']='UTF-8'

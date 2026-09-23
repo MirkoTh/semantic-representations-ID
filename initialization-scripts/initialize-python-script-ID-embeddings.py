@@ -42,7 +42,7 @@ for lmbda, learning_rate, use_shuffled_subjects, splithalf in combinations:
     arg_combinations.append(temp_dict)
 
 # Path to the Python file you want to run
-python_file = 'run-ID-on-embeddings.py'
+python_file = 'python/run-ID-on-embeddings.py'
 
 # Function to run the command
 

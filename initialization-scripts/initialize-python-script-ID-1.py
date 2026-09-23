@@ -5,39 +5,45 @@ import itertools
 
 # Define the fixed parts of the dictionary
 base_dict = {
-    'rnd_seed': 852,
+    'rnd_seed': 128,#852,
     'triplets_dir': './data/',
     "task": "odd_one_out",
-    "epochs": 10,
-    "steps": 10,
-    "device": "cpu",  # "cuda:0"
-    # "use_shuffled_subjects": "shuffled",
-    "early_stopping": "Yes"
+    "epochs": 250,
+    "steps": 125,
+    "device": "cuda:0"  # "cuda:0"
 }
 
 # Define the variables and their possible values
 # lmbda_list = [0.0005, 0.001]
 # embed_dim_list = [10]
+# agreement_list = ["most", "few"]
+# sparsity_list = ["ID", "both"]
 
-lmbda_list = [0.001, 0.0005]
-embed_dim_list = [15, 30]
+lmbda_list = [0.0005]
+embed_dim_list = [15]
+agreement_list = ["most"]
+sparsity_list = ["both"]
 learning_rate_list = [0.0005]
-use_shuffled_subjects_list = ["shuffled", "actual"]
+id_weights_only_list = ["only_weights"]
 
 # Generate all combinations
 combinations = list(itertools.product(
-    lmbda_list, embed_dim_list, learning_rate_list, use_shuffled_subjects_list))
+    # ))
+    lmbda_list, learning_rate_list, embed_dim_list, agreement_list, sparsity_list, id_weights_only_list))
 
 # Create the list of dictionaries
+# Create the list of dictionaries
 arg_combinations = []
-# , sparsity in combinations:
-for lmbda, embed_dim, learning_rate, use_shuffled_subjects in combinations:
+#  in combinations:
+for lmbda, learning_rate, embed_dim, agreement, sparsity, id_weights_only in combinations:  # , agreement
     temp_dict = base_dict.copy()
     temp_dict.update({
         'lmbda': lmbda,
-        'embed_dim': embed_dim,
         'learning_rate': learning_rate,
-        'use_shuffled_subjects': use_shuffled_subjects
+        'embed_dim': embed_dim,
+        'agreement': agreement,
+        'sparsity': sparsity,
+        'id_weights_only': id_weights_only
     })
     arg_combinations.append(temp_dict)
 
@@ -53,20 +59,22 @@ def run_command(args):
         --triplets_dir {args['triplets_dir']} \
         --task {args['task']} \
         --learning_rate {args['learning_rate']} \
-        --embed_dim {args['embed_dim']} \
         --lmbda {args['lmbda']} \
+        --sparsity {args['sparsity']} \
+        --agreement {args['agreement']} \
+        --id_weights_only {args['id_weights_only']} \
         --epochs {args['epochs']} \
+        --embed_dim {args['embed_dim']} \
         --steps {args['steps']} \
-        --device {args['device']} \
-        --early_stopping {args['early_stopping']} \
-        --use_shuffled_subjects {args['use_shuffled_subjects']} "
+        --distance_metric 'euclidean' \
+        --device {args['device']}"
     )
     subprocess.run(command, shell=True)
-    # --embed_dim {args['embed_dim']} "
+    #
 
 
-# for args in arg_combinations:
-#     run_command(args)
+for args in arg_combinations:
+    run_command(args)
 # Use ThreadPoolExecutor to run the commands in parallel
-with ThreadPoolExecutor(max_workers=8) as executor:
-    executor.map(run_command, arg_combinations)
+# with ThreadPoolExecutor(max_workers=2) as executor:
+#     executor.map(run_command, arg_combinations)

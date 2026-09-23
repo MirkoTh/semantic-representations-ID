@@ -17,7 +17,7 @@ arg_combinations = [
 ]
 
 # Path to the Python file you want to run
-python_file = 'run-avg-ID.py'
+python_file = 'python/run-avg-ID.py'
 
 # Iterate over the combinations and run the commands
 for args in arg_combinations:

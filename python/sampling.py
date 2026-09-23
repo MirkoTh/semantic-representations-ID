@@ -9,7 +9,7 @@ import torch
 
 import numpy as np
 
-from python.utils import BatchGenerator, load_data, load_model, validation
+from utils import BatchGenerator, load_data, load_model, validation
 from models.model import SPoSE, VSPoSE
 
 os.environ['PYTHONIOENCODING']='UTF-8'

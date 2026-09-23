@@ -10,7 +10,7 @@ import re
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import python.utils as ut
+import utils as ut
 
 
 class SPoSE(nn.Module):
