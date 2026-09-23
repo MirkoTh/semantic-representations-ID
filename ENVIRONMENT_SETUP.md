@@ -5,8 +5,6 @@ environment, dependencies, and Python version itself. You do **not** need conda,
 pyenv, or a manual virtualenv — uv handles all of it, and it never installs into
 your system Python.
 
-Also please note the information on troubleshooting at the end of this file.
-
 ## 1. Install uv (once, system-wide)
 
 ```bash
@@ -20,10 +18,8 @@ uv is a single self-contained binary with no Python dependency of its own.
 
 ## 2. Create the environment
 
-Run all `uv` commands from the **repository root** — the folder that contains
-`pyproject.toml`. (uv searches upward from your current directory for a
-`pyproject.toml`, so a subfolder of the repo also works, but anywhere outside
-the repo will not find the project.)
+Run all `uv` commands — and everything else in this project — from the
+**repository root**, the folder that contains `pyproject.toml`.
 
 ```bash
 cd /path/to/this-repo   # the directory containing pyproject.toml
@@ -45,7 +41,7 @@ uv sync --extra cu130
 
 This creates a `.venv/` in the project root and installs everything from the
 lockfile. The correct Python version (3.12, pinned in `.python-version`) is
-downloaded automatically by uv if you don't already have it — no pyenv needed.
+downloaded automatically by uv if you don't already have it.
 
 The three backends are mutually exclusive; `uv sync --extra cu128` replaces a
 prior `cpu` install in the same environment (and vice versa).
@@ -101,10 +97,11 @@ https://download.pytorch.org/whl/ — e.g. `cu126`).
 ## The R side
 
 Parts of this project (data prep, EDA, figures) run in R, which uv does not
-manage. Install R separately and the `rutils` package from
-github.com/MirkoTh/rutils as described in the main code instructions. If you
-want the R dependencies pinned the same way uv pins Python, consider adding
-`renv` to the R project — say the word and that can be set up too.
+manage. Install R and RStudio separately, plus the `rutils` package from
+github.com/MirkoTh/rutils. Open the `.Rproj` file in the repo root in RStudio
+before running any R script — this sets the working directory to the repo root
+so relative paths resolve. R scripts are run from within RStudio (open and
+Source / Run), not via `uv run`.
 
 ## Troubleshooting: "uv is not recognized" (Windows)
 

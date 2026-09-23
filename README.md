@@ -14,9 +14,19 @@ and custom JavaScript/HTML/CSS.
 
 ## Setup
 
-Two one-time steps. Both are covered in detail in the linked files.
+Follow these in order. Steps 1–2 are prerequisites you install once; steps 3–4
+are run from the repo root and set up the environment and data.
 
-**1. Python environment** — see [`ENVIRONMENT_SETUP.md`](ENVIRONMENT_SETUP.md).
+**1. Install uv** — the Python environment/package manager used throughout.
+See [`ENVIRONMENT_SETUP.md`](ENVIRONMENT_SETUP.md) for the installer command and
+Windows PATH notes. Nothing below works without it.
+
+**2. Install 7-Zip** (https://www.7-zip.org) before fetching the data. The image
+archive has ~28,000 files; with 7-Zip, unpacking takes about 15 minutes on a
+normal laptop. Without it the download script falls back to Python's built-in
+unzip, whose encrypted-zip path is far slower (potentially hours).
+
+**3. Create the Python environment** (from the repo root):
 
 ```bash
 uv sync --extra cpu    # or --extra cu128 / cu130 for an NVIDIA GPU
@@ -24,9 +34,9 @@ uv sync --extra cpu    # or --extra cu128 / cu130 for an NVIDIA GPU
 
 This installs the pinned Python 3.12 environment with all packages. Everything
 below is run through `uv run`, which uses that environment without a separate
-activation step.
+activation step. Details in [`ENVIRONMENT_SETUP.md`](ENVIRONMENT_SETUP.md).
 
-**2. Data** — see [`DATA_SETUP.md`](DATA_SETUP.md).
+**4. Download the data** (from the repo root):
 
 ```bash
 uv run python get_data.py
@@ -34,21 +44,21 @@ uv run python get_data.py
 
 This downloads and verifies all external data from OSF into `data/` in one step
 (four source files plus the ~5 GB image archive, which is password-protected and
-unpacked automatically). Nothing is downloaded or unzipped by hand.
+unpacked automatically). Nothing is downloaded or unzipped by hand. Details in
+[`DATA_SETUP.md`](DATA_SETUP.md).
 
-> **Install 7-Zip first** (https://www.7-zip.org). The image archive has ~28,000
-> files; with 7-Zip, unpacking takes about 15 minutes on a normal laptop.
-> Without 7-Zip the script falls back to Python's built-in unzip, whose
-> encrypted-zip path is far slower (potentially hours).
+### Additional prerequisites (only for the parts that need them)
 
-### Other prerequisites
-
+- **R** with **RStudio**, plus the **`rutils`** package from the main author
+  (github.com/MirkoTh/rutils; install via devtools/Rtools) for the R scripts.
+  Open the `.Rproj` file in the repo root in RStudio before running any R
+  script — this sets the working directory to the repo root so the scripts'
+  relative paths resolve. Run each R script from within RStudio (open it and
+  Source / Run).
 - **jATOS** (www.jatos.org), installed locally, to run the experiment. If you
   only want to run Study 2 without the modeling, a ready `.jzip` is available at
   https://osf.io/m4yfr/overview (import it directly if you have a mindprobe
   account).
-- **R** and the **`rutils`** package from the main author
-  (github.com/MirkoTh/rutils; install via devtools/Rtools) for the R scripts.
 
 > Running the models can take a long time. The repo also provides the resulting
 > files from the modeling scripts, so the analyses can be run without retraining.
@@ -58,7 +68,7 @@ unpacked automatically). Nothing is downloaded or unzipped by hand.
 Prepare the model inputs, then train the weighted-embedding (PyTorch) models and
 analyze them.
 
-1. **Prepare triplets:** `uv run Rscript R/things-triplets.R` — also writes the
+1. **Prepare triplets:** run `R/things-triplets.R` in RStudio — also writes the
    "diagnostic triplets" (those observed multiple times), needed later for the
    Study 2 triplet set.
 2. **Train models:**
@@ -88,14 +98,12 @@ The exact triplet IDs used in the published Study 2 are saved in
 "Model deltas" step** below.
 
 > **On reproducing the triplet set from scratch:** the published set was saved
-> earlier in the project and will not be re-created identically if you rerun the
-> pipeline, because the batch-shuffling in earlier runs drew from the global RNG
-> and so drifted with changes to seed, model architecture, and dimensionality.
-> The shuffling is now seed-deterministic going forward (see the modeling code),
-> but this does not retroactively reconstruct the original set — the published
-> Study 2 was already run and is not changed. For the model-based half (220 of
-> the 440 triplets), the overlap with the original is substantial: 166/220,
-> 171/220, and 163/220 for dimensionalities 25, 30, and 35 respectively.
+> earlier in the project and will not be re-created identically on a rerun —
+> reasons can include different seeds, model architecture or dimensionality, or a
+> different training dataset. Batch-shuffling has since been made seed-deterministic
+> for future runs, but this does not reconstruct the original set; the published
+> Study 2 is unchanged. Overlap for the model-based half (220 triplets) is
+> substantial: 166/220, 171/220, 163/220 for dimensionalities 25, 30, 35.
 
 Steps:
 
@@ -116,10 +124,8 @@ www.jatos.org for jATOS details.
 
 ### Load and analyze the data
 
-1. **Load:** run in order —
-   `uv run Rscript exclusion-criteria.R`,
-   `uv run Rscript concatenate-ooo-old-new.R`,
-   `uv run Rscript R/EDA.R`.
+1. **Load:** in RStudio, run in order —
+   `exclusion-criteria.R`, `concatenate-ooo-old-new.R`, `R/EDA.R`.
    These apply exclusion criteria, concatenate the new results with the source
    study, and save per-participant average triplet response times. Raw Prolific
    files are not provided — only data with hashed Prolific IDs.
@@ -133,7 +139,7 @@ www.jatos.org for jATOS details.
 
 After running the models and analyses above, plot all manuscript figures with:
 
-1. `uv run Rscript R/plot-figures-ms.R`
+1. run `R/plot-figures-ms.R` in RStudio
 2. `plot-figures-ms.ipynb` (via `uv run jupyter lab`)
 
 The study-overview figures and the first result figure were assembled manually

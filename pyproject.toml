@@ -23,6 +23,7 @@ dependencies = [
     "jupyterlab>=4.0",
     "tqdm>=4.66",
     "requests>=2.32",         # used by get_data.py
+    "ipykernel>=7.3.0",
 ]
 
 # ---------------------------------------------------------------------------
