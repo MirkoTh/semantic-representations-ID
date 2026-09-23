@@ -5,6 +5,7 @@ data/
 log_files/
 plots/
 results/
+jatos/
 
 .Rhistory
 
@@ -14,3 +15,4 @@ requirements.txt
 .venv/
 R/prolific-payment.R
 R/utils-private.R
+experiments/questionnaire-setup/
