@@ -8,9 +8,8 @@ the combined data).
 Modeling and analysis are in Python and R. The experiment is built with jsPsych
 and custom JavaScript/HTML/CSS.
 
-> **Naming note:** "Study 2" in the manuscript corresponds to `study1` in the
-> folder structure. This mismatch runs throughout the repo — keep it in mind
-> whenever a path says `study1`.
+> **Naming note:** the folder `data/study1-2025-08` holds the data we collected
+> ourselves; this data corresponds to "Study 2" in the manuscript.
 
 ## Setup
 
