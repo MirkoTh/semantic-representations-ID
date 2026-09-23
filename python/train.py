@@ -12,7 +12,7 @@ import random
 import re
 import torch
 import warnings
-import utils
+import python.utils as utils
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,7 +24,7 @@ from collections import defaultdict
 from scipy.stats import linregress
 from torch.optim import Adam, AdamW
 
-from plotting import *
+from python.plotting import *
 from models.model import *
 
 os.environ['PYTHONIOENCODING']='UTF-8'
