@@ -521,7 +521,7 @@ def load_data_ID(
 
 
 def load_data_combined(
-    device: torch.device, triplets_dir: str, dataset: str = "testcase"
+    device: torch.device, triplets_dir: str, dataset: str = "testcase", moreshuffle = "no", rs = None
 ) -> Tuple[torch.Tensor]:
     """load train and test triplet datasets with associated participant ID into memory"""
     if dataset == "testcase":
@@ -631,42 +631,91 @@ def load_data_combined(
             .type(torch.LongTensor)
         )
     elif dataset == "full_evaluate_actual":
-        train_triplets = (
-            torch.from_numpy(
-                np.loadtxt(
-                    pjoin(triplets_dir, "train_90_ID_item.txt"))
+        if moreshuffle == "no":
+            train_triplets = (
+                torch.from_numpy(
+                    np.loadtxt(
+                        pjoin(triplets_dir, "train_90_ID_item.txt"))
+                )
+                .to(device)
+                .type(torch.LongTensor)
             )
-            .to(device)
-            .type(torch.LongTensor)
-        )
-        test_triplets = (
-            torch.from_numpy(
-                np.loadtxt(
-                    pjoin(triplets_dir, "test_10_ID_item.txt"))
+            test_triplets = (
+                torch.from_numpy(
+                    np.loadtxt(
+                        pjoin(triplets_dir, "test_10_ID_item.txt"))
+                )
+                .to(device)
+                .type(torch.LongTensor)
             )
-            .to(device)
-            .type(torch.LongTensor)
-        )
+        elif moreshuffle == "yes":
+            all_triplets = np.loadtxt(pjoin(triplets_dir, "all_triplets_ID_item.txt"))
+            # need to write new_train_test_split function yet
+            train_triplets, test_triplets = new_train_test_split(all_triplets, random_state=rs, dataset=dataset)
     elif dataset == "full_evaluate_shuffled":
-        train_triplets = (
-            torch.from_numpy(
-                np.loadtxt(
-                    pjoin(triplets_dir, "train_shuffled_90_ID_item.txt"))
+        if moreshuffle == "no":
+            train_triplets = (
+                torch.from_numpy(
+                    np.loadtxt(
+                        pjoin(triplets_dir, "train_shuffled_90_ID_item.txt"))
+                )
+                .to(device)
+                .type(torch.LongTensor)
             )
-            .to(device)
-            .type(torch.LongTensor)
-        )
-        test_triplets = (
-            torch.from_numpy(
-                np.loadtxt(
-                    pjoin(triplets_dir, "test_shuffled_10_ID_item.txt"))
+            test_triplets = (
+                torch.from_numpy(
+                    np.loadtxt(
+                        pjoin(triplets_dir, "test_shuffled_10_ID_item.txt"))
+                )
+                .to(device)
+                .type(torch.LongTensor)
             )
-            .to(device)
-            .type(torch.LongTensor)
-        )
+        elif moreshuffle == "yes":
+
+            all_triplets = np.loadtxt(pjoin(triplets_dir, "all_triplets_ID_item.txt"))
+            # need to write new_train_test_split function yet
+            train_triplets, test_triplets = new_train_test_split(all_triplets, random_state=rs, dataset=dataset)
 
     return train_triplets, test_triplets
 
+
+def new_train_test_split(triplets, random_state, dataset):
+    """
+    Split triplets into train and test sets given random_state
+    just uses 80/20 fixed split
+    
+    Parameters:
+    - triplets: numpy array of shape (n, 3/4) containing the triplets
+    - random_state: int, seed for reproducibility
+    - dataset: str describing dataset, may contain "shuffled" to indicate that subject ids should be shuffled
+    
+    Returns:
+    - train_triplets: numpy array of training triplets
+    - test_triplets: numpy array of testing triplets
+    """
+
+    # set the random seed for reproducibility in numpy
+    np.random.seed(random_state)
+    
+    # "original": group once per subject, randomize trial id, and select initial .8 for train, rest for test
+    # "shuffled": ungroup, randomize subject id to create random subjects
+    # then again randomize trial id, and select initial .8 for train, rest for test
+
+    if "shuffled" in dataset:
+        # replace original subject ids with shuffled ones
+        subject_ids = triplets[:, 3]
+        subject_ids_shuffled = np.random.permutation(subject_ids.copy())
+        triplets[:, 3] = subject_ids_shuffled
+
+    df_triplets = pd.DataFrame(triplets, columns=["anchor", "positive", "negative", "subject"])
+    df_triplets["trial_id"] = df_triplets.groupby("subject", group_keys=False).cumcount()
+    df_triplets["n_trials"] = df_triplets.groupby("subject")["trial_id"].transform("max")
+    # directly use random_state for pandas shuffle
+    df_triplets["trial_id_shuffled"] = df_triplets.groupby("subject", group_keys=False)["trial_id"].transform(np.random.RandomState(random_state).permutation)
+    df_triplets_train = df_triplets.loc[df_triplets["trial_id_shuffled"] < df_triplets["n_trials"] * 0.8, ["anchor", "positive", "negative", "subject"]].to_numpy()
+    df_triplets_test = df_triplets.loc[df_triplets["trial_id_shuffled"] >= df_triplets["n_trials"] * 0.8, ["anchor", "positive", "negative", "subject"]].to_numpy()
+
+    return df_triplets_train, df_triplets_test
 
 def get_nitems(train_triplets: torch.Tensor) -> int:
     # number of unique items in the data matrix

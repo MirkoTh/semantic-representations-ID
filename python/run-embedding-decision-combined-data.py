@@ -203,6 +203,20 @@ def parseargs():
         choices=["separate", "shared", "shared_and_separate"],
         help="whether individual slopes are separate per dimension or shared (one scalar) across dimensions",
     )
+    aa(
+        "--save_details",
+        default="model",
+        choices=["model", "only_metrics"],
+        help="whether to save the whole model or only the metrics",
+
+    )
+    aa(
+        "--moreshuffle",
+        type=str,
+        default="no",
+        choices=["no", "yes"],
+        help="whether to shuffle the data within the python script or just to load the pre-saved datasets in R",
+    )
     args = parser.parse_args()
     return args
 
@@ -256,6 +270,8 @@ def run(
     temperature: float = 1.0,
     data_subset: str = "testcase",
     individual_slopes_type: str = "separate",
+    save_details: str = "model",
+    moreshuffle: str = "no",
 ):
     # initialise logger and start logging events
     logger = setup_logging(
@@ -270,6 +286,8 @@ def run(
         device=device,
         triplets_dir=triplets_dir,
         dataset=data_subset,
+        moreshuffle=moreshuffle,
+        rs=rnd_seed
     )
     n_items_ID = ut.get_nitems(train_triplets_ID)
     logger.info("n_items = " + str(n_items_ID))
@@ -596,7 +614,7 @@ def run(
                 "========================================================================================================\n"
             )
 
-        if (epoch + 1) % steps == 0:
+        if (epoch + 1) % steps == 0 and save_details == "model":
             W = model.model1.fc.weight
             id_slopes = model.model1.individual_slopes.weight
 
@@ -659,7 +677,8 @@ def run(
             logger.info(f"Saving model parameters at epoch {epoch+1}\n")
 
     # save final model weights
-    ut.save_weights_(results_dir, model.model1.fc.weight)
+    if save_details == "model":
+        ut.save_weights_(results_dir, model.model1.fc.weight)
     results = {
         "epoch": len(train_accs_max),
         "train_acc_max": train_accs_max[-1],
@@ -740,5 +759,7 @@ if __name__ == "__main__":
         temperature=args.temperature,
         early_stopping=args.early_stopping,
         data_subset=args.data_subset,
-        individual_slopes_type=args.individual_slopes_type
+        individual_slopes_type=args.individual_slopes_type,
+        save_details=args.save_details,
+        moreshuffle=args.moreshuffle
     )
