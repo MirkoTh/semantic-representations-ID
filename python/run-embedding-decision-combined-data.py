@@ -276,7 +276,7 @@ def run(
     # initialise logger and start logging events
     logger = setup_logging(
         file="embeddings-decision-combined-data.log",
-        dir=f"./log_files/{modeltype}/ndim_{embed_dim}/lr_{lr}/data_subset_{data_subset}",
+        dir=f"./log_files/{modeltype}/ndim_{embed_dim}/lr_{lr}/data_subset_{data_subset}/moreshuffle_{moreshuffle}/",
         loggername=loggername,
     )
     logger.info(f"modeltype = {modeltype}")
@@ -369,6 +369,7 @@ def run(
             f"{individual_slopes_type}",
             f"seed{rnd_seed}",
             f"data_subset_{data_subset}",
+            f"moreshuffle_{moreshuffle}",
         )
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
@@ -383,6 +384,7 @@ def run(
             f"{individual_slopes_type}",
             f"seed{rnd_seed}",
             f"data_subset_{data_subset}",
+            f"moreshuffle_{moreshuffle}",
         )
     if not os.path.exists(plots_dir):
         os.makedirs(plots_dir)

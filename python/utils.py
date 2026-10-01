@@ -650,8 +650,7 @@ def load_data_combined(
             )
         elif moreshuffle == "yes":
             all_triplets = np.loadtxt(pjoin(triplets_dir, "all_triplets_ID_item.txt"))
-            # need to write new_train_test_split function yet
-            train_triplets, test_triplets = new_train_test_split(all_triplets, random_state=rs, dataset=dataset)
+            train_triplets, test_triplets = new_train_test_split(all_triplets, random_state=rs, dataset=dataset, device=device)
     elif dataset == "full_evaluate_shuffled":
         if moreshuffle == "no":
             train_triplets = (
@@ -674,12 +673,12 @@ def load_data_combined(
 
             all_triplets = np.loadtxt(pjoin(triplets_dir, "all_triplets_ID_item.txt"))
             # need to write new_train_test_split function yet
-            train_triplets, test_triplets = new_train_test_split(all_triplets, random_state=rs, dataset=dataset)
+            train_triplets, test_triplets = new_train_test_split(all_triplets, random_state=rs, dataset=dataset, device=device)
 
     return train_triplets, test_triplets
 
 
-def new_train_test_split(triplets, random_state, dataset):
+def new_train_test_split(triplets, random_state, dataset, device):
     """
     Split triplets into train and test sets given random_state
     just uses 80/20 fixed split
@@ -688,6 +687,7 @@ def new_train_test_split(triplets, random_state, dataset):
     - triplets: numpy array of shape (n, 3/4) containing the triplets
     - random_state: int, seed for reproducibility
     - dataset: str describing dataset, may contain "shuffled" to indicate that subject ids should be shuffled
+    - device: torch.device, device to which the triplets should be moved
     
     Returns:
     - train_triplets: numpy array of training triplets
@@ -712,8 +712,10 @@ def new_train_test_split(triplets, random_state, dataset):
     df_triplets["n_trials"] = df_triplets.groupby("subject")["trial_id"].transform("max")
     # directly use random_state for pandas shuffle
     df_triplets["trial_id_shuffled"] = df_triplets.groupby("subject", group_keys=False)["trial_id"].transform(np.random.RandomState(random_state).permutation)
-    df_triplets_train = df_triplets.loc[df_triplets["trial_id_shuffled"] < df_triplets["n_trials"] * 0.8, ["anchor", "positive", "negative", "subject"]].to_numpy()
-    df_triplets_test = df_triplets.loc[df_triplets["trial_id_shuffled"] >= df_triplets["n_trials"] * 0.8, ["anchor", "positive", "negative", "subject"]].to_numpy()
+    df_triplets_train = df_triplets.loc[df_triplets["trial_id_shuffled"] < df_triplets["n_trials"] * 0.8, ["anchor", "positive", "negative", "subject"]]
+    df_triplets_test = df_triplets.loc[df_triplets["trial_id_shuffled"] >= df_triplets["n_trials"] * 0.8, ["anchor", "positive", "negative", "subject"]]
+    df_triplets_train = torch.from_numpy(df_triplets_train.sort_values("subject").to_numpy()).to(device).type(torch.LongTensor)
+    df_triplets_test = torch.from_numpy(df_triplets_test.sort_values("subject").to_numpy()).to(device).type(torch.LongTensor)
 
     return df_triplets_train, df_triplets_test
 
@@ -2701,6 +2703,7 @@ def load_ID_lowdim_id_weights(
     l_lmbda=["default"],
     modeltype="random_weights_random_scaling",
     l_id_weights_type=["separate"],
+    l_moreshuffle=None,
 ):
     """
     same as above, but 
@@ -2713,6 +2716,7 @@ def load_ID_lowdim_id_weights(
         modeltype (str, optional): Type of model architecture or training scheme.
             Defaults to "random_weights_random_scaling".
         l_id_weights_type (list[str], optional): List of ID weight types (shared, separate, shared_and_separate)).
+        l_moreshuffle: list with values "yes" or "no" indicating whether train-test split was done separately for this model run
 
     Returns:
         list[dict]: A list of dictionaries, each containing:
@@ -2727,54 +2731,68 @@ def load_ID_lowdim_id_weights(
         - If a model checkpoint is missing, a warning is printed and that run is skipped.
         - Assumes model files are stored in a structured directory under "./results".
     """
+    if l_moreshuffle is None:
+        l_moreshuffle = [""]
+
     l_dirs = []
     l_models = []
     l_rnd_seeds_flat = []
     l_subs = []
     l_results = []
     l_id_weights = []
+    l_ms = []
 
-    for rnd_seed in l_rnd_seed:
-        for n in l_embed_dim:
-            for data_subset in l_data_subset:
-                for lmbda in l_lmbda:
-                    for id_weights_type in l_id_weights_type:
-                        if lmbda == "default":
-                            results_dir_ID = os.path.join(
-                                "./results",
-                                modelversion,
-                                f"modeltype_{modeltype}",
-                                f"{n}d",
-                                f"{id_weights_type}",
-                                f"seed{rnd_seed}",
-                                f"data_subset_{data_subset}",
-                            )
-                        else:
-                            results_dir_ID = os.path.join(
-                                "./results",
-                                modelversion,
-                                f"modeltype_{modeltype}",
-                                f"{n}d",
-                                f"lmbda_{str(lmbda)}",
-                                f"{id_weights_type}",
-                                f"seed{rnd_seed}",
-                                f"data_subset_{data_subset}",
-                            )
-                        l_dirs.append(results_dir_ID)
-                        l_rnd_seeds_flat.append(rnd_seed)
-                        l_subs.append(data_subset)
-                        l_id_weights.append(id_weights_type)
+    results_dir_base = os.path.join("../results", modelversion, f"modeltype_{modeltype}")
+    for n in l_embed_dim:
+        results_dir_n = os.path.join(results_dir_base, f"{n}d")
+        for lmbda in l_lmbda:
+            if lmbda == "default":
+                folder_lmbda = ""
+            else:
+                folder_lmbda = f"lmbda_{lmbda}"
+            results_dir_lmbda = os.path.join(results_dir_n, folder_lmbda)
+            for id_weights_type in l_id_weights_type:
+                results_dir_weights_type = os.path.join(results_dir_lmbda, id_weights_type)
+                for rnd_seed in l_rnd_seed:
+                    results_dir_seed = os.path.join(results_dir_weights_type, f"seed{rnd_seed}")
+                    for data_subset in l_data_subset:
+                        results_dir_subset = os.path.join(results_dir_seed, f"data_subset_{data_subset}")
+                        for moreshuffle in l_moreshuffle:
+                            if moreshuffle == "":
+                                folder_moreshuffle = ""
+                            else:
+                                folder_moreshuffle = f"moreshuffle_{moreshuffle}"
+                            results_dir_ID = os.path.join(results_dir_subset, folder_moreshuffle)
+                            
+
+                            # load results
+                            results = []
+                            try:
+                                results = json.load(open(os.path.join(results_dir_ID, "results.json")))
+                                results["n_embed"] = n
+                                results["lmbda"] = lmbda
+                                results["id_weights_type"] = id_weights_type
+                                results["rnd_seed"] = rnd_seed
+                                results["data_subset"] = data_subset
+                                results["moreshuffle"] = moreshuffle
+                                l_results.append(results)
+                            except:
+                                print(f"no results found in {results_dir_ID}")
+
+                            l_dirs.append(results_dir_ID)
+                            l_rnd_seeds_flat.append(rnd_seed)
+                            l_subs.append(data_subset)
+                            l_id_weights.append(id_weights_type)
+                            l_ms.append(moreshuffle)
+
+                            
 
     for i, d in enumerate(l_dirs):
         l_files = os.listdir(d)
         latest_epoch = max_epoch(l_files)
         model_path = os.path.join(d, "model", latest_epoch)
 
-        results = []
-        try:
-            results = json.load(open(os.path.join(d, "results.json")))
-        except:
-            print(f"no results found in {d}")
+        
 
         match l_subs[i]:
             case "first_half":
@@ -2822,6 +2840,7 @@ def load_ID_lowdim_id_weights(
                 "test_accs_proba": m["test_accs_proba"],
                 "test_losses": m["test_losses"],
                 "id_weights_type": l_id_weights[i],
+                "moreshuffle": l_ms[i],
             }
             if l_id_weights[i] == "shared_and_separate":
                 dict_out["shared_decision_weight"] = m["model_state_dict"][
@@ -2831,7 +2850,7 @@ def load_ID_lowdim_id_weights(
         else:
             print(f"{model_path} does not exist")
 
-        l_results.append(results)
+        
 
     return l_models, l_results
 
